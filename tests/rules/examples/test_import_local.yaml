@@ -1,0 +1,16 @@
+# Test file to verify import functionality
+# @import data from "./data.json"
+# @import config from "./config.yaml"
+
+- id: test-import-rule
+  name: Test Import Rule
+  description: Test that imports work correctly
+  on: TEST_EVENT
+  if:
+    field: data.username
+    operator: EQ
+    value: "admin"
+  do:
+    type: log
+    params:
+      message: "Found admin user: ${data.username}"

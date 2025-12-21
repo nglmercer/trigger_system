@@ -1,0 +1,14 @@
+# Missing 'id'
+- on: "EVENT_A"
+  do:
+    type: "LOG"
+
+# Missing 'do'
+- id: "rule-no-do"
+  on: "EVENT_B"
+
+# 'on' is boolean (common yaml mistake)
+- id: "rule-bool-on"
+  on: true
+  do:
+    type: "LOG"

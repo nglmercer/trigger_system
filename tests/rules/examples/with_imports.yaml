@@ -1,0 +1,49 @@
+# @import data from './data.json'
+# Comprehensive test using imported data for autocompletion
+
+- id: test-imported-data
+  on: TEST_EVENT
+  if:
+    field: data.username
+    operator: EQ
+    value: "admin"
+  do:
+    type: log
+    params:
+      message: "User ${data.username} logged in with score ${data.score}"
+
+- id: test-nested-data
+  on: TEST_EVENT
+  if:
+    field: data.server.port
+    operator: EQ
+    value: 25565
+  do:
+    type: log
+    params:
+      message: "Server ${data.server.name} is running on ${data.server.ip}:${data.server.port}"
+
+- id: test-boolean-value
+  on: TEST_EVENT
+  if:
+    field: data.test
+    operator: EQ
+    value: true
+  do:
+    type: STATE_SET
+    params:
+      key: test_result
+      value: "${data.amount}"
+
+# Test with different alias
+# @import config from './data.json'
+- id: test-config-alias
+  on: TEST_EVENT
+  if:
+    field: config.username
+    operator: EQ
+    value: "admin"
+  do:
+    type: log
+    params:
+      message: "Config user: ${config.username}"

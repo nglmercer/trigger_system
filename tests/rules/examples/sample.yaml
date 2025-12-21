@@ -1,0 +1,25 @@
+# src/trigger_system/tests/rules/sample.yaml
+# Best practice: Use list format for multiple rules in a single file
+
+- id: admin-login
+  on: USER_LOGIN
+  priority: 10
+  if:
+    field: data.username
+    operator: EQ
+    value: "admin"
+  do:
+    - type: LOG
+      params:
+        message: "Admin loaded: ${data.username}"
+
+- id: high-score
+  on: GAME_OVER
+  if:
+    field: data.score
+    operator: RANGE
+    value: [100, 1000]
+  do:
+    type: REWARD
+    params:
+      amount: 50

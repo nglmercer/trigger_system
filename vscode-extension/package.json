@@ -1,0 +1,70 @@
+{
+  "name": "trigger-system-lsp-client",
+  "displayName": "Trigger System Client",
+  "description": "Trigger System VS Code Extension",
+  "version": "0.0.3",
+  "publisher": "nglmercer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nglmercer/bun_plugins"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "icon": "logo_256x256.png",
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:yaml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "yaml",
+        "aliases": ["YAML", "yaml"],
+        "extensions": [".yaml", ".yml"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Trigger System LSP",
+      "properties": {
+        "triggerSystem.lsp.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "verbose",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "cd .. && bun run build:all",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "arktype": "^2.1.29",
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "yaml": "^2.8.2",
+    "arktype": "^2.1.29"
+  }
+}

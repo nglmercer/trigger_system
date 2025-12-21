@@ -1,0 +1,46 @@
+# @import config from './config.yaml'
+# Test using YAML imports for autocompletion
+
+- id: test-app-config
+  on: APP_START
+  if:
+    field: config.app.debug
+    operator: EQ
+    value: true
+  do:
+    type: log
+    params:
+      message: "Starting ${config.app.name} v${config.app.version} in debug mode"
+
+- id: test-database-config
+  on: DATABASE_CONNECT
+  if:
+    field: config.database.port
+    operator: EQ
+    value: 5432
+  do:
+    type: log
+    params:
+      message: "Connecting to database ${config.database.name} at ${config.database.host}:${config.database.port}"
+
+- id: test-features-array
+  on: FEATURE_CHECK
+  if:
+    field: config.features
+    operator: CONTAINS
+    value: "autocomplete"
+  do:
+    type: log
+    params:
+      message: "Autocomplete feature is enabled"
+
+- id: test-settings-object
+  on: SETTINGS_CHECK
+  if:
+    field: config.settings.max_rules
+    operator: GT
+    value: 50
+  do:
+    type: log
+    params:
+      message: "Max rules setting: ${config.settings.max_rules}"

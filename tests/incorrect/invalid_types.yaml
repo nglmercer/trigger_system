@@ -1,0 +1,12 @@
+- id: "rule-bad-types"
+  on: "EVENT_C"
+  # Priority should be number
+  priority: "high"
+  # Cooldown should be number
+  cooldown: "10m"
+  do:
+    type: "LOG"
+    # Delay must be positive number
+    delay: -50
+    # Probability must be 0-1
+    probability: 100

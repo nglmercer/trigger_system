@@ -1,0 +1,90 @@
+# Test ActionGroup modes and Action properties
+# Covers: ALL, EITHER, SEQUENCE, Nested Groups, Delay, Probability
+
+# --- Action Modes ---
+
+- id: action-mode-all
+  on: TEST_EVENT
+  do:
+    mode: ALL
+    actions:
+      - type: LOG
+        params:
+          message: "Action 1"
+      - type: LOG
+        params:
+          message: "Action 2"
+
+- id: action-mode-either
+  on: TEST_EVENT
+  do:
+    mode: EITHER
+    actions:
+      - type: LOG
+        params:
+          message: "Option A"
+      - type: LOG
+        params:
+          message: "Option B"
+
+- id: action-mode-sequence
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: STATE_SET
+        params: { key: "step1", value: true }
+      - type: STATE_SET
+        params: { key: "step2", value: true }
+
+# --- Nested Groups ---
+
+- id: action-nested-groups
+  on: TEST_EVENT
+  do:
+    mode: ALL
+    actions:
+      - type: LOG
+        params: { message: "Top Level" }
+      - mode: EITHER
+        actions:
+          - type: LOG
+            params: { message: "Nested Option 1" }
+          - type: LOG
+            params: { message: "Nested Option 2" }
+      - mode: SEQUENCE
+        actions:
+          - type: LOG
+            params: { message: "Nested Seq 1" }
+          - type: LOG
+            params: { message: "Nested Seq 2" }
+
+# --- Action Properties ---
+
+- id: action-with-delay
+  on: TEST_EVENT
+  do:
+    type: LOG
+    delay: 500
+    params:
+      message: "Delayed Action"
+
+- id: action-with-probability
+  on: TEST_EVENT
+  do:
+    type: LOG
+    probability: 0.5
+    params:
+      message: "Maybe Action"
+
+- id: action-complex-props
+  on: TEST_EVENT
+  do:
+    mode: ALL
+    actions:
+      - type: LOG
+        delay: 100
+        probability: 1.0 # Alway run after delay
+      - type: LOG
+        delay: 0
+        probability: 0.1 # Low chance

@@ -1,0 +1,69 @@
+# @import data from './data.json'
+# Test file using the existing data.json for autocompletion
+
+- id: test-username-field
+  on: USER_LOGIN
+  if:
+    field: data.username
+    operator: EQ
+    value: "admin"
+  do:
+    type: log
+    params:
+      message: "Admin user logged in: ${data.username}"
+
+- id: test-score-comparison
+  on: SCORE_UPDATE
+  if:
+    field: data.score
+    operator: GT
+    value: 50
+  do:
+    type: STATE_SET
+    params:
+      key: high_score
+      value: "${data.score}"
+
+- id: test-boolean-field
+  on: FEATURE_TOGGLE
+  if:
+    field: data.test
+    operator: EQ
+    value: true
+  do:
+    type: log
+    params:
+      message: "Test mode is enabled"
+
+- id: test-amount-field
+  on: PURCHASE
+  if:
+    field: data.amount
+    operator: GT
+    value: 5
+  do:
+    type: log
+    params:
+      message: "Purchase amount: ${data.amount}"
+
+- id: test-server-object
+  on: SERVER_CHECK
+  if:
+    field: data.server.name
+    operator: EQ
+    value: "Test Server"
+  do:
+    type: log
+    params:
+      message: "Server ${data.server.name} is online at ${data.server.ip}:${data.server.port}"
+
+- id: test-value-field
+  on: STRING_TEST
+  if:
+    field: data.value
+    operator: EQ
+    value: "test_string"
+  do:
+    type: log
+    params:
+      message: "Value matches: ${data.value}"

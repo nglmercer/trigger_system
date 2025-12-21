@@ -1,0 +1,248 @@
+# Comprehensive test of all operators and conditional logic
+# Used for unit testing and verifying LSP capabilities
+
+# --- Equality and Inequality ---
+
+- id: check-eq
+  on: TEST_EVENT
+  if:
+    field: data.value
+    operator: EQ
+    value: "test_string"
+  do:
+    type: STATE_SET
+    params:
+      key: eq_result
+      value: true
+
+- id: check-eq-alias
+  on: TEST_EVENT
+  if:
+    field: data.number
+    operator: ==
+    value: 100
+  do:
+    type: STATE_SET
+    params:
+      key: eq_alias_result
+      value: true
+
+- id: check-neq
+  on: TEST_EVENT
+  if:
+    field: data.value
+    operator: NEQ
+    value: "other_string"
+  do:
+    type: STATE_SET
+    params:
+      key: neq_result
+      value: true
+
+# --- Numeric Comparisons ---
+
+- id: check-gt
+  on: TEST_EVENT
+  if:
+    field: data.number
+    operator: GT
+    value: 50
+  do:
+    type: STATE_SET
+    params:
+      key: gt_result
+      value: true
+
+- id: check-gte
+  on: TEST_EVENT
+  if:
+    field: data.number
+    operator: GTE
+    value: 100
+  do:
+    type: STATE_SET
+    params:
+      key: gte_result
+      value: true
+
+- id: check-lt
+  on: TEST_EVENT
+  if:
+    field: data.number
+    operator: LT
+    value: 200
+  do:
+    type: STATE_SET
+    params:
+      key: lt_result
+      value: true
+
+- id: check-lte
+  on: TEST_EVENT
+  if:
+    field: data.number
+    operator: LTE
+    value: 100
+  do:
+    type: STATE_SET
+    params:
+      key: lte_result
+      value: true
+
+- id: check-range
+  on: TEST_EVENT
+  if:
+    field: data.number
+    operator: RANGE
+    value: [50, 200]
+  do:
+    type: STATE_SET
+    params:
+      key: range_result
+      value: true
+
+# --- String Operations ---
+
+- id: check-contains
+  on: TEST_EVENT
+  if:
+    field: data.text
+    operator: CONTAINS
+    value: "fox"
+  do:
+    type: STATE_SET
+    params:
+      key: contains_result
+      value: true
+
+- id: check-matches
+  on: TEST_EVENT
+  if:
+    field: data.email
+    operator: MATCHES
+    value: "^[a-z]+@[a-z]+\\.com$"
+  do:
+    type: STATE_SET
+    params:
+      key: matches_result
+      value: true
+
+# --- List Operations ---
+
+- id: check-in
+  on: TEST_EVENT
+  if:
+    field: data.role
+    operator: IN
+    value: ["admin", "moderator"]
+  do:
+    type: STATE_SET
+    params:
+      key: in_result
+      value: true
+
+- id: check-not-in
+  on: TEST_EVENT
+  if:
+    field: data.role
+    operator: NOT_IN
+    value: ["banned", "guest"]
+  do:
+    type: STATE_SET
+    params:
+      key: not_in_result
+      value: true
+
+# --- Date Operations ---
+# Assumes data.timestamp is a valid date string or timestamp
+
+- id: check-after
+  on: TEST_EVENT
+  if:
+    field: data.timestamp
+    operator: AFTER
+    value: "2023-01-01T00:00:00Z"
+  do:
+    type: STATE_SET
+    params:
+      key: after_result
+      value: true
+
+- id: check-before
+  on: TEST_EVENT
+  if:
+    field: data.timestamp
+    operator: BEFORE
+    value: "2025-01-01T00:00:00Z"
+  do:
+    type: STATE_SET
+    params:
+      key: before_result
+      value: true
+
+# --- Logic Groups (AND/OR) ---
+
+- id: check-and-group
+  on: TEST_EVENT
+  if:
+    operator: AND
+    conditions:
+      - field: data.active
+        operator: EQ
+        value: true
+      - field: data.score
+        operator: GT
+        value: 10
+  do:
+    type: STATE_SET
+    params:
+      key: and_group_result
+      value: true
+
+- id: check-or-group
+  on: TEST_EVENT
+  if:
+    operator: OR
+    conditions:
+      - field: data.status
+        operator: EQ
+        value: "premium"
+      - field: data.status
+        operator: EQ
+        value: "vip"
+  do:
+    type: STATE_SET
+    params:
+      key: or_group_result
+      value: true
+
+# --- Interpolation and Dynamic Values ---
+
+- id: check-dynamic-value
+  on: TEST_EVENT
+  if:
+    field: data.target
+    operator: EQ
+    value: "${globals.secret_target}"
+  do:
+    type: STATE_SET
+    params:
+      key: dynamic_value_result
+      value: true
+
+# --- Action Groups ---
+
+- id: check-action-sequence
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: STATE_SET
+        params:
+          key: seq_step_1
+          value: done
+      - type: STATE_SET
+        params:
+          key: seq_step_2
+          value: done
+# --- End of file ---

@@ -1,0 +1,32 @@
+- id: welcome-user
+  on: USER_JOINED
+  do:
+    type: log
+    params:
+      message: "Welcome, ${data.username || 'Guest'}!"
+
+- id: admin-check
+  on: COMMAND
+  if:
+    field: data.role
+    operator: EQ
+    value: admin
+  do:
+    type: execute
+    params:
+      command: "echo Admin Command Executed"
+      safe: true
+
+- id: global-counter
+  on: ANY_EVENT
+  do:
+    type: STATE_INCREMENT
+    params:
+      key: global_event_count
+
+- id: complex-fallback
+  on: ALERT
+  do:
+    type: log
+    params:
+      message: "Alert on server: ${data.server && data.server.name ? data.server.name : 'Unknown'}"

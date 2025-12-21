@@ -1,0 +1,119 @@
+# Additional test cases to cover all RuleTrigger fields and edge cases
+# Used for unit testing and LSP verification
+
+- id: metadata-and-settings
+  name: "Detailed Rule"
+  description: "A rule with all metadata fields"
+  priority: 10
+  enabled: true
+  cooldown: 5000
+  tags: ["security", "audit"]
+  on: "LOGIN_ATTEMPT"
+  if:
+    field: data.username
+    operator: EQ
+    value: "admin"
+  do:
+    type: log
+    params:
+      message: "Admin login attempt"
+  comment: "This rule monitors admin login attempts for security"
+
+- id: condition-array
+  on: "DATA_UPDATE"
+  if:
+    - field: data.version
+      operator: GT
+      value: 1.0
+    - field: data.status
+      operator: EQ
+      value: "STABLE"
+  do:
+    type: STATE_SET
+    params:
+      key: update_processed
+      value: true
+
+- id: time-operators
+  on: "SYSTEM_CHECK"
+  if:
+    operator: AND
+    conditions:
+      - field: data.last_backup
+        operator: SINCE
+        value: "2h"
+      - field: data.expiry
+        operator: UNTIL
+        value: "1d"
+  do:
+    type: log
+    params:
+      message: "Backup needed or expiry soon"
+
+- id: single-action
+  on: "BUTTON_CLICK"
+  do:
+    type: log
+    params:
+      message: "Button was clicked"
+
+- id: action-array
+  on: "PLAYER_DEATH"
+  do:
+    - type: log
+      params:
+        message: "Player died"
+    - type: EMIT_EVENT
+      params:
+        event: "SPAWN_PARTICLES"
+        data: { variant: "smoke" }
+
+- id: action-group-nested
+  on: "COMPLEX_TRIGGER"
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: STATE_SET
+        params:
+          key: step
+          value: 1
+      - mode: ALL
+        actions:
+          - type: log
+            params: { message: "Parallel 1" }
+          - type: log
+            params: { message: "Parallel 2" }
+
+- id: numeric-aliases
+  on: "MATH_TEST"
+  if:
+    operator: OR
+    conditions:
+      - field: data.x
+        operator: ">"
+        value: 10
+      - field: data.x
+        operator: "<="
+        value: -10
+  do:
+    type: log
+    params: { message: "Out of bounds" }
+
+- id: action-group-parallel
+  on: "RANDOM_TEST"
+  if:
+    operator: AND
+    conditions:
+      - field: data.x
+        operator: "<"
+        value: 10
+      - field: data.x
+        operator: ">="
+        value: -10
+  do:
+    mode: EITHER
+    actions:
+      - type: log
+        params: { message: "Parallel 1" }
+      - type: log
+        params: { message: "Parallel 2" }

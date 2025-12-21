@@ -1,0 +1,53 @@
+# Translations of the "Minecraft" DSL examples into standard YAML Trigger Rules.
+# This proves the current system can handle the logic required by the DSL.
+
+# DSL: DROP minecraft:stick ON Donation WITH amount IN RANGE [0,10]
+- id: dsl-example-1
+  on: Donation
+  if:
+    field: data.amount
+    operator: RANGE
+    value: [0, 10]
+  do:
+    type: DROP
+    params:
+      item: "minecraft:stick"
+
+# DSL: DROP minecraft:apple ON Donation WITH amount IN RANGE [11,20]
+- id: dsl-example-2
+  on: Donation
+  if:
+    field: data.amount
+    operator: RANGE
+    value: [11, 20]
+  do:
+    type: DROP
+    params:
+      item: "minecraft:apple"
+
+# DSL: DROP %diamond{display:{Name:"\"A DIAMOOND!\""}}% ... WITH amount IN RANGE [21,30]
+- id: dsl-example-3
+  on: Donation
+  if:
+    field: data.amount
+    operator: RANGE
+    value: [21, 30]
+  do:
+    type: DROP
+    params:
+      # Complex NBT data is just treated as the item string
+      item: 'diamond{display:{Name:"\"A DIAMOOND!\""}}'
+
+# DSL: DROP diamond DISPLAYING %[{text:"Here, a diamond for you!", color:"dark_purple"}]% ... WITH amount > 30
+- id: dsl-example-4
+  on: Donation
+  if:
+    field: data.amount
+    operator: GT # ">" maps to GT
+    value: 30
+  do:
+    type: DROP
+    params:
+      item: "diamond"
+      # The DISPLAYING part maps to a dedicated param, e.g., 'display' or 'title'
+      display: '[{text:"Here, a diamond for you!", color:"dark_purple"}]'

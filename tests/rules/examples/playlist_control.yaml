@@ -1,0 +1,61 @@
+# Playlist logic defined in YAML
+# Demonstrates external configuration, state access, and interpolation (${})
+
+# 1. Initialize Playlist (Standard)
+- id: yaml-init-playlist
+  on: SYSTEM_INIT
+  do:
+    type: PLAYLIST_LOAD
+    params:
+      tracks: ["intro.mp3", "news.mp3", "outro.mp3"]
+
+# 2. Start Playback command
+- id: yaml-start-playback
+  on: USER_COMMAND_PLAY
+  do:
+    type: PLAYLIST_PLAY
+
+# 3. Complex Sequence: Load + Loop + Play
+- id: yaml-setup-loop
+  on: SETUP_LOOP
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: PLAYLIST_LOAD
+        params:
+          tracks: ["TrackA", "TrackB"]
+      - type: PLAYLIST_LOOP
+        params:
+          enable: true
+      - type: PLAYLIST_PLAY
+
+# 4. Reaction Rule: Condition on State
+- id: yaml-react-to-second-track
+  on: TRACK_STARTED
+  if:
+    field: state.playlist.index
+    operator: EQ
+    value: 1
+  do:
+    mode: SEQUENCE
+    actions:
+      # Set a flag to verify test success
+      - type: STATE_SET
+        params:
+          key: "yaml_reaction_success"
+          value: true
+
+      # Demonstrate Interpolation (${})
+      # Accessing nested state properties in strings
+      - type: LOG
+        params:
+          message: "Triggered reaction! Current track index is ${state.playlist.index}"
+
+# 5. Dynamic Track Announcement (Interpolation)
+- id: yaml-announce-track
+  on: TRACK_STARTED
+  do:
+    type: LOG
+    params:
+      # Interpolating the track name from the event data (data.track) or global state
+      message: "Now playing: ${data.track}"

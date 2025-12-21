@@ -1,0 +1,25 @@
+# Configuration data for testing YAML imports
+# @disable-lint
+app:
+  name: "Trigger System"
+  version: "1.0.0"
+  debug: true
+
+database:
+  host: "localhost"
+  port: 5432
+  name: "triggers_db"
+  user: "admin"
+  password: "secret123"
+
+features:
+  - "autocomplete"
+  - "validation"
+  - "hover_info"
+  - "semantic_tokens"
+
+settings:
+  max_rules: 100
+  default_priority: 50
+  enable_caching: true
+  timeout_ms: 5000

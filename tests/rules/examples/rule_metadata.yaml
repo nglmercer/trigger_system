@@ -1,0 +1,73 @@
+# Test TriggerRule top-level metadata and properties
+# Covers: priority, enabled, cooldown, tags, description, name
+
+- id: metadata-full-example
+  name: "Full Metadata Rule"
+  description: "A rule with all optional metadata fields set"
+  priority: 10
+  enabled: true
+  cooldown: 1000
+  tags: ["test", "metadata", "important"]
+  on: TEST_EVENT
+  do:
+    type: LOG
+    params: { msg: "Full metadata" }
+
+- id: metadata-disabled
+  description: "This rule is disabled and should not run"
+  enabled: false
+  on: TEST_EVENT
+  do:
+    type: LOG
+    params: { msg: "Should not trigger" }
+
+- id: metadata-high-priority
+  priority: 100
+  on: TEST_EVENT
+  do:
+    type: LOG
+    params: { msg: "High Priority" }
+
+- id: metadata-low-priority
+  priority: 1
+  on: TEST_EVENT
+  do:
+    type: LOG
+    params: { msg: "Low Priority" }
+
+# --- Additional Operator Cases ---
+
+- id: check-contains-array
+  on: TEST_EVENT
+  if:
+    field: data.tags
+    operator: CONTAINS
+    value: ["urgent", "error"] # Checks if 'data.tags' (array) contains this subarray? Or if data.tags contains one of these?
+    # Validator says: value: "string | unknown[]".
+    # Usually CONTAINS on array means "array includes item" or "array includes subset".
+    # If field is array, CONTAINS array usually means subset.
+  do:
+    type: STATE_SET
+    params:
+      key: contains_array_result
+      value: true
+
+- id: check-since
+  on: TEST_EVENT
+  if:
+    field: data.timestamp
+    operator: SINCE
+    value: "2023-01-01T00:00:00Z" # True if timestamp is >= this date
+  do:
+    type: LOG
+    params: { msg: "Since Check" }
+
+- id: check-until
+  on: TEST_EVENT
+  if:
+    field: data.timestamp
+    operator: UNTIL
+    value: "2025-01-01T00:00:00Z" # True if timestamp is <= this date
+  do:
+    type: LOG
+    params: { msg: "Until Check" }

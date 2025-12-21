@@ -1,0 +1,6 @@
+id: "broken-yaml"
+on: "EVENT"
+do:
+  - type: "LOG"
+  indentation: "error"
+   nested: "oops"

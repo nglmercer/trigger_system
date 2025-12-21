@@ -1,0 +1,50 @@
+# Example file demonstrating LSP directive features
+# @disable-next-line
+- on: SOME_EVENT
+  # Missing id - lint suppressed by directive above
+  do:
+    type: log
+    params:
+      message: "This rule has no ID but won't show error"
+
+- id: valid-rule-1
+  on: USER_LOGIN
+  priority: 10
+  if:
+    field: data.username
+    operator: EQ
+    value: "${data.username}"
+  do:
+    - type: LOG
+      params:
+        message: "User logged in: ${data.username}"
+
+# @disable-lint
+# Everything below is ignored by linter
+- on: INVALID_EVENT
+  priority: "not a number"
+  if:
+    operator: INVALID_OP
+
+# @enable-lint
+
+- id: valid-rule-2
+  on: GAME_OVER
+  if:
+    field: data.score
+    operator: RANGE
+    value: [100, 1000]
+  do:
+    type: LOG
+    params:
+      message: "High score achieved: ${data.score}"
+
+# @disable-rule trigger-validator
+- id: partially-disabled
+  on: TEST_EVENT
+  # Missing 'do' field but trigger-validator is disabled
+  if:
+    field: data.test
+    operator: EQ
+    value: true
+# @enable-rule trigger-validator

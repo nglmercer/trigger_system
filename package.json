@@ -1,0 +1,30 @@
+{
+  "name": "trigger_system",
+  "private": true,
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "build": "bun run build:node && bun run build:browser && bun run build:lsp",
+    "build:node": "bun build src/index.ts --outdir dist/node --target node --minify --sourcemap=external",
+    "build:browser": "bun build src/index.browser.ts --outdir dist/browser --target browser --minify --sourcemap=external",
+    "build:lsp": "bun build src/lsp/server.ts --outfile vscode-extension/dist/lsp/server.bundle.js --target node --minify",
+    "build:vscode": "bun build vscode-extension/src/extension.ts --outfile vscode-extension/out/extension.js --external vscode --format cjs --target node --minify",
+    "build:all": "bun run build:lsp && bun run build:vscode",
+    "package:vscode": "cd vscode-extension && vsce package",
+    "test": "bun test",
+    "validate": "bun run src/cli/validate.ts",
+    "lsp": "bun run src/lsp/server.ts --stdio",
+    "package": "bun run build:all && cd vscode-extension && vsce package"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "arktype": "^2.1.29",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "yaml": "^2.8.2"
+  }
+}

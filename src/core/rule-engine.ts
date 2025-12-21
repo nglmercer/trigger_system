@@ -1,0 +1,408 @@
+// -----------------------------------------------------------------------------
+// MOTOR DE REGLAS PARA TRIGGERS
+// -----------------------------------------------------------------------------
+
+import type {
+  TriggerRule,
+  TriggerCondition,
+  ConditionGroup,
+  RuleCondition,
+  TriggerAction,
+  ActionGroup,
+  TriggerContext,
+  TriggerResult,
+  RuleEngineConfig,
+} from "../types";
+import { ExpressionEngine } from "../core/expression-engine";
+
+
+import { ActionRegistry } from "./action-registry";
+import { StateManager } from "./state-manager";
+import { triggerEmitter, EngineEvent } from "../utils/emitter";
+
+
+export class RuleEngine {
+  private rules: TriggerRule[] = [];
+  private config: RuleEngineConfig;
+  private lastExecutionTimes: Map<string, number> = new Map();
+  private actionRegistry: ActionRegistry;
+
+  constructor(config: RuleEngineConfig) {
+    this.config = config;
+    this.rules = [...config.rules];
+    this.rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    this.actionRegistry = ActionRegistry.getInstance();
+  }
+
+  /**
+   * Convenience method to process an event with a simple payload
+   */
+  async processEvent(eventType: string, data: Record<string, any> = {}, globals: Record<string, any> = {}): Promise<TriggerResult[]> {
+    const context: TriggerContext = {
+      event: eventType,
+      data: data,
+      globals: globals,
+      timestamp: Date.now(),
+      state: {} // State will be injected by evaluateContext
+    };
+    return this.evaluateContext(context);
+  }
+
+
+  /**
+   * Evalúa todas las reglas contra el contexto proporcionado
+   */
+  async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
+    const results: TriggerResult[] = [];
+    
+    // Inject current state into context
+    context.state = StateManager.getInstance().getAll();
+
+    if (this.config.globalSettings.debugMode) {
+      console.log(
+        `[RuleEngine] Evaluando contexto con ${this.rules.length} reglas para evento: ${context.event}`,
+      );
+    }
+
+    triggerEmitter.emit(EngineEvent.ENGINE_START, { context, rulesCount: this.rules.length });
+
+
+    for (const rule of this.rules) {
+      if (rule.enabled === false) continue;
+      
+      // Check event type match
+      if (rule.on !== context.event) continue;
+
+      // Verificar cooldown
+      if (rule.cooldown && !this.checkCooldown(rule.id, rule.cooldown)) {
+        if (this.config.globalSettings.debugMode) {
+          console.log(`[RuleEngine] Regla ${rule.id} en cooldown`);
+        }
+        continue;
+      }
+
+      // Evaluar condiciones
+      // rule.if can be undefined (always true), a single condition, or an array
+      const conditionMet = this.evaluateRuleConditions(rule.if, context);
+
+      if (conditionMet) {
+        if (this.config.globalSettings.debugMode) {
+          console.log(
+            `[RuleEngine] Ejecutando regla: ${rule.name || rule.id}`,
+          );
+        }
+
+        triggerEmitter.emit(EngineEvent.RULE_MATCH, { rule, context });
+
+
+        // Ejecutar acciones
+        const executedActions = await this.executeRuleActions(rule.do, context);
+
+        results.push({
+          ruleId: rule.id,
+          executedActions: executedActions,
+          success: true,
+        });
+
+        // Actualizar tiempo de última ejecución
+        this.lastExecutionTimes.set(rule.id, Date.now());
+
+        // Si no se deben evaluar todas las reglas, salir después de la primera coincidencia
+        if (!this.config.globalSettings.evaluateAll) {
+          break;
+        }
+      }
+    }
+
+    triggerEmitter.emit(EngineEvent.ENGINE_DONE, { results, context });
+
+    return results;
+  }
+
+  // --- Condition Evaluation ---
+
+  private evaluateRuleConditions(
+    conditions: RuleCondition | RuleCondition[] | undefined,
+    context: TriggerContext
+  ): boolean {
+    if (!conditions) return true; // No conditions = always trigger if event matches
+
+    if (Array.isArray(conditions)) {
+      // Implicit AND for array of conditions at root
+      return conditions.every(c => this.evaluateRecursiveCondition(c, context));
+    } else {
+      return this.evaluateRecursiveCondition(conditions, context);
+    }
+  }
+
+  private evaluateRecursiveCondition(
+    condition: RuleCondition,
+    context: TriggerContext
+  ): boolean {
+    // Check if it's a group
+    if ('conditions' in condition && 'operator' in condition) {
+      return this.evaluateConditionGroup(condition as ConditionGroup, context);
+    } else {
+      return this.evaluateSingleCondition(condition as TriggerCondition, context);
+    }
+  }
+
+  private evaluateConditionGroup(group: ConditionGroup, context: TriggerContext): boolean {
+    if (group.operator === 'OR') {
+      return group.conditions.some(c => this.evaluateRecursiveCondition(c, context));
+    } else {
+      // AND
+      return group.conditions.every(c => this.evaluateRecursiveCondition(c, context));
+    }
+  }
+
+
+  /**
+   * Evalúa una condición individual
+   */
+  private evaluateSingleCondition(
+    condition: TriggerCondition,
+    context: TriggerContext,
+  ): boolean {
+    try {
+      // Obtener el valor del campo especificado
+      const fieldValue = ExpressionEngine.getNestedValue(
+        condition.field,
+        context,
+      );
+
+      // Process condition.value - if it's a string, try to interpolate it
+      // This allows comparing field: "data.amount" with value: "${globals.threshold}"
+      let targetValue = condition.value;
+      if (typeof targetValue === 'string' && (targetValue.includes('${') || targetValue.startsWith('data.') || targetValue.startsWith('globals.'))) {
+          // If it looks like an expression or variable reference, evaluate it
+          targetValue = ExpressionEngine.evaluate(targetValue, context);
+      }
+
+      // Helper for Date comparisons
+      const getDate = (val: any) => {
+          if (val instanceof Date) return val.getTime();
+          if (typeof val === 'number') return val;
+          const d = new Date(val);
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+      };
+
+      // Helper for Safe Numeric comparisons
+      // Returns null if values are not strictly comparable as numbers (prevents null -> 0 coercion)
+      const getSafeNumber = (val: any): number | null => {
+          if (typeof val === 'number') return val;
+          if (val === null || val === undefined || val === '') return null;
+          const num = Number(val);
+          return isNaN(num) ? null : num;
+      };
+
+      // Evaluar según el operador
+      switch (condition.operator) {
+        case "EQ":
+        case "==":
+          return fieldValue == targetValue; // Loose equality for flexibility
+
+        case "NEQ":
+        case "!=":
+          return fieldValue != targetValue;
+
+        case "GT":
+        case ">": {
+          const nField = getSafeNumber(fieldValue);
+          const nTarget = getSafeNumber(targetValue);
+          return (nField !== null && nTarget !== null) && nField > nTarget;
+        }
+
+        case "GTE":
+        case ">=": {
+          const nField = getSafeNumber(fieldValue);
+          const nTarget = getSafeNumber(targetValue);
+          return (nField !== null && nTarget !== null) && nField >= nTarget;
+        }
+
+        case "LT":
+        case "<": {
+          const nField = getSafeNumber(fieldValue);
+          const nTarget = getSafeNumber(targetValue);
+          return (nField !== null && nTarget !== null) && nField < nTarget;
+        }
+
+        case "LTE":
+        case "<=": {
+          const nField = getSafeNumber(fieldValue);
+          const nTarget = getSafeNumber(targetValue);
+          return (nField !== null && nTarget !== null) && nField <= nTarget;
+        }
+
+        case "CONTAINS":
+          return String(fieldValue).includes(String(targetValue));
+        
+        case "MATCHES":
+          return new RegExp(String(targetValue)).test(String(fieldValue));
+        
+        case "IN":
+          return Array.isArray(targetValue) && targetValue.includes(fieldValue);
+
+        case "NOT_IN":
+          return Array.isArray(targetValue) && !targetValue.includes(fieldValue);
+        
+        // Date operators
+        case "SINCE": // field >= value (Chronologically after or same)
+        case "AFTER":
+           return getDate(fieldValue) >= getDate(targetValue);
+        
+        case "BEFORE": // field < value
+        case "UNTIL":
+           return getDate(fieldValue) < getDate(targetValue);
+
+        case "RANGE": // Special Case: Value should be [min, max]
+             if (Array.isArray(targetValue) && targetValue.length === 2) {
+                 const nField = getSafeNumber(fieldValue);
+                 return nField !== null && nField >= Number(targetValue[0]) && nField <= Number(targetValue[1]);
+             }
+             return false;
+
+        default:
+          console.error(`Operador desconocido: ${condition.operator}`);
+          return false;
+      }
+    } catch (error) {
+      console.error(`Error evaluando condición:`, condition, error);
+      return false;
+    }
+  }
+
+  // --- Action Execution ---
+
+  private async executeRuleActions(
+    actions: TriggerAction | TriggerAction[] | ActionGroup,
+    context: TriggerContext
+  ): Promise<TriggerResult['executedActions']> {
+    const enactedActions: TriggerResult['executedActions'] = [];
+
+    let actionList: TriggerAction[] = [];
+    let mode: 'ALL' | 'SEQUENCE' | 'EITHER' = 'ALL';
+
+    if (this.isActionGroup(actions)) {
+      actionList = actions.actions;
+      mode = actions.mode;
+    } else if (Array.isArray(actions)) {
+      actionList = actions;
+    } else {
+      actionList = [actions];
+    }
+
+    if (mode === 'EITHER' && actionList.length > 0) {
+      // Pick one randomly
+      // Support probability later, for now uniform
+      const randomIndex = Math.floor(Math.random() * actionList.length);
+      const selectedAction = actionList[randomIndex];
+      if (selectedAction) {
+          actionList = [selectedAction];
+      }
+    }
+
+    // Execute
+    if (mode === 'SEQUENCE') {
+       for (const action of actionList) {
+         const result = await this.executeSingleAction(action, context);
+         enactedActions.push(result);
+       }
+    } else {
+      // ALL (Parallel-ish)
+      // Note: We await them sequentially here to simplify, but logically they are "all". 
+      // If true parallel is needed, Promise.all could be used, but side-effects might clash.
+      for (const action of actionList) {
+         const result = await this.executeSingleAction(action, context);
+         enactedActions.push(result);
+      }
+    }
+
+    return enactedActions;
+  }
+
+  private isActionGroup(action: any): action is ActionGroup {
+    return 'mode' in action && 'actions' in action;
+  }
+
+
+  private async executeSingleAction(
+    action: TriggerAction,
+    context: TriggerContext,
+  ): Promise<TriggerResult['executedActions'][0]> {
+    
+    // Check probability
+    if (action.probability !== undefined && Math.random() > action.probability) {
+       return {
+         type: action.type,
+         timestamp: Date.now(),
+         result: { skipped: "probability check failed" }
+       };
+    }
+
+    // Check delay
+    if (action.delay && action.delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, action.delay));
+    }
+
+    try {
+        const handler = this.actionRegistry.get(action.type);
+        let result;
+
+        if (handler) {
+            result = await handler(action, context);
+        } else {
+             const msg = `Tipo de acción genérica o desconocida: ${action.type}`;
+             if (this.config.globalSettings.strictActions) {
+                 throw new Error(msg);
+             }
+             console.warn(msg);
+             result = { warning: `Generic action executed: ${action.type}` };
+        }
+
+        triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action, context, result });
+
+        return {
+          type: action.type,
+          result,
+          timestamp: Date.now()
+        };
+      } catch (error) {
+        console.error(`Error ejecutando acción:`, action, error);
+        triggerEmitter.emit(EngineEvent.ACTION_ERROR, { action, context, error: String(error) });
+
+        return {
+          type: action.type,
+          error: String(error),
+          timestamp: Date.now()
+        };
+      }
+  }
+
+
+  /**
+   * Verifica si una regla está en cooldown
+   */
+  private checkCooldown(ruleId: string, cooldownMs: number): boolean {
+    const lastExecution = this.lastExecutionTimes.get(ruleId);
+
+    if (!lastExecution) return true;
+
+    return Date.now() - lastExecution > cooldownMs;
+  }
+
+  /**
+   * Actualiza las reglas del motor
+   */
+  updateRules(newRules: TriggerRule[]): void {
+    this.rules = [...newRules];
+    this.rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  }
+
+  /**
+   * Obtiene todas las reglas
+   */
+  getRules(): TriggerRule[] {
+    return [...this.rules];
+  }
+}
