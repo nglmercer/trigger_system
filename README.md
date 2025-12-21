@@ -74,6 +74,35 @@ _Learn by doing with progressive tutorials._
 
 ---
 
+## 📦 Installation & Import Options
+
+```bash
+npm install trigger_system
+```
+
+### Import Patterns
+
+The package supports multiple import patterns for different environments:
+
+```typescript
+// Universal import (auto-detects environment)
+import * as sdk from 'trigger_system';
+
+// Node.js specific import (includes file system features)
+import * as nodeSdk from 'trigger_system/node';
+
+// Client/Browser import (optimized for browser environments)
+import * as clientSdk from 'trigger_system/client';
+// or
+import * as browserSdk from 'trigger_system/browser';
+```
+
+### Environment-Specific Features
+
+- **Node.js**: Includes `FilePersistence`, `TriggerLoader` for file system access
+- **Browser**: Includes `BrowserPersistence`, excludes Node.js-specific modules
+- **Universal**: Core functionality that works in any environment
+
 ## Quick Example
 
 ```yaml

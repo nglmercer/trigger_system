@@ -1,10 +1,70 @@
 {
   "name": "trigger_system",
-  "private": true,
+  "version": "1.0.0",
+  "description": "A powerful rule engine and trigger system for JavaScript/TypeScript applications",
+  "main": "dist/node/index.js",
+  "browser": "dist/browser/index.browser.js",
+  "types": "dist/node/index.d.ts",
+  "keywords": [
+    "rule-engine",
+    "trigger-system",
+    "event-driven",
+    "stateful",
+    "typescript",
+    "yaml",
+    "automation",
+    "workflow"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/trigger_system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/trigger_system/issues"
+  },
+  "homepage": "https://github.com/your-username/trigger_system#readme",
+  "exports": {
+    ".": {
+      "node": {
+        "import": "./dist/node/index.js",
+        "require": "./dist/node/index.js",
+        "types": "./dist/node/index.d.ts"
+      },
+      "browser": {
+        "import": "./dist/browser/index.browser.js",
+        "require": "./dist/browser/index.browser.js",
+        "types": "./dist/browser/index.browser.d.ts"
+      },
+      "default": "./dist/node/index.js"
+    },
+    "./node": {
+      "import": "./dist/node/node.js",
+      "require": "./dist/node/node.js",
+      "types": "./dist/node/node.d.ts"
+    },
+    "./client": {
+      "import": "./dist/browser/index.browser.js",
+      "require": "./dist/browser/index.browser.js",
+      "types": "./dist/browser/index.browser.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser/index.browser.js",
+      "require": "./dist/browser/index.browser.js",
+      "types": "./dist/browser/index.browser.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "type-check": "tsc --noEmit",
-    "build": "bun run build:node && bun run build:browser && bun run build:lsp",
-    "build:node": "bun build src/index.ts --outdir dist/node --target node --minify --sourcemap=external",
+    "build": "bun run build:types && bun run build:node && bun run build:browser && bun run build:lsp",
+    "build:types": "tsc -p tsconfig.build.json",
+    "build:node": "bun build src/index.ts --outdir dist/node --target node --minify --sourcemap=external && bun build src/node.ts --outdir dist/node --target node --minify --sourcemap=external",
     "build:browser": "bun build src/index.browser.ts --outdir dist/browser --target browser --minify --sourcemap=external",
     "build:lsp": "bun build src/lsp/server.ts --outfile vscode-extension/dist/lsp/server.bundle.js --target node --minify",
     "build:vscode": "bun build vscode-extension/src/extension.ts --outfile vscode-extension/out/extension.js --external vscode --format cjs --target node --minify",
@@ -13,7 +73,8 @@
     "test": "bun test",
     "validate": "bun run src/cli/validate.ts",
     "lsp": "bun run src/lsp/server.ts --stdio",
-    "package": "bun run build:all && cd vscode-extension && vsce package"
+    "package": "bun run build:all && cd vscode-extension && vsce package",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@types/bun": "latest"
