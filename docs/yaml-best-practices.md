@@ -192,7 +192,7 @@ do:
 
 Organize rules by business domain or functionality:
 
-```
+```text
 rules/
 ├── user-management/
 │   ├── authentication.yaml
@@ -216,7 +216,7 @@ rules/
 
 Alternatively, organize by the events they handle:
 
-```
+```text
 rules/
 ├── user-events/
 │   ├── login.yaml
