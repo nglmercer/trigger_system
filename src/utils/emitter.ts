@@ -11,7 +11,14 @@ export enum EngineEvent {
   ACTION_SUCCESS = 'action:success',
   ACTION_ERROR = 'action:error'
 }
+export enum RuleEvent {
+  RULE_ADDED = 'rule:added',
+  RULE_REMOVED = 'rule:removed',
+  RULE_UPDATED = 'rule:updated',
+}
+
 export const engineEvents = EngineEvent;
+export const ruleEvents = RuleEvent;
 export class TriggerEmitter {
   private static instance: TriggerEmitter;
   private handlers = new Map<string, Set<Handler>>();
@@ -25,7 +32,7 @@ export class TriggerEmitter {
     return this.instance;
   }
 
-  on<T = any>(event: EngineEvent | string, handler: Handler<T>): () => void {
+  on<T = any>(event: EngineEvent | RuleEvent | string, handler: Handler<T>): () => void {
     const eventName = event as string;
     if (!this.handlers.has(eventName)) {
       this.handlers.set(eventName, new Set());
@@ -36,7 +43,7 @@ export class TriggerEmitter {
     return () => this.off(eventName, handler);
   }
 
-  off(event: EngineEvent | string, handler: Handler): void {
+  off(event: EngineEvent | RuleEvent | string, handler: Handler): void {
     const eventName = event as string;
     const set = this.handlers.get(eventName);
     if (set) {
@@ -44,7 +51,7 @@ export class TriggerEmitter {
     }
   }
 
-  emit<T = any>(event: EngineEvent | string, data: T): void {
+  emit<T = any>(event: EngineEvent | RuleEvent | string, data: T): void {
     const eventName = event as string;
     const set = this.handlers.get(eventName);
     if (set) {

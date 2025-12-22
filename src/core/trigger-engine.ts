@@ -18,7 +18,7 @@ import type {
 
 import { TriggerUtils } from "../utils/utils";
 import { ExpressionEngine } from "./expression-engine";
-import { ActionRegistry } from "./action-registry";
+import { triggerEmitter,ruleEvents } from "../utils/emitter";
 
 export type EngineActionHandler = (params: any, context: TriggerContext) => Promise<any> | any;
 
@@ -115,8 +115,52 @@ export class TriggerEngine {
    * Actualiza las reglas del motor
    */
   updateRules(newRules: TriggerRule[]): void {
+    const oldRules = this.getRules();
+    const oldRuleIds = new Set(oldRules.map(r => r.id));
+    const newRuleIds = new Set(newRules.map(r => r.id));
+    
+    // Detect changes
+    const added = newRules.filter(r => !oldRuleIds.has(r.id));
+    const removed = oldRules.filter(r => !newRuleIds.has(r.id));
+    
+    // Update rules
     this.rules = [...newRules];
     this.sortRules();
+    
+    // Emit events for added rules
+    added.forEach(rule => {
+      this.emitRuleEvent(ruleEvents.RULE_ADDED, { ruleId: rule.id });
+    });
+    
+    // Emit events for removed rules
+    removed.forEach(rule => {
+      this.emitRuleEvent(ruleEvents.RULE_REMOVED, { ruleId: rule.id });
+    });
+    
+    // Emit general update event
+    this.emitRuleEvent(ruleEvents.RULE_UPDATED, {
+      count: newRules.length,
+      added: added.length,
+      removed: removed.length,
+      unchanged: newRules.length - added.length
+    });
+  }
+
+  /**
+   * Helper method to emit rule-related events
+   */
+  private emitRuleEvent(eventName: string, data: any): void {
+    try {
+      if (triggerEmitter) {
+        triggerEmitter.emit(eventName, {
+          ...data,
+          timestamp: Date.now()
+        });
+      }
+    } catch (error) {
+      // Silently fail if emitter is not available
+      console.warn(`Could not emit event ${eventName}:`, error);
+    }
   }
 
   /**
