@@ -4,7 +4,7 @@ import { triggerEmitter, EngineEvent,ruleEvents } from "../../src/node";
 
 describe("Rule Updates with Emitter Verification", () => {
   let engine: RuleEngine;
-  let eventLog: any[] = [];
+  let eventLog: Array<{ event: string; data: unknown; timestamp: number }> = [];
   let eventHandlers: Array<() => void> = [];
 
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe("Rule Updates with Emitter Verification", () => {
   });
 
   function trackEvent(eventName: string) {
-    const unsubscribe = triggerEmitter.on(eventName, (data) => {
+    const unsubscribe = triggerEmitter.on(eventName, (data: unknown) => {
       eventLog.push({ event: eventName, data, timestamp: Date.now() });
     });
     eventHandlers.push(unsubscribe);
@@ -47,13 +47,15 @@ describe("Rule Updates with Emitter Verification", () => {
           on: "NEW_EVENT",
           do: { type: "LOG", params: { message: "New rule executed" } }
         }
-      ];
+      ] as const;
 
-      engine.updateRules(newRules);
+      engine.updateRules([...newRules]);
 
       expect(eventLog).toHaveLength(1);
-      expect(eventLog[0].event).toBe(ruleEvents.RULE_UPDATED);
-      expect(eventLog[0].data.count).toBe(1);
+      expect(eventLog.length).toBeGreaterThan(0);
+      const updateEvent = eventLog.find(e => e.event === ruleEvents.RULE_UPDATED);
+      expect(updateEvent).toBeDefined();
+      expect((updateEvent?.data as any)?.count).toBe(1);
     });
 
     it("should track multiple rule updates", () => {
@@ -61,18 +63,20 @@ describe("Rule Updates with Emitter Verification", () => {
 
       // First update
       engine.updateRules([
-        { id: "rule-1", on: "EVENT_1", do: { type: "LOG", params: {} } }
+        { id: "rule-1", on: "EVENT_1", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       // Second update
       engine.updateRules([
-        { id: "rule-2", on: "EVENT_2", do: { type: "LOG", params: {} } },
-        { id: "rule-3", on: "EVENT_3", do: { type: "LOG", params: {} } }
+        { id: "rule-2", on: "EVENT_2", do: { type: "LOG", params: {} }, priority: 0 },
+        { id: "rule-3", on: "EVENT_3", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       expect(eventLog).toHaveLength(2);
-      expect(eventLog[0].data.count).toBe(1);
-      expect(eventLog[1].data.count).toBe(2);
+      const updateEvents = eventLog.filter(e => e.event === ruleEvents.RULE_UPDATED);
+      expect(updateEvents.length).toBeGreaterThanOrEqual(2);
+      expect((updateEvents[0]?.data as any)?.count).toBe(1);
+      expect((updateEvents[1]?.data as any)?.count).toBe(2);
     });
 
     it("should verify rule updates affect event processing", async () => {
@@ -86,8 +90,10 @@ describe("Rule Updates with Emitter Verification", () => {
       });
 
       expect(eventLog).toHaveLength(1);
-      expect(eventLog[0].event).toBe(EngineEvent.RULE_MATCH);
-      expect(eventLog[0].data.rule.id).toBe("test-rule-1");
+      expect(eventLog.length).toBeGreaterThan(0);
+      const ruleMatchEvent = eventLog.find(e => e.event === EngineEvent.RULE_MATCH);
+      expect(ruleMatchEvent).toBeDefined();
+      expect((ruleMatchEvent?.data as any)?.rule?.id).toBe("test-rule-1");
 
       // Clear log
       eventLog = [];
@@ -97,7 +103,8 @@ describe("Rule Updates with Emitter Verification", () => {
         {
           id: "updated-rule",
           on: "UPDATED_EVENT",
-          do: { type: "LOG", params: { message: "Updated rule" } }
+          do: { type: "LOG", params: { message: "Updated rule" } },
+          priority: 0
         }
       ]);
 
@@ -118,7 +125,10 @@ describe("Rule Updates with Emitter Verification", () => {
       });
 
       expect(eventLog).toHaveLength(1);
-      expect(eventLog[0].data.rule.id).toBe("updated-rule");
+      expect(eventLog.length).toBeGreaterThan(0);
+      const updatedMatchEvent = eventLog.find(e => e.event === EngineEvent.RULE_MATCH);
+      expect(updatedMatchEvent).toBeDefined();
+      expect((updatedMatchEvent?.data as any)?.rule?.id).toBe("updated-rule");
     });
   });
 
@@ -131,7 +141,8 @@ describe("Rule Updates with Emitter Verification", () => {
       const newRule = {
         id: "added-rule",
         on: "ADDED_EVENT",
-        do: { type: "LOG", params: {} }
+        do: { type: "LOG", params: {} },
+        priority: 0
       };
 
       engine.updateRules([...currentRules, newRule]);
@@ -140,7 +151,8 @@ describe("Rule Updates with Emitter Verification", () => {
       expect(eventLog.length).toBeGreaterThanOrEqual(1);
       const addedEvents = eventLog.filter(e => e.event === ruleEvents.RULE_ADDED);
       expect(addedEvents).toHaveLength(1);
-      expect(addedEvents[0].data.ruleId).toBe("added-rule");
+      expect(addedEvents.length).toBeGreaterThan(0);
+      expect((addedEvents[0]?.data as any)?.ruleId).toBe("added-rule");
     });
 
     it("should emit rules:removed event when removing a rule", () => {
@@ -149,9 +161,9 @@ describe("Rule Updates with Emitter Verification", () => {
 
       // Start with multiple rules
       engine.updateRules([
-        { id: "rule-a", on: "EVENT_A", do: { type: "LOG", params: {} } },
-        { id: "rule-b", on: "EVENT_B", do: { type: "LOG", params: {} } },
-        { id: "rule-c", on: "EVENT_C", do: { type: "LOG", params: {} } }
+        { id: "rule-a", on: "EVENT_A", do: { type: "LOG", params: {} }, priority: 0 },
+        { id: "rule-b", on: "EVENT_B", do: { type: "LOG", params: {} }, priority: 0 },
+        { id: "rule-c", on: "EVENT_C", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       // Clear event log to focus on the removal
@@ -159,15 +171,16 @@ describe("Rule Updates with Emitter Verification", () => {
 
       // Remove one rule
       engine.updateRules([
-        { id: "rule-a", on: "EVENT_A", do: { type: "LOG", params: {} } },
-        { id: "rule-c", on: "EVENT_C", do: { type: "LOG", params: {} } }
+        { id: "rule-a", on: "EVENT_A", do: { type: "LOG", params: {} }, priority: 0 },
+        { id: "rule-c", on: "EVENT_C", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       // Should get both removed and updated events
       expect(eventLog.length).toBeGreaterThanOrEqual(1);
       const removedEvents = eventLog.filter(e => e.event === ruleEvents.RULE_REMOVED);
       expect(removedEvents).toHaveLength(1);
-      expect(removedEvents[0].data.ruleId).toBe("rule-b");
+      expect(removedEvents.length).toBeGreaterThan(0);
+      expect((removedEvents[0]?.data as any)?.ruleId).toBe("rule-b");
     });
   });
 
@@ -177,7 +190,7 @@ describe("Rule Updates with Emitter Verification", () => {
 
       // Manual update
       engine.updateRules([
-        { id: "manual-rule", on: "MANUAL_EVENT", do: { type: "LOG", params: {} } }
+        { id: "manual-rule", on: "MANUAL_EVENT", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       // Emit custom event with source
@@ -188,7 +201,12 @@ describe("Rule Updates with Emitter Verification", () => {
       });
 
       expect(eventLog).toHaveLength(2);
-      expect(eventLog[1].data.source).toBe('manual_update');
+      expect(eventLog.length).toBeGreaterThanOrEqual(2);
+      const manualUpdateEvent = eventLog.find(e =>
+        e.event === ruleEvents.RULE_UPDATED &&
+        (e.data as Record<string, unknown>)?.source === 'manual_update'
+      );
+      expect(manualUpdateEvent).toBeDefined();
     });
 
     it("should track file-based updates", () => {
@@ -199,11 +217,16 @@ describe("Rule Updates with Emitter Verification", () => {
         source: 'file',
         filename: 'rules.json',
         timestamp: Date.now()
-      });
+      } as Record<string, unknown>);
 
       expect(eventLog).toHaveLength(1);
-      expect(eventLog[0].data.source).toBe('file');
-      expect(eventLog[0].data.filename).toBe('rules.json');
+      expect(eventLog.length).toBeGreaterThan(0);
+      const fileUpdateEvent = eventLog.find(e =>
+        e.event === ruleEvents.RULE_UPDATED &&
+        (e.data as Record<string, unknown>)?.source === 'file'
+      );
+      expect(fileUpdateEvent).toBeDefined();
+      expect((fileUpdateEvent?.data as Record<string, unknown>)?.filename).toBe('rules.json');
     });
   });
 
@@ -221,9 +244,11 @@ describe("Rule Updates with Emitter Verification", () => {
       });
 
       expect(eventLog).toHaveLength(1);
-      expect(eventLog[0].event).toBe('rules:parse_error');
-      expect(eventLog[0].data.filename).toBe('invalid_rules.json');
-      expect(eventLog[0].data.error).toBe('Invalid JSON syntax');
+      expect(eventLog.length).toBeGreaterThan(0);
+      const errorEvent = eventLog.find(e => e.event === 'rules:parse_error');
+      expect(errorEvent).toBeDefined();
+      expect((errorEvent?.data as any)?.filename).toBe('invalid_rules.json');
+      expect((errorEvent?.data as any)?.error).toBe('Invalid JSON syntax');
     });
   });
 
@@ -244,7 +269,8 @@ describe("Rule Updates with Emitter Verification", () => {
               { field: "data.condition2", operator: ">", value: 10 }
             ]
           },
-          do: { type: "LOG", params: { message: "Complex rule matched" } }
+          do: { type: "LOG", params: { message: "Complex rule matched" } },
+          priority: 0
         }
       ]);
 
@@ -276,7 +302,8 @@ describe("Rule Updates with Emitter Verification", () => {
               { field: "data.emergency", operator: "==", value: true }
             ]
           },
-          do: { type: "LOG", params: { message: "More complex rule matched" } }
+          do: { type: "LOG", params: { message: "More complex rule matched" } },
+          priority: 0
         }
       ]);
 
@@ -318,16 +345,16 @@ describe("Rule Updates with Emitter Verification", () => {
 
       // Perform multiple operations
       engine.updateRules([
-        { id: "rule-1", on: "EVENT_1", do: { type: "LOG", params: {} } }
+        { id: "rule-1", on: "EVENT_1", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       engine.updateRules([
-        { id: "rule-1", on: "EVENT_1", do: { type: "LOG", params: {} } },
-        { id: "rule-2", on: "EVENT_2", do: { type: "LOG", params: {} } }
+        { id: "rule-1", on: "EVENT_1", do: { type: "LOG", params: {} }, priority: 0 },
+        { id: "rule-2", on: "EVENT_2", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       engine.updateRules([
-        { id: "rule-2", on: "EVENT_2", do: { type: "LOG", params: {} } }
+        { id: "rule-2", on: "EVENT_2", do: { type: "LOG", params: {} }, priority: 0 }
       ]);
 
       // Should have 3 update events

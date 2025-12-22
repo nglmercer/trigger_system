@@ -5,6 +5,8 @@
  * Designed to be generic and extensible for any event-driven application.
  */
 
+// --- Core Types ---
+
 export interface RuleMetadata {
   id: string;
   name?: string;
@@ -27,20 +29,20 @@ export type ComparisonOperator =
   | 'IN'           // Value in Array
   | 'NOT_IN'       // Value not in Array
   | 'CONTAINS'     // String/Array contains
-
   | 'MATCHES'      // Regex match
   | 'SINCE' | 'AFTER'   // Date >= Value
   | 'BEFORE' | 'UNTIL'  // Date < Value
   | 'RANGE';       // Number in range [min, max]
 
+export type ConditionValue = string | number | boolean | Date | string[] | number[] | null;
+
 export interface Condition {
   field: string;         // Path to variable in context (e.g. "data.amount" or "user.role")
   operator: ComparisonOperator;
-  value: any;            // The value to compare against
+  value: ConditionValue; // The value to compare against
 }
 
 export interface ConditionGroup {
-  // Logic grouping
   operator: 'AND' | 'OR';
   conditions: (Condition | ConditionGroup)[];
 }
@@ -49,17 +51,20 @@ export type RuleCondition = Condition | ConditionGroup;
 
 // --- Actions ---
 
-export interface Action {
-  type: string;          // Action identifier (e.g. "DROP", "SEND_WEBHOOK")
-  params?: Record<string, any>; // Arguments for the action
-  delay?: number;        // Delay in ms before execution
-  probability?: number;  // 0-1 probability of execution (for randomized behaviors)
+export interface ActionParams {
+  [key: string]: ActionParamValue;
 }
 
-export type ExecutionMode = 
-  | 'ALL'        // Execute all actions (Default)
-  | 'EITHER'     // Execute exactly one action randomly (uniform distribution unless probability set)
-  | 'SEQUENCE';  // Execute in order, waiting for previous to complete (if async)
+export type ActionParamValue = string | number | boolean | null | ActionParamValue[] | ActionParams;
+
+export interface Action {
+  type: string;
+  params?: ActionParams;
+  delay?: number;
+  probability?: number;
+}
+
+export type ExecutionMode = 'ALL' | 'EITHER' | 'SEQUENCE';
 
 export interface ActionGroup {
   mode: ExecutionMode;
@@ -69,49 +74,81 @@ export interface ActionGroup {
 // --- The Rule ---
 
 export interface TriggerRule extends RuleMetadata {
-  on: string; // The Event Name to listen for (e.g. "Donation", "HttpRequest")
-  if?: RuleCondition | RuleCondition[]; // Conditions. If array, implicit AND.
-  do: Action | Action[] | ActionGroup; // What to do
+  on: string;
+  if?: RuleCondition | RuleCondition[];
+  do: Action | Action[] | ActionGroup;
 }
 
 // --- Engine Context ---
 
 export interface TriggerContext {
   event: string;
-  // Valid timestamps
   timestamp: number;
-  // The data payload of the event
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   id?: string;
-  // Global variables (env vars, server state)
-  globals?: Record<string, any>;
-  // Dynamic State (counters, flags, goals)
-  state?: Record<string, any>;
-  // Helper for computing derived values
-  helpers?: Record<string, Function>;
+  globals?: Record<string, unknown>;
+  state?: Record<string, unknown>;
+  helpers?: Record<string, (...args: unknown[]) => unknown>;
+}
+
+export interface ExecutedAction {
+  type: string;
+  result?: unknown;
+  error?: unknown;
+  timestamp: number;
 }
 
 export interface TriggerResult {
   ruleId: string;
   success: boolean;
-  executedActions: {
-    type: string;
-    result?: any;
-    error?: any;
-    timestamp: number;
-  }[];
+  executedActions: ExecutedAction[];
   error?: Error;
+}
+
+export interface GlobalSettings {
+  debugMode?: boolean;
+  evaluateAll?: boolean;
+  strictActions?: boolean;
 }
 
 export interface RuleEngineConfig {
   rules: TriggerRule[];
-  globalSettings: {
-    debugMode?: boolean;
-    evaluateAll?: boolean; // If false, stop after first successful rule
-    strictActions?: boolean; // If true, throws error on unknown actions instead of warning
-  };
+  globalSettings: GlobalSettings;
 }
 
-// Aliases for compatibility with engines that might import these
+// --- Rule Update Events ---
+
+export interface RuleUpdateData {
+  count: number;
+  added: number;
+  removed: number;
+  unchanged: number;
+  timestamp: number;
+}
+
+export interface RuleAddedData {
+  ruleId: string;
+  timestamp: number;
+}
+
+export interface RuleRemovedData {
+  ruleId: string;
+  timestamp: number;
+}
+
+export interface RuleParseErrorData {
+  filename: string;
+  error: string;
+  timestamp: number;
+}
+
+export type RuleEventData = RuleUpdateData | RuleAddedData | RuleRemovedData | RuleParseErrorData;
+
+// --- Action Handler Types ---
+
+export type EngineActionHandler = (params: ActionParams, context: TriggerContext) => Promise<unknown> | unknown;
+
+// --- Aliases for compatibility ---
 export type TriggerCondition = Condition;
 export type TriggerAction = Action;
+export type TriggerConditionGroup = ConditionGroup;

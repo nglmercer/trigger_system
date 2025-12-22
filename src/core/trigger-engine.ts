@@ -4,23 +4,28 @@
  * Puede ser extendido para agregar características adicionales
  */
 
-import type { 
-  TriggerRule, 
-  TriggerContext, 
-  TriggerResult, 
-  Action, 
-  ActionGroup, 
+import type {
+  TriggerRule,
+  TriggerContext,
+  TriggerResult,
+  Action,
+  ActionGroup,
   RuleCondition,
   Condition,
   ConditionGroup,
-  RuleEngineConfig
+  RuleEngineConfig,
+  ActionParams,
+  EngineActionHandler,
+  RuleEventData,
+  RuleUpdateData,
+  RuleAddedData,
+  RuleRemovedData,
+  ExecutedAction
 } from "../types";
 
 import { TriggerUtils } from "../utils/utils";
 import { ExpressionEngine } from "./expression-engine";
-import { triggerEmitter,ruleEvents } from "../utils/emitter";
-
-export type EngineActionHandler = (params: any, context: TriggerContext) => Promise<any> | any;
+import { triggerEmitter, ruleEvents, EngineEvent } from "../utils/emitter";
 
 export class TriggerEngine {
   protected _rules: TriggerRule[] = [];
@@ -100,7 +105,7 @@ export class TriggerEngine {
    * Método convenience para procesar eventos simples
    * Renombrado para evitar conflicto con processEvent(context)
    */
-  async processEventSimple(eventType: string, data: Record<string, any> = {}, globals: Record<string, any> = {}): Promise<TriggerResult[]> {
+  async processEventSimple(eventType: string, data: Record<string, unknown> = {}, globals: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
@@ -129,12 +134,12 @@ export class TriggerEngine {
     
     // Emit events for added rules
     added.forEach(rule => {
-      this.emitRuleEvent(ruleEvents.RULE_ADDED, { ruleId: rule.id });
+      this.emitRuleEvent(ruleEvents.RULE_ADDED, { ruleId: rule.id, timestamp: Date.now() });
     });
     
     // Emit events for removed rules
     removed.forEach(rule => {
-      this.emitRuleEvent(ruleEvents.RULE_REMOVED, { ruleId: rule.id });
+      this.emitRuleEvent(ruleEvents.RULE_REMOVED, { ruleId: rule.id, timestamp: Date.now() });
     });
     
     // Emit general update event
@@ -142,14 +147,15 @@ export class TriggerEngine {
       count: newRules.length,
       added: added.length,
       removed: removed.length,
-      unchanged: newRules.length - added.length
+      unchanged: newRules.length - added.length,
+      timestamp: Date.now()
     });
   }
 
   /**
    * Helper method to emit rule-related events
    */
-  private emitRuleEvent(eventName: string, data: any): void {
+  private emitRuleEvent(eventName: string, data: RuleEventData): void {
     try {
       if (triggerEmitter) {
         triggerEmitter.emit(eventName, {
@@ -240,10 +246,10 @@ export class TriggerEngine {
    * Ejecuta las acciones de una regla
    */
   protected async executeRuleActions(
-    actionConfig: Action | Action[] | ActionGroup, 
+    actionConfig: Action | Action[] | ActionGroup,
     context: TriggerContext
-  ): Promise<TriggerResult['executedActions']> {
-    const executionLogs: TriggerResult['executedActions'] = [];
+  ): Promise<ExecutedAction[]> {
+    const executionLogs: ExecutedAction[] = [];
 
     // Normalizar a lista de acciones
     let actionsToExecute: Action[] = [];
@@ -300,7 +306,7 @@ export class TriggerEngine {
   protected async executeSingleAction(
     action: Action,
     context: TriggerContext
-  ): Promise<TriggerResult['executedActions'][0]> {
+  ): Promise<ExecutedAction> {
     
     // Check probability
     if (action.probability !== undefined && Math.random() > action.probability) {
@@ -323,13 +329,16 @@ export class TriggerEngine {
       // Check if ActionRegistry is available (Node.js environment)
       try {
         const { ActionRegistry } = await import('./action-registry');
-        handler = ActionRegistry.getInstance().get(action.type);
+        const registryHandler = ActionRegistry.getInstance().get(action.type);
+        if (registryHandler) {
+          handler = (params: ActionParams) => registryHandler({ ...action, params }, context);
+        }
       } catch {
         // ActionRegistry not available, use local handlers
         handler = this.actionHandlers.get(action.type);
       }
 
-      let result;
+      let result: unknown;
       if (handler) {
         result = await handler(action.params || {}, context);
       } else {
@@ -357,13 +366,13 @@ export class TriggerEngine {
   /**
    * Interpola parámetros con variables del contexto
    */
-  protected interpolateParams(params: Record<string, any>, context: TriggerContext): Record<string, any> {
-    const result: Record<string, any> = {};
+  protected interpolateParams(params: ActionParams, context: TriggerContext): ActionParams {
+    const result: ActionParams = {};
     for (const [key, val] of Object.entries(params)) {
       if (typeof val === 'string') {
         result[key] = ExpressionEngine.interpolate(val, context);
-      } else if (typeof val === 'object' && val !== null) {
-        result[key] = this.interpolateDeep(val, context);
+      } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+        result[key] = this.interpolateDeep(val, context) as ActionParams[string];
       } else {
         result[key] = val;
       }
@@ -374,12 +383,14 @@ export class TriggerEngine {
   /**
    * Interpolación recursiva para objetos anidados
    */
-  protected interpolateDeep(obj: any, context: TriggerContext): any {
+  protected interpolateDeep(obj: unknown, context: TriggerContext): unknown {
     if (typeof obj === 'string') return ExpressionEngine.interpolate(obj, context);
     if (Array.isArray(obj)) return obj.map(v => this.interpolateDeep(v, context));
     if (typeof obj === 'object' && obj !== null) {
-        const res: any = {};
-        for(const k in obj) res[k] = this.interpolateDeep(obj[k], context);
+        const res: Record<string, unknown> = {};
+        for(const k in obj) {
+          res[k] = this.interpolateDeep((obj as Record<string, unknown>)[k], context);
+        }
         return res;
     }
     return obj;

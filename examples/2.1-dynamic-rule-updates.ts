@@ -1,13 +1,14 @@
 import { RuleEngine } from "../src/node";
 import { setupExampleObserver } from "./setup-observer";
 import { triggerEmitter, EngineEvent } from "../src/node";
+import type { RuleUpdateData } from "../src/types";
 
 // Enable global observation
 setupExampleObserver();
 
 // Track rule updates
 let ruleUpdateCount = 0;
-triggerEmitter.on('rules:updated', (data) => {
+triggerEmitter.on('rules:updated', (data: RuleUpdateData) => {
   ruleUpdateCount++;
   console.log(`[EVENT] Rules Updated: 📝 ${data.count} rules modified (Update #${ruleUpdateCount})`);
 });
