@@ -1,62 +1,155 @@
-# Trigger System Developer Tools
+# 🛠️ Developer Tools
 
-This project includes a suite of tools to ensure rule validity and robustness.
+This guide covers the various tools available to help you build, debug, and maintain your trigger rules.
 
-## 1. CLI Validator
+## CLI Validator
 
-The CLI tool scans your `rules` directory (default `./rules`) for YAML files, validating their schema and checking for circular dependencies.
+The CLI validator (`src/cli/validate.ts`) checks your rule files for semantic errors and circular dependencies.
 
-**Usage:**
+### Basic Usage
 
-```bash
-bun run validate [directory]
-```
-
-**Example:**
+The `validate` script is pre-configured in `package.json`:
 
 ```bash
-bun run validate ./src/rules
+# Default: Validates rules in ./rules directory
+bun run validate
+
+# Custom Directory
+bun run src/cli/validate.ts ./my_rules_dir
 ```
 
-**Checks Performed:**
+### Validation Output
 
-- **Syntax**: Valid YAML structure.
-- **Schema**: Valid fields, operators, and action types (via ArkType).
-- **Semantics**:
-  - Validates nested conditions.
-  - Checks for Circular Dependencies (Rule A -> Rule B -> Rule A).
+The validator relies on `TriggerLoader` to parse and validate rules. If `arktype` validation fails, errors are printed to `stderr`.
 
-## 2. Language Server Protocol (LSP)
+```bash
+$ bun run validate
 
-A standards-compliant LSP server is included for editor integration (e.g., VS Code).
+🔍 Validating Rules in: /abs/path/to/rules
+==================================================
 
-**Server Entry Point:**
-`src/lsp/server.ts`
+[TriggerLoader] ⚠️ Validation Problem in rules/bad.yaml (item #1)
+  - [do] actions is required
+  - [on] must be a string
 
-**Features:**
+📊 Summary:
+   - Loaded Rules: 5
+   - ⚠️ No valid rules found (or all failed validation).
 
-- **Diagnostics**: Reports schema errors directly in the editor with red squiggles.
-- **Intelligent Autocompletion**: Context-aware suggestions for keys (root, conditions, actions) and values (enums like `mode`, events, and operator lists).
-- **Smart Snippets**: Rapid rule creation with tab-completable templates for full `trigger_rule`, `log_action`, and `condition_nested`.
-- **Dynamic Value Suggestions**: Inline suggestions for `${data.}`, `${state.}`, and `${globals.}` variables.
-- **Incremental Sync**: Validates and provides suggestions as you type.
+🔄 Checking for Circular Dependencies...
+   - ✅ No cycles found.
+```
 
-### VS Code Integration
+### Circular Dependency Detection
 
-To use this LSP with VS Code, you can use a generic LSP client extension or configure a custom task. If developing an extension, point the `serverOptions` to:
+The validator uses `DependencyAnalyzer` to check if rules form an infinite loop (e.g., A triggers B, B triggers A). This is run automatically during validation.
 
-```javascript
+If a cycle is found:
+
+```bash
+❌ Error: Circular Dependencies Detected!
+   [Cycle #1] rule-a -> rule-b -> rule-a
+```
+
+## VS Code LSP Integration
+
+The Language Server Protocol provides IDE support for trigger rule files.
+
+### Installation
+
+Install the VS Code extension from the marketplace or build it locally:
+
+```bash
+cd vscode-extension
+npm install
+npm run package
+code --install-extension trigger-system-*.vsix
+```
+
+### Features
+
+#### Syntax Highlighting & Auto-completion
+
+- Event name suggestions
+- Operator completion (`EQ`, `GT`, `MATCHES`...)
+- Action hints
+
+#### Hover Information
+
+- Field type information
+- Rule metadata
+
+### Configuration
+
+Add to your VS Code settings:
+
+```json
 {
-  run: { command: "bun", args: ["run", "/absolute/path/to/src/lsp/server.ts", "--stdio"] },
-  debug: { command: "bun", args: ["run", "/absolute/path/to/src/lsp/server.ts", "--stdio"] }
+  "triggerSystem.enableDiagnostics": true,
+  "triggerSystem.validation.strict": false
 }
 ```
 
-## 3. Circular Dependency Detection
+## Debugging Rules
 
-The system includes a static analyzer in `src/core/dependency-graph.ts`. It builds a directed graph of your rules based on:
+### Rule Execution Tracing
 
-- **Triggers**: What event a rule listens to (`on: "EVENT"`).
-- **Emits**: What events a rule emits (via `EMIT_EVENT` action).
+To debug rules at runtime, you can attach listeners to the `triggerEmitter`.
 
-If a cycle is detected (A -> B -> A), the CLI validator will fail and report the cycle path.
+```typescript
+import { RuleEngine, triggerEmitter, EngineEvent } from "trigger_system";
+
+const engine = new RuleEngine({
+  rules: [],
+  globalSettings: { debugMode: true },
+});
+
+// Trace rule execution
+triggerEmitter.on(EngineEvent.RULE_MATCH, ({ rule, context }) => {
+  console.log(`🎯 Rule matched: ${rule.id} for event: ${context.event}`);
+});
+
+triggerEmitter.on(EngineEvent.ACTION_SUCCESS, ({ action, result }) => {
+  console.log(`✅ Action executed: ${action.type}`, result);
+});
+
+triggerEmitter.on(EngineEvent.ACTION_ERROR, ({ action, error }) => {
+  console.error(`❌ Action failed: ${action.type}`, error);
+});
+```
+
+### Performance Metrics
+
+The engine can collect metrics if you implement a collection system listening to events.
+
+```typescript
+// Example custom metrics collector
+let processedCount = 0;
+let matchCount = 0;
+
+triggerEmitter.on(EngineEvent.ENGINE_DONE, () => {
+  processedCount++;
+});
+
+triggerEmitter.on(EngineEvent.RULE_MATCH, () => {
+  matchCount++;
+});
+
+setInterval(() => {
+  console.log(`Events: ${processedCount}, Matches: ${matchCount}`);
+}, 60000);
+```
+
+## Hot Reload
+
+You can implement hot reloading using `TriggerLoader.watchRules`.
+
+```typescript
+import { TriggerLoader } from "trigger_system/node";
+
+// Watch returns a FSWatcher
+TriggerLoader.watchRules("./rules", (newRules) => {
+  console.log("Rules updated!", newRules.length);
+  engine.updateRules(newRules);
+});
+```

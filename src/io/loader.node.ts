@@ -1,7 +1,6 @@
 
 import * as path from "path";
 import * as fs from "fs";
-import { parse } from "yaml";
 import type { TriggerRule } from "../types";
 import { TriggerValidator } from "../domain/validator";
 import { parseAllDocuments } from "yaml";

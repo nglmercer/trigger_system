@@ -1,226 +1,245 @@
-# 🛠️ SDK Guide
+# 📦 SDK Guide
 
-The Trigger System SDK provides a type-safe, fluent API to create rules programmatically. This is useful for building dynamic rule-management systems or when you want to avoid manual YAML editing.
+This guide covers programmatic rule creation and management using the TypeScript SDK.
 
-## Installation
+## RuleBuilder - Fluent API
 
-The SDK is exported from the main package:
-
-```typescript
-import { RuleBuilder, RuleExporter } from "trigger_system";
-```
-
-## RuleBuilder
-
-The `RuleBuilder` class provides a chainable interface to construct a `TriggerRule`.
+The `RuleBuilder` provides a fluent interface for creating rules programmatically with strict type checking.
 
 ### Basic Usage
 
 ```typescript
+import { RuleBuilder } from "trigger_system/sdk";
+
 const rule = new RuleBuilder()
-  .withId("my-rule-id")
-  .on("EVENT_NAME")
-  .if("data.price", ">", 50)
-  .do("SEND_NOTIFICATION", { title: "Price Alert" })
+  .withId("high-value-transaction")
+  .on("PAYMENT_RECEIVED")
+  .if("data.amount", "GT", 1000)
+  .do("send_alert", {
+    message: "High value transaction detected: ${data.amount}",
+    priority: "high",
+  })
+  .build();
+
+// The rule is now ready to use
+console.log(rule);
+```
+
+### Advanced Conditions
+
+```typescript
+const complexRule = new RuleBuilder()
+  .withId("premium-user-behavior")
+  .on("USER_ACTIVITY")
+  .if("data.userType", "EQ", "premium")
+  .if("data.activityCount", "GT", 10)
+  .if("data.lastActivity", "MATCHES", "^2024-.*")
+  .do("award_badge", {
+    badge: "power_user",
+    notification: true,
+  })
   .build();
 ```
 
-### Complex Conditions
-
-For nested `AND`/`OR` logic, use `ifComplex`:
+### Multiple Actions
 
 ```typescript
-rule.ifComplex((q) =>
-  q
-    .where("data.status", "==", "active")
-    .or((sub) =>
-      sub.where("data.role", "==", "admin").where("data.premium", "==", true)
-    )
-);
+const multiActionRule = new RuleBuilder()
+  .withId("new-user-onboarding")
+  .on("USER_REGISTERED")
+  .if("data.isFirstTime", "EQ", true)
+  .do("send_email", {
+    template: "welcome",
+    delay: 300000, // 5 minutes
+  })
+  .do("create_task", {
+    type: "follow_up",
+    due: "3 days",
+  })
+  .do("log_event", {
+    category: "user_lifecycle",
+    action: "registration",
+  })
+  .build();
 ```
 
-### Action Groups
-
-To execute multiple actions or use specific modes:
+### Using State
 
 ```typescript
-rule.doComplex((a) =>
-  a
-    .setMode("SEQUENCE")
-    .add("LOG", { message: "Starting..." })
-    .add("NOTIFY", { user: 123 }, { delay: 1000 })
-);
+const statefulRule = new RuleBuilder()
+  .withId("user-streak-tracker")
+  .on("DAILY_LOGIN")
+  .if("state.consecutive_days", "LT", 7)
+  .do("state_increment", {
+    field: "consecutive_days",
+  })
+  .do("check_achievement", {
+    milestone: 7,
+  })
+  .build();
 ```
 
-## RuleExporter
+## RuleExporter - YAML Generation
 
-Once you have a rule object, you can export it to YAML format.
+Convert programmatically created rules to YAML format.
 
-### To YAML String
-
-```typescript
-const yamlString = RuleExporter.toYaml(rule);
-```
-
-### To File (Server-side/Node only)
+### Basic Export
 
 ```typescript
-await RuleExporter.saveToFile(rule, "./rules/new-rule.yaml");
-```
+import { RuleBuilder, RuleExporter } from "trigger_system/sdk";
 
-## Server SDK vs Client SDK
-
-- **Client SDK**: Includes `RuleBuilder` and `toYaml`. Works in Browser and Node.
-- **Server SDK**: Includes everything plus `saveToFile` and Node-specific features.
-
-### Engine Architecture
-
-The SDK provides a hierarchical engine architecture:
-
-```typescript
-// Base Engine: TriggerEngine (platform-agnostic)
-import { TriggerEngine } from "trigger_system";
-
-// Extended Engine: RuleEngine (adds observability, state, built-in actions)
-import { RuleEngine } from "trigger_system/node";
-```
-
-### Engine Selection
-
-**Use TriggerEngine when:**
-- You need platform-agnostic compatibility (browser + Node.js)
-- You want minimal dependencies
-- You need custom action handling
-- You're building a lightweight application
-
-**Use RuleEngine when:**
-- You need built-in actions (log, response, STATE_*, etc.)
-- You want automatic state management
-- You need observability/event emission
-- You're building a full-featured application
-
-### Browser Usage
-
-```typescript
-import { RuleBuilder, RuleExporter, TriggerEngine } from "trigger_system";
-
-// Build rules programmatically
 const rule = new RuleBuilder()
-  .withId("browser-rule")
-  .on("CLICK")
-  .do("log", { message: "Button clicked" })
+  .withId("example-rule")
+  .on("TEST_EVENT")
+  .if("data.value", "GT", 50)
+  .do("log_message", { message: "Value exceeded threshold" })
   .build();
 
-// Export to YAML (browser compatible)
-const yamlString = RuleExporter.toYaml(rule);
-
-// Use simpler engine
-const engine = new TriggerEngine([rule]);
-// Note: RuleExporter.saveToFile will throw an error in browser
+const yaml = RuleExporter.toYaml(rule);
+console.log(yaml);
 ```
 
-### Browser Usage (TriggerEngine)
+### Export Multiple Rules
 
 ```typescript
-import { TriggerEngine, RuleBuilder, RuleExporter } from "trigger_system";
+const rules = [
+  new RuleBuilder().withId("rule1").on("EVENT1").do("action1").build(),
+  new RuleBuilder().withId("rule2").on("EVENT2").do("action2").build(),
+  new RuleBuilder().withId("rule3").on("EVENT3").do("action3").build(),
+];
 
-// 1. Build rules
-const rule = new RuleBuilder()
-  .withId("browser-rule")
-  .on("CLICK")
-  .do("log", { message: "Button clicked" })
-  .build();
-
-// 2. Export to YAML
-const yamlString = RuleExporter.toYaml(rule);
-
-// 3. Create platform-agnostic engine
-const engine = new TriggerEngine([rule]);
-
-// 4. Register custom actions
-engine.registerAction("log", (params, context) => {
-  console.log(`[LOG] ${params.message}`);
-});
-
-// 5. Process events - use processEventSimple for convenience
-const results = await engine.processEventSimple("CLICK", { button: "submit" });
-// Or use processEvent with full context:
-// const results = await engine.processEvent({ event: "CLICK", data: { button: "submit" }, timestamp: Date.now() });
+const yaml = RuleExporter.toYaml(rules);
+console.log(yaml);
 ```
 
-### Node Usage (RuleEngine - Recommended)
+### Export to File (Node.js)
 
 ```typescript
-import {
-  RuleBuilder,
-  RuleExporter,
-  TriggerLoader,
-  RuleEngine, // Extended engine with built-in features
-  FileSystemPersistence,
-  StateManager,
-} from "trigger_system/node";
+import { RuleExporter } from "trigger_system/sdk";
 
-// 1. Build with built-in actions
-const rule = new RuleBuilder()
-  .withId("test")
-  .on("EVENT")
-  .do("log", { message: "Event received" })
-  .do("STATE_INCREMENT", { key: "event_count" })
-  .do("forward", { url: "https://api.example.com", method: "POST" })
-  .build();
+// This implicitly uses fs/promises
+await RuleExporter.saveToFile(rules, "./rules/generated.yaml");
+```
 
-// 2. Save to file
-await RuleExporter.saveToFile(rule, "./rules/my-rule.yaml");
+## Server vs Client SDK
 
-// 3. Load from directory
-const rules = await TriggerLoader.loadRulesFromDir("./rules");
+The package provided different entry points for optimized bundle sizes.
 
-// 4. Configure persistence (optional)
-const persistence = new FileSystemPersistence("./state.json");
-StateManager.getInstance().setPersistence(persistence);
-await StateManager.getInstance().initialize();
+### Server/Node.js Usage
 
-// 5. Initialize extended engine (includes built-in actions, state, observability)
+```typescript
+import { RuleEngine } from "trigger_system";
+import { TriggerLoader } from "trigger_system/node";
+
+// helper function to init engine
+async function initEngine() {
+  const rules = await TriggerLoader.loadRulesFromDir("./rules");
+
+  const engine = new RuleEngine({
+    rules,
+    globalSettings: { debugMode: true },
+  });
+
+  return engine;
+}
+```
+
+### Client/Browser Usage
+
+```typescript
+import { RuleEngine } from "trigger_system";
+// Client doesn't have TriggerLoader (File System access)
+
 const engine = new RuleEngine({
-  rules,
-  globalSettings: {
-    debugMode: true,
-    evaluateAll: true
-  }
+  rules: [
+    /* imported JSON or object rules */
+  ],
+  globalSettings: { evaluateAll: false },
 });
 
-// 6. Process events - both methods available
-const results1 = await engine.processEventSimple("USER_LOGIN", { username: "admin" });
-// Or with full context:
-const results2 = await engine.processEvent({
-  event: "USER_LOGIN",
-  data: { username: "admin" },
-  timestamp: Date.now()
-});
-
-// 7. Listen to events (observability)
-import { triggerEmitter, EngineEvent } from "trigger_system";
-triggerEmitter.on(EngineEvent.RULE_MATCH, ({ rule }) => {
-  console.log(`Rule matched: ${rule.id}`);
-});
+// Or update dynamically
+engine.updateRules(fetchedRules);
 ```
 
-### Built-in Actions Available
+## Advanced SDK Features
 
-Both SDKs support these built-in actions:
+### Dynamic Rule Creation
 
 ```typescript
-// Logging
-.do("log", { message: "Hello ${data.username}" })
+class RuleFactory {
+  static createThresholdRule(
+    event: string,
+    field: string,
+    threshold: number,
+    action: string
+  ) {
+    return new RuleBuilder()
+      .withId(`${event}-${field}-threshold`)
+      .on(event)
+      .if(field, "GT", threshold)
+      .do(action, { threshold, field })
+      .build();
+  }
+}
 
-// State management
-.do("STATE_SET", { key: "user_${data.id}", value: "${data.name}" })
-.do("STATE_INCREMENT", { key: "counter", amount: 1 })
+// Usage
+const rules = [
+  RuleFactory.createThresholdRule(
+    "CPU_USAGE",
+    "data.cpu",
+    80,
+    "alert_high_cpu"
+  ),
+  RuleFactory.createThresholdRule(
+    "MEMORY_USAGE",
+    "data.memory",
+    90,
+    "alert_high_memory"
+  ),
+];
+```
 
-// HTTP operations (Node.js)
-.do("response", { statusCode: 200, body: "OK" })
-.do("forward", { url: "https://api.example.com", method: "POST" })
+### Validation and Testing
 
-// Command execution (Node.js only)
-.do("execute", { command: "ls -la", safe: true })
+```typescript
+import { TriggerValidator } from "trigger_system/domain";
+import { RuleBuilder } from "trigger_system/sdk";
+
+const rule = new RuleBuilder().withId("test").build();
+
+// Validate a single rule
+const result = TriggerValidator.validate(rule);
+
+if (!result.valid) {
+  console.error("Rule validation failed:", result.issues);
+} else {
+  console.log("Valid rule:", result.rule);
+}
+```
+
+## Integration Examples
+
+### With Express.js
+
+```typescript
+import express from "express";
+import { RuleEngine } from "trigger_system";
+import { TriggerLoader } from "trigger_system/node";
+
+const app = express();
+// Load rules once
+const rules = await TriggerLoader.loadRulesFromDir("./rules");
+const engine = new RuleEngine({ rules, globalSettings: {} });
+
+app.use(express.json());
+
+// Endpoint to fire events
+app.post("/api/events", async (req, res) => {
+  const { event, data } = req.body;
+
+  // Fire!
+  const results = await engine.processEvent(event, data);
+
+  res.json({ status: "processed", results });
+});
 ```

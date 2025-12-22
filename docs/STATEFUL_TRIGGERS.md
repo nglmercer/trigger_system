@@ -1,141 +1,224 @@
-# Stateful Triggers & Dynamic Logic
+# ⚡ Stateful Triggers
 
-The Trigger System now supports **Stateful Logic**, allowing you to create complex behaviors like Repetition (Goals), Combos (Sequences), and Dynamic Counters.
+This guide covers advanced rule logic using stateful triggers, including counters, sequences, and complex state management.
 
-## Core Concept: State Manager
+## Understanding State
 
-The `StateManager` maintains a global, mutable state map that persists across event executions. This state is injected into every `TriggerContext` as `state`.
+State allows rules to remember information across multiple executions, enabling complex behaviors like counting, tracking sequences, and maintaining user sessions.
 
-### Accessing State
-
-In conditions, you can access state variables using `state.your_variable_name`.
+### State Basics
 
 ```yaml
+# Simple counter example
+id: "login-counter"
+on: "USER_LOGIN"
 if:
-  field: "state.click_count"
-  operator: "GT"
+  field: "state.login_count"
+  operator: "LT"
   value: 5
-```
-
-### Modifying State
-
-You can modify state using built-in actions:
-
-| Action Type       | Params          | Description                                             |
-| :---------------- | :-------------- | :------------------------------------------------------ |
-| `STATE_SET`       | `key`, `value`  | Sets a variable. Value can be dynamic (`${data.prop}`). |
-| `STATE_INCREMENT` | `key`, `amount` | Increments a number. Default amount is 1.               |
-| `STATE_DECREMENT` | `key`, `amount` | Decrements a number. Default amount is 1.               |
-
-### StateManager API
-
-The StateManager is a singleton with additional methods:
-
-```typescript
-// Get single value
-StateManager.getInstance().get(key: string): any
-
-// Set value with persistence
-StateManager.getInstance().set(key: string, value: any): Promise<void>
-
-// Increment/decrement
-StateManager.getInstance().increment(key: string, amount?: number): Promise<number>
-StateManager.getInstance().decrement(key: string, amount?: number): Promise<number>
-
-// Delete single key
-StateManager.getInstance().delete(key: string): Promise<boolean>
-
-// Clear all state
-StateManager.getInstance().clear(): Promise<void>
-
-// Get all state as object
-StateManager.getInstance().getAll(): Record<string, any>
-```
-
-## Examples
-
-### 1. Repetition Goal (e.g. "On 3rd Click")
-
-Trigger an action only after an event has happened X times.
-
-#### **Rule 1: Increment Counter**
-
-```yaml
-id: "count-clicks"
-on: "CLICK_EVENT"
 do:
-  type: "STATE_INCREMENT"
-  params:
-    key: "clicks"
+  - type: "state_increment"
+    params:
+      key: "login_count"
+  - type: "log"
+    params:
+      message: "Login ${state.login_count} of 5"
 ```
 
-#### **Rule 2: Check Goal**
+## State Operations
+
+### STATE_SET - Set State Value
 
 ```yaml
-id: "goal-reached"
-on: "CLICK_EVENT"
-priority: 0 # Run after increment (optional, depending on logic preference)
+id: "set-user-preference"
+on: "PREFERENCE_UPDATED"
+do:
+  type: "state_set"
+  params:
+    key: "user_preferences.${data.userId}.${data.preference}"
+    value: "${data.value}"
+```
+
+### STATE_INCREMENT - Increment Counter
+
+```yaml
+id: "page-view-counter"
+on: "PAGE_VIEWED"
+do:
+  type: "state_increment"
+  params:
+    key: "page_views.${data.pageId}"
+    amount: 1 # Optional, defaults to 1
+```
+
+### STATE_TOGGLE - Toggle Boolean
+
+_Note: STATE_TOGGLE needs to be implemented as a custom action or logic if not built-in, or use state_set with negation expression._
+
+```yaml
+id: "feature-toggle"
+on: "FEATURE_FLAG_REQUESTED"
+do:
+  type: "state_set"
+  params:
+    key: "features.${data.featureName}"
+    value: "${!state.features[data.featureName]}"
+```
+
+### STATE_CLEAR - Remove State
+
+_Note: Use state_set with null/undefined to clear or delete._
+
+```yaml
+id: "session-cleanup"
+on: "USER_LOGOUT"
+do:
+  type: "state_set"
+  params:
+    key: "session.${data.userId}"
+    value: null
+```
+
+## Advanced Patterns
+
+### Repetition Goals
+
+Track when something happens a specific number of times:
+
+```yaml
+id: "daily-task-completion"
+on: "TASK_COMPLETED"
 if:
-  field: "state.clicks"
-  operator: "EQ"
+  field: "state.daily_tasks.${data.userId}"
+  operator: "LT"
   value: 3
 do:
-  type: "log"
-  params:
-    message: "You clicked 3 times!"
+  - type: "state_increment"
+    params:
+      key: "daily_tasks.${data.userId}"
+  - type: "check_daily_goal"
+    params:
+      userId: "${data.userId}"
+      current: "${state.daily_tasks.${data.userId}}"
+      target: 3
 ```
 
-### 2. Combo Sequence (A then B)
+### Combo Sequences
 
-Trigger only if Event A happened, then Event B happens.
-
-#### **Rule A: Set Flag**
+Track sequences of events:
 
 ```yaml
-id: "step-1"
-on: "EVENT_A"
+# First step in sequence
+id: "combo-step-1"
+on: "ACTION_A"
 do:
-  type: "STATE_SET"
+  type: "state_set"
   params:
-    key: "last_step"
-    value: "A"
-```
+    key: "combo.${data.userId}.sequence"
+    value: "step1"
 
-#### **Rule B: Check Flag**
-
-```yaml
-id: "step-2"
-on: "EVENT_B"
+# Second step in sequence
+id: "combo-step-2"
+on: "ACTION_B"
 if:
-  field: "state.last_step"
+  field: "state.combo.${data.userId}.sequence"
   operator: "EQ"
-  value: "A"
+  value: "step1"
 do:
-  - type: "log"
-    params: { message: "COMBO!" }
-  - type: "STATE_SET"
-    params: { key: "last_step", value: "B" } # Reset or advance
+  type: "state_set"
+  params:
+    key: "combo.${data.userId}.sequence"
+    value: "step2"
 ```
 
-## Persistence Configuration
+### Time-based State
 
-The StateManager supports pluggable persistence adapters:
+Track state with time windows:
+
+```yaml
+id: "hourly-rate-limit"
+on: "API_REQUEST"
+if:
+  operator: "AND"
+  conditions:
+    - field: "state.api_calls.${data.userId}"
+      operator: "LT"
+      value: 100
+    - field: "state.api_window.${data.userId}"
+      operator: "MATCHES"
+      value: "^${utils.currentHour()}"
+do:
+  - type: "state_increment"
+    params:
+      key: "api_calls.${data.userId}"
+  - type: "state_set"
+    params:
+      key: "api_window.${data.userId}"
+      value: "${utils.currentHour()}"
+
+# Reset hourly counter
+id: "hourly-reset"
+on: "HOURLY_TICK"
+do:
+  type: "state_set"
+  params:
+    key: "api_calls"
+    value: {}
+```
+
+## State Namespacing
+
+### User-specific State
+
+```yaml
+id: "user-progress-tracker"
+on: "LEVEL_COMPLETED"
+do:
+  - type: "state_increment"
+    params:
+      key: "user.${data.userId}.level"
+  - type: "state_set"
+    params:
+      key: "user.${data.userId}.last_level"
+      value: "${data.levelId}"
+```
+
+## State Persistence
+
+### Automatic Persistence
+
+State is managed by `StateManager`.
 
 ```typescript
-import { StateManager, FileSystemPersistence } from "trigger_system/node";
+import { StateManager } from "trigger_system/core";
+import { FilePersistence } from "trigger_system/node";
 
-// Use file system persistence instead of in-memory
-const persistence = new FileSystemPersistence("./state.json");
-StateManager.getInstance().setPersistence(persistence);
-await StateManager.getInstance().initialize();
+const manager = StateManager.getInstance();
+manager.setPersistence(new FilePersistence("./state"));
+
+await manager.load();
 ```
 
-Built-in adapters:
-- `InMemoryPersistence` (default)
-- `FileSystemPersistence` (Node.js only)
+## State Best Practices
 
-## Future Improvements
+### 1. Use Descriptive Keys
 
-- **Database Persistence**: Redis, SQLite, PostgreSQL adapters
-- **TTL Support**: State expiration (e.g. "3 clicks _within 10 seconds_")
-- **State Namespacing**: Isolate state by rule groups or contexts
+```yaml
+# Good
+key: "user.${data.userId}.daily_login_count"
+
+# Avoid
+key: "ulc.${data.uid}"
+```
+
+### 2. Clean Up Old State
+
+Periodically clear data that is no longer needed to prevent state bloat.
+
+### 3. Handle Race Conditions
+
+While `state_increment` is atomic within the engine's event loop for a single firing, be careful with complex read-modify-write patterns if events originate rapidly.
+
+### 4. Monitor State Size
+
+Keep keys short and values concise.

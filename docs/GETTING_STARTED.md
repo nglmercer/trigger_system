@@ -1,138 +1,131 @@
-# Getting Started with Agnostic Trigger System
+# 🚀 Getting Started
 
-The Agnostic Trigger System is a flexible, rule-based engine designed to execute actions based on events and complex conditions. It is perfect for automation, game logic, or event-driven applications.
+This guide will help you install and start using the Agnostic Trigger System in your TypeScript/Bun application.
 
 ## Installation
 
 ```bash
-bun install @your-org/trigger-system
+npm install trigger_system
+# or
+bun add trigger_system
 ```
 
-_(Replace `@your-org/trigger-system` with the actual package name if published)_
+## Basic Concepts
 
-## Concepts
+The Agnostic Trigger System is an event-driven rule engine that allows you to define business logic in YAML files. Here are the core concepts:
 
-- **Rule**: A definition of _when_ (Event), _if_ (Conditions), and _then_ (Actions).
-- **Context**: The data environment (`event`, `data`, `globals`, `state`) passed to the engine.
-- **Engine**: The core class that takes events and rules to produce results.
+- **Triggers**: Events that fire when certain conditions are met
+- **Rules**: YAML definitions that specify when triggers should fire and what actions to take
+- **Actions**: Operations performed when a rule matches
+- **State**: Persistent data that can be modified and accessed across rule executions
 
 ## Your First Rule
 
-Create a YAML file (e.g., `rules/hello.yaml`):
+Create a file `rules/welcome.yaml`:
 
 ```yaml
-id: "welcome-user"
-on: "USER_LOGIN"
+id: "welcome-message"
+on: "USER_REGISTERED"
 if:
-  field: "data.username"
+  field: "data.plan"
   operator: "EQ"
-  value: "admin"
+  value: "premium"
 do:
-  type: "log"
+  type: "send_email"
   params:
-    message: "Welcome back, Administrator!"
+    template: "welcome_premium"
+    subject: "Welcome to Premium!"
 ```
 
 ## Running the Engine
 
+### Basic Setup (Node.js/Bun)
+
 ```typescript
-// Option 1: RuleEngine (recommended for Node.js - includes built-in actions)
-import { RuleEngine, TriggerLoader } from "trigger_system/node";
+import { RuleEngine } from "trigger_system";
+import { TriggerLoader } from "trigger_system/node";
 
-// Option 2: TriggerEngine (platform-agnostic - works in browser too)
-import { TriggerEngine, TriggerLoader } from "trigger_system";
+// 1. Load rules from your directory
+const rules = await TriggerLoader.loadRulesFromDir("./rules");
 
-// 1. Load Rules
-const loader = new TriggerLoader("./rules");
-const rules = await loader.loadRules();
-
-// 2. Initialize Engine
-const engine = new RuleEngine({ // or TriggerEngine for platform-agnostic
+// 2. Initialize the engine
+const engine = new RuleEngine({
   rules: rules,
   globalSettings: { debugMode: true },
 });
 
-// 3. Register Custom Actions (optional for RuleEngine, required for TriggerEngine)
-engine.registerAction("my_custom_action", async (ctx, params) => {
-  console.log(`[CUSTOM] ${params.message}`);
+// 3. Process an event
+const results = await engine.processEvent("USER_REGISTERED", {
+  userId: "123",
+  plan: "premium",
+  email: "user@example.com",
 });
 
-// 4. Process an Event - two ways available:
-
-// Option A: Using processEventSimple (convenience method)
-const results = await engine.processEventSimple("USER_LOGIN", { username: "admin" });
-
-// Option B: Using processEvent with full context
-const context = {
-  event: "USER_LOGIN",
-  timestamp: Date.now(),
-  data: { username: "admin" },
-};
-const results = await engine.processEvent(context);
-
-console.log(results);
+console.log("Results:", results);
 ```
 
-### Built-in Actions (RuleEngine only)
+### With TypeScript Types
 
-The RuleEngine includes many pre-built actions:
+```typescript
+import { RuleEngine } from "trigger_system";
+import { TriggerLoader } from "trigger_system/node";
+
+interface UserRegisteredData {
+  userId: string;
+  plan: "free" | "premium" | "enterprise";
+  email: string;
+}
+
+const engine = new RuleEngine({
+  rules: await TriggerLoader.loadRulesFromDir("./rules"),
+  globalSettings: {},
+});
+
+// Type-safe event data
+const userData: UserRegisteredData = {
+  userId: "123",
+  plan: "premium",
+  email: "user@example.com",
+};
+
+await engine.processEvent("USER_REGISTERED", userData);
+```
+
+## Rule Structure
+
+Every rule follows this structure:
 
 ```yaml
-# Logging
-do:
-  type: log
-  params:
-    message: "User ${data.username} logged in"
-
-# HTTP Response (for web applications)
-do:
-  type: response
-  params:
-    statusCode: 200
-    body: "Hello ${data.username}"
-
-# Command Execution (Node.js only)
-do:
-  type: execute
-  params:
-    command: "echo 'User logged in'"
-    safe: true
-
-# HTTP Request Forwarding
-do:
-  type: forward
-  params:
-    url: "https://api.example.com/webhook"
-    method: "POST"
-
-# State Management
-do:
-  type: STATE_INCREMENT
-  params:
-    key: "login_count"
-    amount: 1
+id: "unique-rule-id" # Required: Unique identifier
+on: "EVENT_NAME" # Required: Event to listen for
+if: # Optional: Conditions to check
+  field: "data.field.path" # Field to evaluate
+  operator: "EQ" # Comparison operator
+  value: "expected_value" # Value to compare against
+do: # Required: Action to perform
+  type: "action_type" # Action identifier
+  params: # Action parameters
+    key: "value"
 ```
 
-### Engine Selection Guide
+## Available Operators
 
-**Use RuleEngine when:**
-- You're in Node.js environment
-- Want built-in actions (log, response, STATE_*, etc.)
-- Need automatic state management
-- Want observability features
+| Operator   | Description           | Example                         |
+| ---------- | --------------------- | ------------------------------- |
+| `EQ`       | Equal                 | `value: "premium"`              |
+| `NEQ`      | Not equal             | `value: "premium"`              |
+| `GT`       | Greater than          | `value: 100`                    |
+| `GTE`      | Greater than or equal | `value: 100`                    |
+| `LT`       | Less than             | `value: 100`                    |
+| `LTE`      | Less than or equal    | `value: 100`                    |
+| `MATCHES`  | Regex match           | `value: "^[A-Z].*"`             |
+| `IN`       | In array              | `value: ["admin", "moderator"]` |
+| `NOT_IN`   | Not in array          | `value: ["guest", "banned"]`    |
+| `CONTAINS` | String/Array contains | `value: "foo"`                  |
 
-**Use TriggerEngine when:**
-- Need browser compatibility
-- Want minimal dependencies
-- Need custom action handling
-- Building lightweight applications
+## Next Steps
 
-## Developer Experience (LSP)
-
-For a superior development experience, use the built-in **LSP Server**. It provides:
-
-- **Auto-completion** for all keys and enum values (like `mode` or `operator`).
-- **Real-time validation** with descriptive error messages.
-- **Snippets** for common rule structures.
-
-See our [Developer Tools Guide](./developer_tools.md) for setup instructions.
+- Learn about [SDK Usage](./SDK_GUIDE.md) for programmatic rule creation
+- Explore [Stateful Triggers](./STATEFUL_TRIGGERS.md) for advanced logic
+- Check out [Examples](./EXAMPLES_GUIDE.md) for common use cases
+- Read the [API Reference](./API_REFERENCE.md) for technical details

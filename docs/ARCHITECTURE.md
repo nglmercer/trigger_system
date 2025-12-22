@@ -1,87 +1,191 @@
-# Architecture
+# 🧩 Architecture
 
-The Agnostic Trigger System is built on a modular pipeline designed to be decoupled from any specific host application (like a game or web server).
+This document describes the internal architecture of the Agnostic Trigger System, including system design, core components, and data flow.
 
 ## System Overview
 
-```mermaid
-graph TD
-    Event[Incoming Event] --> Engine[Rule Engine]
-    Rules[YAML Rules] --> Loader[Trigger Loader]
-    Loader --> Engine
+The Agnostic Trigger System is built with a modular architecture that separates concerns into distinct layers:
 
-    Engine --> Context[Context Builder]
-    State[State Manager] --> Context
-
-    Context --> Condition[Expression Engine]
-    Condition -->|Pass| ActionExec[Action Registry]
-
-    ActionExec -->|Execute| SideEffects[Logs, Webhooks, Game Command]
-    ActionExec -->|Modify| State
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Application Layer                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │   Express   │  │  WebSocket  │  │    CLI      │       │
+│  │    App      │  │   Server    │  │   Tools     │       │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘       │
+│         │                 │                 │               │
+└─────────┼─────────────────┼─────────────────┼───────────────┘
+          │                 │                 │
+┌─────────┼─────────────────┼─────────────────┼───────────────┐
+│         ▼                 ▼                 ▼               │
+│                 SDK Layer (Public API)                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │ RuleBuilder │  │RuleExporter │  │ RuleEngine  │       │
+│  │             │  │             │  │             │       │
+│  └─────────────┘  └─────────────┘  └──────┬──────┘       │
+│                                             │               │
+└─────────────────────────────────────────────┼───────────────┘
+                                              │
+┌─────────────────────────────────────────────┼───────────────┐
+│                         ▼                   │               │
+│                 Core Engine Layer             │               │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────┴──────┐       │
+│  │TriggerLoader│  │Expression   │  │Action       │       │
+│  │(Static)     │  │Engine       │  │Registry     │       │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘       │
+│         │                 │                 │               │
+│  ┌──────┴──────┐  ┌──────┴──────┐  ┌──────┴──────┐       │
+│  │StateManager │  │Dependency   │  │trigger      │       │
+│  │             │  │Analyzer     │  │Emitter      │       │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘       │
+│         │                 │                 │               │
+└─────────┼─────────────────┼─────────────────┼───────────────┘
+          │                 │                 │
+┌─────────┼─────────────────┼─────────────────┼───────────────┐
+│         ▼                 ▼                 ▼               │
+│                Infrastructure Layer                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │Persistence  │  │Node/Browser │  │ArkType      │       │
+│  │Adapters     │  │IO           │  │Validator    │       │
+│  └─────────────┘  └─────────────┘  └─────────────┘       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Core Components
 
-### 1. Trigger Loader (`src/io`)
+### 1. RuleEngine
 
-Responsible for reading rules from external sources (Filesystem, API, Database). It currently supports YAML files and includes a **Hot Reloader** that updates the engine at runtime without restarting the application.
+The central orchestrator that coordinates all other components.
 
-### 2. Rule Engine (`src/core`)
+**Responsibilities:**
 
-The orchestrator. It filters rules by the incoming `event` type, evaluates their conditions, and executes their actions. The system provides a hierarchical architecture:
+- Context evaluation
+- Rule matching logic
+- Coordination of action execution logic
 
-**TriggerEngine** (Base): Platform-agnostic base engine with:
-- Core rule processing logic
-- Basic action handling
-- Condition evaluation
-- Cooldown management
-- Extensible design
+**Key Methods:**
 
-**RuleEngine** (Extension): Extends TriggerEngine with advanced features:
-- Priority sorting
-- Error handling
-- Observability via event emitter
-- State management integration
-- Action registry with built-in actions
-- Enhanced configuration options
+- `processEvent(event, data)` - Main entry point
+- `evaluateContext(context)` - Core evaluation loop
+- `updateRules(rules)` - Hot swap rules
 
-This design allows using TriggerEngine for simple, platform-agnostic scenarios, while RuleEngine provides full-featured capabilities for complex applications.
+### 2. TriggerLoader (Node.js)
 
-### 3. Expression Engine (`src/core/expression-engine.ts`)
+A static utility class responsible for loading and validating rules from the file system.
 
-A robust evaluator for conditions. It handles:
+**Features:**
 
-- **Nested lookups**: `data.user.stats.level`
-- **Type coercion**: Comparing strings to numbers safely
-- **Dynamic Values**: Resolving `${globals.server_id}` inside values.
+- YAML/JSON parsing
+- Directory walking
+- File watching (`watchRules`)
+- Integration with `TriggerValidator`
 
-### 4. State Manager (`src/core/state-manager.ts`)
+### 3. ExpressionEngine
 
-Enables **Stateful Logic**. Unlike simple "If This Then That" engines, this system can remember history (e.g., "Count clicks", "Has user visited before?"). It relies on a `PersistenceAdapter` to save data to disk or DB.
+Static utility that evaluates conditions and interpolated strings.
 
-### 5. Action Registry (`src/core/action-registry.ts`)
+**Capabilities:**
 
-A plugin system for actions. The core system knows nothing about "Discord Webhooks" or "Minecraft Commands". These are registered by the host application at runtime, keeping the core pure.
+- Nested field access (`data.user.id`)
+- Variable interpolation (`${data.value}`)
+- Condition Operator logic (`EQ`, `GT`, `MATCHES`...)
 
-**Built-in Actions**: The registry includes several pre-defined actions:
-- `log` - Logging with template interpolation
-- `response` - HTTP response generation
-- `execute` - Command execution (Node.js only)
-- `forward` - HTTP request forwarding
-- `STATE_SET`, `STATE_INCREMENT` - State management
-- `EMIT_EVENT` - Event emission for chaining
+### 4. ActionRegistry
 
-**Integration**: RuleEngine automatically integrates with ActionRegistry, while TriggerEngine can work independently or with custom action handlers.
+Singleton registry that maps action types strings (e.g., "send_email") to handler functions.
 
-### 6. State Manager (`src/core/state-manager.ts`)
+**Features:**
 
-Singleton that enables **Stateful Logic** with configurable persistence. Unlike simple "If This Then That" engines, this system can remember history (e.g., "Count clicks", "Has user visited before?"). It supports:
+- Global registration
+- Handler lookup
+- Default handlers
 
-- In-memory storage (default)
-- Pluggable persistence adapters (file system, database)
-- Atomic operations (increment, decrement, delete)
-- Full state clearing and bulk operations
+### 5. StateManager
 
-### 7. Developer Tooling (`src/lsp`)
+Singleton that holds the current state of the application for stateful rules.
 
-To ensure high-quality rule development, the system includes a **Language Server Protocol (LSP)** implementation. This component shares the same validation logic as the core engine (via ArkType), providing a unified validation experience between rule authoring and runtime execution.
+**Capabilities:**
+
+- In-memory state storage
+- Persistence layer integration (load/save)
+- Global state access
+
+### 6. DependencyAnalyzer
+
+Static analysis tool to detect cycles and dependencies between rules (based on state keys read/written).
+
+### 7. triggerEmitter
+
+Global Event Emitter for observability. Emits events like `rule:match`, `action:success`, `engine:start`.
+
+## Data Flow
+
+### Event Processing Flow
+
+```
+Event Fired (processEvent)
+    │
+    ▼
+┌─────────────────┐
+│  Context Setup  │
+│  - User Data    │
+│  - Globals      │
+│  - Current State│
+└────────┬────────┘
+         │
+    ▼
+┌─────────────────┐
+│ Rule Matching   │
+│  - Filter (on)  │
+│  - Cooldown     │
+└────────┬────────┘
+         │
+    ▼
+┌─────────────────┐
+│ Condition       │
+│ Evaluation      │
+│  - Expression   │
+│    Engine       │
+└────────┬────────┘
+         │
+    ▼
+┌─────────────────┐
+│ Action          │
+│ Execution       │
+│  - Registry     │
+│  - Handlers     │
+└────────┬────────┘
+         │
+    ▼
+┌─────────────────┐
+│ Events Emitted  │
+│  - rule:match   │
+│  - action:done  │
+└─────────────────┘
+```
+
+## State Management
+
+State is managed via the `StateManager` singleton and accessed in rules.
+
+1. **Initialization**: State loaded from persistence provider.
+2. **Access**: Rules read state via `state.*` paths.
+3. **Modification**: Rules allow `state_set`, `state_increment` actions (or custom logic).
+4. **Persistence**: `FilePersistence` or `BrowserPersistence` saves state changes.
+
+## Performance Considerations
+
+1. **Rule Indexing**: Rules are sorted by priority.
+2. **Lazy Evaluation**: `OR` conditions short-circuit.
+3. **Regex Compilation**: `ExpressionEngine` creates RegEx objects on the fly (consider caching for high volume).
+
+## Security Considerations
+
+### Input Validation
+
+- `TriggerValidator` uses `ArkType` to strictly validate rule schemas at load time.
+- Runtime data is treated as untrusted and accessed safely via `ExpressionEngine`.
+
+### Access Control
+
+- Action Handlers are the boundary. Ensure your action handlers validate inputs/permissions before performing sensitive operations (DB writes, API calls).

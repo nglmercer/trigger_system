@@ -1,98 +1,317 @@
-# 📚 Examples Guide
+# 💡 Step-by-Step Examples
 
-This guide walks you through the progressive examples provided in the `examples/` directory. Each example builds on the previous one, introducing a new concept of the Agnostic Trigger System.
+This guide provides progressive tutorials to help you learn the Agnostic Trigger System through practical examples.
 
-## [1. Basic Rule](./../examples/1-basic-rule.ts)
+## 1.0 Basic Rule
 
-**Concept**: Simple event matching and actions.
+Let's start with the simplest possible rule.
 
-- Listens for `USER_LOGIN`.
-- Checks if a user is new (`data.isNew == true`).
-- Logs a welcome message.
+### The Rule
 
-## [1.1 Multiple Conditions](./../examples/1.1-multiple-conditions.ts)
-
-**Concept**: Logic grouping using `AND`/`OR`.
-
-- Listens for `PURCHASE`.
-- Requires BOTH `amount > 100` AND `category == 'electronics'`.
-- Demonstrates how to write complex filters.
-
-## [1.2 Advanced Operators](./../examples/1.2-advanced-operators.ts)
-
-**Concept**: Using powerful operators beyond simple equality.
-
-- `IN`: Check if a value exists in a predefined list (e.g., countries).
-- `MATCHES`: Use Regular Expressions for string validation (e.g., email format).
-
-## [1.3 Stateful Counter](./../examples/1.3-stateful-counter.ts)
-
-**Concept**: Persistent state across multiple events.
-
-- Demonstrates `STATE_INCREMENT` to keep track of clicks.
-- Shows how to trigger a rule only when a state value reaches a specific threshold (Milestones).
-
-## [1.4 Action Groups](./../examples/1.4-action-groups.ts)
-
-**Concept**: Complex execution flows.
-
-- `SEQUENCE`: Execute actions one after another with optional delays.
-- `EITHER`: Pick exactly one action based on assigned probabilities (Loot boxes / Randomized behaviors).
-- `probability`: Individual action probability (0-1) for randomized execution.
+Create `rules/welcome.yaml`:
 
 ```yaml
-# Example with probability
-- id: random-reward
-  on: USER_ACTION
+- id: "welcome-new-user"
+  on: "USER_REGISTERED"
   do:
-    type: "log"
-    probability: 0.3  # 30% chance to execute
+    type: "log_message"
     params:
-      message: "You got lucky!"
+      message: "New user registered: ${data.userId}"
 ```
 
-## [2. SDK Usage](./../examples/2-sdk-usage.ts)
-
-**Concept**: Programmatic rule creation.
-
-- Uses `RuleBuilder` to create rules without writing YAML.
-- Uses `RuleExporter` to convert rules to YAML strings or save them to disk.
-- Ideal for building dashboard integrations or automated rule generation.
-
-### Engine Selection
-
-The SDK provides two engine options:
+### Testing the Rule
 
 ```typescript
-// Full-featured engine (recommended)
-import { RuleEngine } from "trigger_system/node";
+import { RuleEngine } from "trigger_system";
+import { TriggerLoader } from "trigger_system/node";
 
-// Simple engine (for basic use cases)
-import { TriggerEngine } from "trigger_system";
+const rules = await TriggerLoader.loadRulesFromDir("./rules");
+const engine = new RuleEngine({ rules, globalSettings: {} });
+
+// Fire the event
+await engine.processEvent("USER_REGISTERED", {
+  userId: "user123",
+  email: "user@example.com",
+});
+
+// Output: "New user registered: user123"
 ```
 
-### Built-in Actions in SDK
+### What We Learned
 
-When using the SDK, you have access to all built-in actions:
+- Rules listen for specific events (`on: "USER_REGISTERED"`)
+- Actions are executed when events fire (`do: "log_message"`)
+- Data is accessible via `${data.fieldName}` syntax
+
+## 1.1 Multiple Conditions
+
+Now let's add conditions to make our rules more selective.
+
+### Simple Condition
+
+```yaml
+- id: "welcome-premium-user"
+  on: "USER_REGISTERED"
+  if:
+    field: "data.plan"
+    operator: "EQ"
+    value: "premium"
+  do:
+    type: "log_message"
+    params:
+      message: "Premium user registered: ${data.userId}"
+```
+
+### Multiple Conditions
+
+```yaml
+- id: "high-value-transaction"
+  on: "TRANSACTION_PROCESSED"
+  if:
+    operator: "AND"
+    conditions:
+      - field: "data.amount"
+        operator: "GT"
+        value: 1000
+      - field: "data.currency"
+        operator: "EQ"
+        value: "USD"
+      - field: "data.status"
+        operator: "EQ"
+        value: "completed"
+  do:
+    type: "send_alert"
+    params:
+      message: "High value transaction: $${data.amount}"
+      priority: "high"
+```
+
+### OR Conditions
+
+```yaml
+- id: "important-user-activity"
+  on: "USER_ACTIVITY"
+  if:
+    operator: "OR"
+    conditions:
+      - field: "data.userType"
+        operator: "EQ"
+        value: "premium"
+      - field: "data.vipStatus"
+        operator: "EQ"
+        value: true
+      - field: "data.accountAge"
+        operator: "LT"
+        value: 7 # New users (less than 7 days)
+  do:
+    type: "track_activity"
+    params:
+      userId: "${data.userId}"
+      priority: "high"
+```
+
+### Complex Logic
+
+```yaml
+- id: "fraud-detection"
+  on: "TRANSACTION_INITIATED"
+  if:
+    operator: "AND"
+    conditions:
+      - operator: "OR"
+        conditions:
+          - field: "data.amount"
+            operator: "GT"
+            value: 5000
+          - field: "data.foreignTransaction"
+            operator: "EQ"
+            value: true
+      - field: "data.userAccountAge"
+        operator: "LT"
+        value: 30
+  do:
+    type: "flag_for_review"
+    params:
+      transactionId: "${data.transactionId}"
+      reason: "potential_fraud"
+```
+
+## 1.2 Advanced Operators
+
+Explore the full range of comparison operators.
+
+### String Operations
+
+```yaml
+- id: "email-validation"
+  on: "USER_REGISTERED"
+  if:
+    field: "data.email"
+    operator: "MATCHES"
+    value: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+  do:
+    type: "mark_email_valid"
+    params:
+      userId: "${data.userId}"
+```
+
+### Array Operations
+
+```yaml
+- id: "admin-privileges"
+  on: "PERMISSION_CHECK"
+  if:
+    field: "data.userRole"
+    operator: "IN"
+    value: ["admin", "moderator", "superuser"]
+  do:
+    type: "grant_admin_access"
+    params:
+      userId: "${data.userId}"
+```
+
+### Existence Checks
+
+Existence checks are handled via nullable checks or custom functions, or implicitly if a field is missing it might return null/undefined which EQ null can check, but explicit `NOT_EXISTS` is better handled by your custom expression logic or by checking against null if supported.
+
+_Note: NOT_EXISTS / EXISTS operators are not in the core set but can be emulated or added via plugins._
+
+## 1.3 Stateful Counters
+
+Learn to use state to track information across multiple events.
+
+### Simple Counter
+
+```yaml
+- id: "login-attempt-counter"
+  on: "LOGIN_ATTEMPT"
+  do:
+    - type: "state_increment"
+      params:
+        key: "login_attempts.${data.userId}"
+    - type: "log_message"
+      params:
+        message: "Login attempt ${state.login_attempts.${data.userId}} for user ${data.userId}"
+```
+
+## 1.4 Action Groups
+
+Execute multiple actions in sequence.
+
+### Basic Multi-Action
+
+```yaml
+- id: "user-onboarding"
+  on: "USER_REGISTERED"
+  do:
+    - type: "log_event"
+      params:
+        event: "user_registration"
+        userId: "${data.userId}"
+    - type: "create_user_profile"
+      params:
+        userId: "${data.userId}"
+        email: "${data.email}"
+```
+
+## 2.0 SDK Usage
+
+Create rules programmatically using the TypeScript SDK.
+
+### Basic Rule Builder
 
 ```typescript
-const rule = new RuleBuilder()
-  .withId("example")
-  .on("TEST_EVENT")
-  .do("log", { message: "Hello World" })
-  .do("STATE_INCREMENT", { key: "counter", amount: 1 })
-  .do("forward", { url: "https://api.example.com", method: "POST" })
+import { RuleBuilder } from "trigger_system/sdk";
+
+// Create a simple rule
+const welcomeRule = new RuleBuilder()
+  .withId("sdk-welcome-rule")
+  .on("USER_REGISTERED")
+  .if("data.plan", "EQ", "premium")
+  .do("send_email", {
+    template: "welcome_premium",
+    subject: "Welcome to Premium!",
+  })
+  .build();
+
+console.log(welcomeRule);
+```
+
+### Complex Rule with SDK
+
+```typescript
+const complexRule = new RuleBuilder()
+  .withId("sdk-fraud-detection")
+  .on("TRANSACTION_INITIATED")
+  .if("data.amount", "GT", 1000)
+  .if("data.userAccountAge", "LT", 30)
+  .if("data.foreignTransaction", "EQ", true)
+  .do("flag_for_review", {
+    reason: "potential_fraud",
+    priority: "high",
+  })
+  .do("send_alert", {
+    channels: ["email", "slack"],
+    severity: "warning",
+  })
+  .withTags(["fraud", "security"])
   .build();
 ```
 
----
+### Dynamic Rule Generation
 
-### Running the Examples
+```typescript
+function createThresholdRule(
+  eventType: string,
+  field: string,
+  threshold: number,
+  actionType: string
+) {
+  return new RuleBuilder()
+    .withId(`${eventType}-${field}-threshold`)
+    .on(eventType)
+    .if(field, "GT", threshold)
+    .do(actionType, {
+      threshold,
+      field,
+      eventType,
+    })
+    .build();
+}
 
-You can run any example using `bun`:
-
-```bash
-bun run examples/1-basic-rule.ts
-bun run examples/1.1-multiple-conditions.ts
-# etc...
+// Generate multiple rules
+const rules = [
+  createThresholdRule("CPU_USAGE", "data.cpu", 80, "alert_high_cpu"),
+  createThresholdRule("MEMORY_USAGE", "data.memory", 90, "alert_high_memory"),
+];
 ```
+
+### Export to YAML
+
+```typescript
+import { RuleExporter } from "trigger_system/sdk";
+
+// Export single rule
+const yaml = RuleExporter.toYaml(welcomeRule);
+console.log(yaml);
+
+// Save to file (Node.js)
+await RuleExporter.saveToFile(
+  [welcomeRule, complexRule],
+  "./rules/generated.yaml"
+);
+```
+
+## Best Practices from Examples
+
+### 1. Start Simple
+
+Begin with basic rules and gradually add complexity.
+
+### 2. Use Descriptive Names
+
+`id: "high-value-transaction-alert"` vs `id: "rule1"`.
+
+### 3. Handle Errors Gracefully
+
+Ensure your custom action handlers interpret errors correctly or use `.catch()` in your async action logic.
