@@ -166,8 +166,8 @@ export class RuleEngine {
     context: TriggerContext,
   ): boolean {
     try {
-      // Obtener el valor del campo especificado
-      const fieldValue = ExpressionEngine.getNestedValue(
+      // Obtener el valor del campo especificado (permite expresiones y llamadas a funciones)
+      const fieldValue = ExpressionEngine.evaluate(
         condition.field,
         context,
       );

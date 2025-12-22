@@ -65,7 +65,7 @@ The central orchestrator that coordinates all other components.
 
 **Key Methods:**
 
-- `processEvent(event, data)` - Main entry point (with globals)
+- `processEvent(data)` - Main entry point (with globals)
 - `processEventSimple(event, data)` - Main entry point (no globals)
 - `evaluateContext(context)` - Core evaluation loop
 - `updateRules(rules)` - Hot swap rules

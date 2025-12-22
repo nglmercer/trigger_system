@@ -109,7 +109,7 @@ export class TriggerEngine {
 
     // It's a simple Condition
     const c = cond as Condition;
-    const actualValue = TriggerUtils.getNestedValue(c.field, context);
+    const actualValue = ExpressionEngine.evaluate(c.field, context);
     // Interpolate the expected value if it's a string containing variables
     let expectedValue = c.value;
     if (typeof expectedValue === 'string' && expectedValue.includes('${')) {

@@ -130,6 +130,73 @@ describe("Global Scope & StateManager Access", () => {
 
         await engine.processEvent(context);
 
+
         expect(receivedMessage).toBe("hello from rule");
+    });
+
+    test("Should evaluate expressions and function calls in 'field' property", async () => {
+        const engine = new TriggerEngine();
+        engine.registerAction("LOG", async (params) => { return params.msg; });
+
+        const utils = {
+            trim: (s: string) => s.trim()
+        };
+
+        const rule: TriggerRule = {
+            id: "field-expr-test",
+            on: "TEST_EVENT",
+            if: {
+                // Testing complex expression in field
+                field: "globals.utils.trim(data.comment).toLowerCase()",
+                operator: "EQ",
+                value: "hello"
+            },
+            do: {
+                type: "LOG",
+                params: { msg: "Matched" }
+            }
+        };
+
+        (engine as any).rules = [rule];
+
+        const context = ContextAdapter.create(
+            "TEST_EVENT", 
+            { comment: "  HELLO  " }, 
+            { utils }
+        );
+
+        const results = await engine.processEvent(context);
+        expect(results).toHaveLength(1);
+        expect(results[0]!.success).toBe(true);
+    });
+
+    test("Should evaluate global regex in 'field' property", async () => {
+        const engine = new TriggerEngine();
+        engine.registerAction("LOG", async (params) => { return params.msg; });
+
+        const rule: TriggerRule = {
+            id: "field-regex-test",
+            on: "TEST_EVENT",
+            if: {
+                field: "globals.spamRegex.test(data.comment)",
+                operator: "EQ",
+                value: true
+            },
+            do: {
+                type: "LOG",
+                params: { msg: "Spam detected" }
+            }
+        };
+
+        (engine as any).rules = [rule];
+
+        const context = ContextAdapter.create(
+            "TEST_EVENT", 
+            { comment: "This is a badword." }, 
+            { spamRegex: /badword/i }
+        );
+
+        const results = await engine.processEvent(context);
+        expect(results).toHaveLength(1);
     });
 });

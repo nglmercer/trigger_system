@@ -15,9 +15,13 @@ class RuleEngine {
   constructor(config: RuleEngineConfig);
 
   // Event Processing
-  processEvent(
+  processEventSimple(
     eventType: string,
     data?: Record<string, unknown>,
+    globals?: Record<string, unknown>
+  ): Promise<TriggerResult[]>;
+  processEvent(
+    event: TriggerEvent,
     globals?: Record<string, unknown>
   ): Promise<TriggerResult[]>;
   evaluateContext(context: TriggerContext): Promise<TriggerResult[]>;

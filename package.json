@@ -1,6 +1,6 @@
 {
   "name": "trigger_system",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A powerful rule engine and trigger system for JavaScript/TypeScript applications",
   "main": "dist/node/index.js",
   "browser": "dist/browser/index.browser.js",
