@@ -436,7 +436,7 @@ function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath:
     
     // For Pair types, we need to check manually if they can be processed
     // Pairs are used in Maps, and we need different logic for them
-    const isPair = (n: any): n is Pair => 'key' in n && 'value' in n;
+    const isPair = (n: unknown): n is Pair => typeof n === 'object' && n !== null && 'key' in n && 'value' in n;
     
     if (isPair(node)) {
         // Pair doesn't have range, but we can check its key and value
@@ -484,7 +484,7 @@ function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath:
     // If it's a Seq, check items
     if ('items' in node && Array.isArray((node as any).items)) {
         for (const item of (node as any).items) {
-            const itemPath = findPathAtOffset(item, offset, newPath);
+            const itemPath = findPathAtOffset(item as Node, offset, newPath);
             if (itemPath) return itemPath;
         }
         return newPath;

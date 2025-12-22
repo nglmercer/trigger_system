@@ -10,7 +10,7 @@ export class ExpressionEngine {
    * Soporta operadores: +, -, *, /, %, **, y funciones matemáticas básicas
    */
 
-  static evaluate(expression: string, context: TriggerContext): any {
+  static evaluate(expression: string, context: TriggerContext): unknown {
     try {
       // Check for template string interpolation first
       if (expression.includes("${")) {
@@ -57,7 +57,7 @@ export class ExpressionEngine {
   /**
    * Evalúa una expresión matemática segura usando Function constructor
    */
-  private static evaluateMathExpression(expression: string): any {
+  private static evaluateMathExpression(expression: string): number {
     try {
       // Crear una función segura que solo permita operaciones matemáticas básicas
       const mathFunction = new Function("Math", `return ${expression}`);
@@ -101,15 +101,15 @@ export class ExpressionEngine {
    * Obtiene un valor anidado de un objeto usando notación de puntos
    * Ejemplo: getNestedValue("data.user.profile.name", context)
    */
-  static getNestedValue(path: string, context: TriggerContext) {
+  static getNestedValue(path: string, context: TriggerContext): unknown {
     const parts = path.split(".");
-    let current:Record<string,any> = context;
+    let current: unknown = context;
 
     for (const part of parts) {
-      if (current === null || current === undefined || !(part in current)) {
+      if (current === null || current === undefined || typeof current !== 'object' || !(part in current)) {
         return undefined;
       }
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     }
 
     return current;

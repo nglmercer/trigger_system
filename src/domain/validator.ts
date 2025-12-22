@@ -122,7 +122,7 @@ export type ValidationResult = ValidationSuccess | ValidationFailure;
 
 export class TriggerValidator {
   
-  static validate(data: any): ValidationResult {
+  static validate(data: unknown): ValidationResult {
     // ArkType validation
     const out = TriggerRuleSchema(data);
 
@@ -141,7 +141,7 @@ export class TriggerValidator {
                // Heuristic check if it failed because it was interpretted as boolean 'true' in YAML
                // We can't see the original value easily here without checking 'data' at path
                // But we can just suggest it generally.
-               if (typeof data === 'object' && data && data.on === true) {
+               if (typeof data === 'object' && data !== null && 'on' in data && (data as Record<string, unknown>).on === true) {
                    message = "The 'on' field is incorrect (boolean true found).";
                    suggestion = "In YAML, 'on' is a boolean keyword (true). Quote it: \"on\": \"EventName\"";
                } else {
@@ -175,7 +175,7 @@ export class TriggerValidator {
   }
 
   private static validateConditionsRecursive(
-      condition: any, 
+      condition: unknown,
       issues: ValidationIssue[], 
       path: string
   ): void {
@@ -189,28 +189,28 @@ export class TriggerValidator {
       }
 
       // Check if it's a ConditionGroup (has 'conditions')
-      if ('conditions' in condition && Array.isArray(condition.conditions)) {
-          condition.conditions.forEach((c: any, idx: number) => {
+      if (typeof condition === 'object' && condition !== null && 'conditions' in condition && Array.isArray((condition as Record<string, unknown>).conditions)) {
+          ((condition as Record<string, unknown>).conditions as unknown[]).forEach((c: unknown, idx: number) => {
                this.validateConditionsRecursive(c, issues, `${path}.conditions.${idx}`);
           });
           return;
       }
 
       // It must be a Condition
-      if ('operator' in condition && 'value' in condition) {
+      if (typeof condition === 'object' && condition !== null && 'operator' in condition && 'value' in condition) {
           this.validateConditionValue(condition, issues, path);
       }
   }
 
   private static validateConditionValue(
-      condition: any, 
+      condition: unknown,
       issues: ValidationIssue[], 
       path: string
   ): void {
-      const { operator, value } = condition;
+      const { operator, value } = condition as Record<string, unknown>;
       
       // 1. List/Collection Operators (IN, NOT_IN, RANGE, CONTAINS)
-      if (['IN', 'NOT_IN', 'RANGE', 'CONTAINS'].includes(operator)) {
+      if (typeof operator === 'string' && ['IN', 'NOT_IN', 'RANGE', 'CONTAINS'].includes(operator)) {
           if (operator === 'CONTAINS') {
               if (typeof value !== 'string' && !Array.isArray(value)) {
                   issues.push({
@@ -271,7 +271,7 @@ export class TriggerValidator {
           }
       }
       // 3. Numeric Comparisons (GT, LT, etc)
-      else if (['GT', 'GTE', 'LT', 'LTE', '>', '>=', '<', '<='].includes(operator)) {
+      else if (typeof operator === 'string' && ['GT', 'GTE', 'LT', 'LTE', '>', '>=', '<', '<='].includes(operator)) {
            if (typeof value !== 'number' && typeof value !== 'string') {
                issues.push({
                    path: `${path}.value`,

@@ -8,7 +8,7 @@ import { type PersistenceAdapter, InMemoryPersistence } from "./persistence";
  */
 export class StateManager {
   private static instance: StateManager;
-  private state: Map<string, any>;
+  private state: Map<string, unknown>;
   private persistence: PersistenceAdapter;
 
   private constructor() {
@@ -42,14 +42,14 @@ export class StateManager {
   /**
    * Get a value from the state. 
    */
-  get(key: string): any {
+  get(key: string): unknown {
     return this.state.get(key);
   }
 
   /**
    * Set a value in the state and persist it.
    */
-  async set(key: string, value: any): Promise<void> {
+  async set(key: string, value: unknown): Promise<void> {
     this.state.set(key, value);
     await this.persistence.saveState(key, value);
   }
@@ -84,7 +84,7 @@ export class StateManager {
   /**
    * Export state as a plain object (for Context injection).
    */
-  getAll(): Record<string, any> {
+  getAll(): Record<string, unknown> {
     return Object.fromEntries(this.state);
   }
 }

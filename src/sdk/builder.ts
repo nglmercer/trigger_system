@@ -1,12 +1,14 @@
-import type { 
-  TriggerRule, 
-  RuleCondition, 
-  Action, 
-  ActionGroup, 
+import type {
+  TriggerRule,
+  RuleCondition,
+  Action,
+  ActionGroup,
   ComparisonOperator,
   ExecutionMode,
   Condition,
-  ConditionGroup
+  ConditionGroup,
+  ConditionValue,
+  ActionParams
 } from "../types";
 
 export class ConditionBuilder {
@@ -17,7 +19,7 @@ export class ConditionBuilder {
     this.op = operator;
   }
 
-  where(field: string, operator: ComparisonOperator, value: any): this {
+  where(field: string, operator: ComparisonOperator, value: ConditionValue): this {
     this.conditions.push({ field, operator, value });
     return this;
   }
@@ -58,7 +60,7 @@ export class ActionBuilder {
     return this;
   }
 
-  add(type: string, params?: Record<string, any>, options?: { delay?: number, probability?: number }): this {
+  add(type: string, params?: ActionParams, options?: { delay?: number, probability?: number }): this {
     this.actions.push({
       type,
       params,
@@ -128,13 +130,13 @@ export class RuleBuilder {
     return this;
   }
 
-  if(field: string, operator: ComparisonOperator, value: any): this {
+  if(field: string, operator: ComparisonOperator, value: ConditionValue): this {
     if (!this.rule.if) {
       this.rule.if = { field, operator, value };
     } else if (Array.isArray(this.rule.if)) {
-      (this.rule.if as any[]).push({ field, operator, value });
+      (this.rule.if as RuleCondition[]).push({ field, operator, value });
     } else {
-      this.rule.if = [this.rule.if as any, { field, operator, value }];
+      this.rule.if = [this.rule.if as RuleCondition, { field, operator, value }];
     }
     return this;
   }
@@ -146,7 +148,7 @@ export class RuleBuilder {
     return this;
   }
 
-  do(type: string, params?: Record<string, any>, options?: { delay?: number, probability?: number }): this {
+  do(type: string, params?: ActionParams, options?: { delay?: number, probability?: number }): this {
     const action: Action = { type, params, ...options };
     if (!this.rule.do) {
       this.rule.do = action;

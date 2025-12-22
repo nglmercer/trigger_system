@@ -70,7 +70,7 @@ export class TriggerLoader {
       const rules: TriggerRule[] = [];
 
       // Flatten docs if the root is an array (Single doc with list of rules)
-      let flattenedDocs: any[] = [];
+      let flattenedDocs: unknown[] = [];
       docs.forEach(d => {
           if (Array.isArray(d)) {
               flattenedDocs.push(...d);
@@ -79,18 +79,18 @@ export class TriggerLoader {
           }
       });
 
-      flattenedDocs.forEach((doc: any, index: number) => {
+      flattenedDocs.forEach((doc: unknown, index: number) => {
         // Normalize 'actions' to 'do' alias
-        if (doc && typeof doc === 'object' && doc.actions && !doc.do) {
-            doc.do = doc.actions;
+        if (doc && typeof doc === 'object' && doc !== null && 'actions' in doc && !(doc as Record<string, unknown>).do) {
+            (doc as Record<string, unknown>).do = (doc as Record<string, unknown>).actions;
         }
 
-        const validation = TriggerValidator.validate(doc);
+        const validation = TriggerValidator.validate(doc as Record<string, unknown>);
         
         if (validation.valid) {
           const rule = validation.rule;
            // Assign ID from filename if missing, with index suffix if multidoc
-          if (!rule.id) {
+          if (!rule.id && typeof doc === 'object' && doc !== null) {
             const base = path.basename(filePath, path.extname(filePath));
             rule.id = flattenedDocs.length > 1 ? `${base}-${index}` : base;
           }

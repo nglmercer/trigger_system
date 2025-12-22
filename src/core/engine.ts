@@ -1,19 +1,22 @@
 // src/trigger_system/engine.ts
-import type { 
-  TriggerRule, 
-  TriggerContext, 
-  TriggerResult, 
-  Action, 
-  ActionGroup, 
+import type {
+  TriggerRule,
+  TriggerContext,
+  TriggerResult,
+  Action,
+  ActionGroup,
   RuleCondition,
   Condition,
-  ConditionGroup
+  ConditionGroup,
+  ActionParams,
+  ActionParamValue,
+  ExecutedAction
 } from "../types";
 import { TriggerUtils } from "../utils/utils";
 // import { TriggerLoader } from "../io/loader"; // Removed dependency
 import { ExpressionEngine } from "./expression-engine";
 
-export type EngineActionHandler = (params: any, context: TriggerContext) => Promise<any> | any;
+export type EngineActionHandler = (params: ActionParams, context: TriggerContext) => Promise<unknown> | unknown;
 
 export class TriggerEngine {
   private rules: TriggerRule[] = [];
@@ -119,8 +122,8 @@ export class TriggerEngine {
   private async executeRuleActions(
     actionConfig: Action | Action[] | ActionGroup, 
     context: TriggerContext
-  ): Promise<any[]> {
-    const executionLogs: any[] = [];
+  ): Promise<ExecutedAction[]> {
+    const executionLogs: ExecutedAction[] = [];
 
     // Normalize to ActionGroup or List
     let actionsToExecute: Action[] = [];
@@ -204,8 +207,8 @@ export class TriggerEngine {
     return executionLogs;
   }
 
-  private interpolateParams(params: Record<string, any>, context: TriggerContext): Record<string, any> {
-    const result: Record<string, any> = {};
+  private interpolateParams(params: ActionParams, context: TriggerContext): ActionParams {
+    const result: ActionParams = {};
     for (const [key, val] of Object.entries(params)) {
       if (typeof val === 'string') {
         result[key] = ExpressionEngine.interpolate(val, context);
@@ -214,7 +217,7 @@ export class TriggerEngine {
         // JSON objects might need deep interpolation.
         // For now simple 1-level or stringify
         // Let's do simple recursion for nice nested params
-        result[key] = this.interpolateDeep(val, context);
+        result[key] = this.interpolateDeep(val, context) as ActionParamValue;
       } else {
         result[key] = val;
       }
@@ -222,12 +225,12 @@ export class TriggerEngine {
     return result;
   }
 
-  private interpolateDeep(obj: any, context: TriggerContext): any {
+  private interpolateDeep(obj: unknown, context: TriggerContext): unknown {
     if (typeof obj === 'string') return ExpressionEngine.interpolate(obj, context);
     if (Array.isArray(obj)) return obj.map(v => this.interpolateDeep(v, context));
     if (typeof obj === 'object' && obj !== null) {
-        const res: any = {};
-        for(const k in obj) res[k] = this.interpolateDeep(obj[k], context);
+        const res: Record<string, unknown> = {};
+        for(const k in obj) res[k] = this.interpolateDeep((obj as Record<string, unknown>)[k], context);
         return res;
     }
     return obj;

@@ -7,7 +7,10 @@ import type {
   TriggerRule,
   TriggerContext,
   TriggerResult,
-  RuleEngineConfig
+  RuleEngineConfig,
+  Action,
+  ActionGroup,
+  ExecutedAction
 } from "../types";
 
 import { TriggerEngine } from "./trigger-engine";
@@ -103,7 +106,7 @@ export class RuleEngine extends TriggerEngine {
    * Método convenience para procesar eventos simples
    * Usa el método renombrado del padre
    */
-  override async processEventSimple(eventType: string, data: Record<string, any> = {}, globals: Record<string, any> = {}): Promise<TriggerResult[]> {
+  override async processEventSimple(eventType: string, data: Record<string, unknown> = {}, globals: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
@@ -118,22 +121,22 @@ export class RuleEngine extends TriggerEngine {
    * Ejecuta acciones usando el ActionRegistry
    */
   private async executeRuleActionsWithRegistry(
-    actions: any,
+    actions: Action | Action[] | ActionGroup,
     context: TriggerContext
   ): Promise<TriggerResult['executedActions']> {
     const enactedActions: TriggerResult['executedActions'] = [];
 
-    let actionList: any[] = [];
+    let actionList: Action[] = [];
     let mode: 'ALL' | 'SEQUENCE' | 'EITHER' = 'ALL';
 
     if (Array.isArray(actions)) {
       actionList = actions;
-    } else if (actions.mode && actions.actions) {
-      const group = actions as any;
+    } else if (this.isActionGroup(actions)) {
+      const group = actions as ActionGroup;
       mode = group.mode;
       actionList = group.actions;
     } else {
-      actionList = [actions];
+      actionList = [actions as Action];
     }
 
     if (mode === 'EITHER' && actionList.length > 0) {
@@ -160,11 +163,15 @@ export class RuleEngine extends TriggerEngine {
     return enactedActions;
   }
 
+  private isActionGroup(action: Action | ActionGroup): action is ActionGroup {
+    return typeof action === 'object' && action !== null && 'mode' in action && 'actions' in action;
+  }
+
   /**
    * Ejecuta una acción individual usando el ActionRegistry
    */
   private async executeSingleActionWithRegistry(
-    action: any,
+    action: Action,
     context: TriggerContext
   ): Promise<TriggerResult['executedActions'][0]> {
     
@@ -243,7 +250,7 @@ export class RuleEngine extends TriggerEngine {
    * Sobrescribe executeRuleActions para usar el registry
    */
   protected override async executeRuleActions(
-    actionConfig: any,
+    actionConfig: Action | Action[] | ActionGroup,
     context: TriggerContext
   ): Promise<TriggerResult['executedActions']> {
     return this.executeRuleActionsWithRegistry(actionConfig, context);
@@ -253,7 +260,7 @@ export class RuleEngine extends TriggerEngine {
    * Sobrescribe executeSingleAction para usar el registry
    */
   protected override async executeSingleAction(
-    action: any,
+    action: Action,
     context: TriggerContext
   ): Promise<TriggerResult['executedActions'][0]> {
     return this.executeSingleActionWithRegistry(action, context);

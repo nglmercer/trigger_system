@@ -1,20 +1,24 @@
 // src/trigger_system/utils.ts
-import type { TriggerContext } from "../types";
+import type { TriggerContext, ConditionValue, ComparisonOperator } from "../types";
 
 export class TriggerUtils {
   /**
    * Retrieves a nested value from the context using dot notation.
    * supports: data.field, globals.envVal, computed.result
    */
-  static getNestedValue(path: string, context: TriggerContext): any {
+  static getNestedValue(path: string, context: TriggerContext): unknown {
     const parts = path.split(".");
-    let current: any = context;
+    let current: unknown = context;
 
     for (const part of parts) {
       if (current === null || current === undefined) {
         return undefined;
       }
-      current = current[part];
+      if (typeof current === 'object' && current !== null && part in current) {
+        current = (current as Record<string, unknown>)[part];
+      } else {
+        return undefined;
+      }
     }
 
     return current;
@@ -43,7 +47,7 @@ export class TriggerUtils {
   /**
    * Checks if a value satisfies a comparison operator against a criteria.
    */
-  static compare(actual: any, operator: string, criteria: any): boolean {
+  static compare(actual: unknown, operator: ComparisonOperator, criteria: ConditionValue): boolean {
     switch (operator) {
       case 'EQ':
       case '==':
@@ -64,21 +68,26 @@ export class TriggerUtils {
       case '<=':
         return Number(actual) <= Number(criteria);
       case 'IN':
-        return Array.isArray(criteria) && criteria.includes(actual);
+        return Array.isArray(criteria) && criteria.some(item => item === actual);
       case 'NOT_IN':
-        return Array.isArray(criteria) && !criteria.includes(actual);
+        return Array.isArray(criteria) && !criteria.some(item => item === actual);
       case 'CONTAINS':
         if (Array.isArray(actual) || typeof actual === 'string') {
-          return actual.includes(criteria);
+          return actual.includes(criteria as string);
         }
         return false;
       case 'MATCHES':
-        return new RegExp(criteria).test(String(actual));
+        if (typeof criteria === 'string') {
+          return new RegExp(criteria).test(String(actual));
+        }
+        return false;
       case 'RANGE':
         // criteria should be [min, max]
         if (Array.isArray(criteria) && criteria.length === 2) {
             const val = Number(actual);
-            return val >= criteria[0] && val <= criteria[1];
+            const min = Number(criteria[0]);
+            const max = Number(criteria[1]);
+            return !isNaN(val) && !isNaN(min) && !isNaN(max) && val >= min && val <= max;
         }
         return false;
       default:

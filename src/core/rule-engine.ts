@@ -12,6 +12,7 @@ import type {
   TriggerContext,
   TriggerResult,
   RuleEngineConfig,
+  ConditionValue,
 } from "../types";
 import { ExpressionEngine } from "../core/expression-engine";
 
@@ -37,7 +38,7 @@ export class RuleEngine {
   /**
    * Convenience method to process an event with a simple payload
    */
-  async processEvent(eventType: string, data: Record<string, any> = {}, globals: Record<string, any> = {}): Promise<TriggerResult[]> {
+  async processEvent(eventType: string, data: Record<string, unknown> = {}, globals: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
@@ -176,20 +177,24 @@ export class RuleEngine {
       let targetValue = condition.value;
       if (typeof targetValue === 'string' && (targetValue.includes('${') || targetValue.startsWith('data.') || targetValue.startsWith('globals.'))) {
           // If it looks like an expression or variable reference, evaluate it
-          targetValue = ExpressionEngine.evaluate(targetValue, context);
+          const evaluated = ExpressionEngine.evaluate(targetValue, context);
+          targetValue = evaluated as ConditionValue;
       }
 
       // Helper for Date comparisons
-      const getDate = (val: any) => {
+      const getDate = (val: unknown) => {
           if (val instanceof Date) return val.getTime();
           if (typeof val === 'number') return val;
-          const d = new Date(val);
-          return isNaN(d.getTime()) ? 0 : d.getTime();
+          if (typeof val === 'string') {
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? 0 : d.getTime();
+          }
+          return 0;
       };
 
       // Helper for Safe Numeric comparisons
       // Returns null if values are not strictly comparable as numbers (prevents null -> 0 coercion)
-      const getSafeNumber = (val: any): number | null => {
+      const getSafeNumber = (val: unknown): number | null => {
           if (typeof val === 'number') return val;
           if (val === null || val === undefined || val === '') return null;
           const num = Number(val);
@@ -241,10 +246,10 @@ export class RuleEngine {
           return new RegExp(String(targetValue)).test(String(fieldValue));
         
         case "IN":
-          return Array.isArray(targetValue) && targetValue.includes(fieldValue);
+          return Array.isArray(targetValue) && targetValue.some(item => item === fieldValue);
 
         case "NOT_IN":
-          return Array.isArray(targetValue) && !targetValue.includes(fieldValue);
+          return Array.isArray(targetValue) && !targetValue.some(item => item === fieldValue);
         
         // Date operators
         case "SINCE": // field >= value (Chronologically after or same)
@@ -321,8 +326,8 @@ export class RuleEngine {
     return enactedActions;
   }
 
-  private isActionGroup(action: any): action is ActionGroup {
-    return 'mode' in action && 'actions' in action;
+  private isActionGroup(action: unknown): action is ActionGroup {
+    return typeof action === 'object' && action !== null && 'mode' in action && 'actions' in action;
   }
 
 
