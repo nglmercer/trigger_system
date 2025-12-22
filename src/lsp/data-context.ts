@@ -42,7 +42,7 @@ export class DataContext {
     /**
      * Get value at a path (e.g., "data.username")
      */
-    getValue(path: string): any {
+    getValue(path: string): Record<string, any>|undefined {
         if (!path) {
             return this.data; // Return all data if path is empty
         }
@@ -64,7 +64,7 @@ export class DataContext {
     /**
      * Get all fields at a given path prefix
      */
-    getFields(prefix: string = ''): Array<{ name: string; type: string; value?: any }> {
+    getFields(prefix: string = '') {
         // If no prefix or empty, return all top-level keys (aliases)
         if (!prefix || prefix === '') {
             return Object.keys(this.data).map(key => ({

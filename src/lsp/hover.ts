@@ -482,8 +482,8 @@ function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath:
     }
 
     // If it's a Seq, check items
-    if ('items' in node && Array.isArray((node as any).items)) {
-        for (const item of (node as any).items) {
+    if ('items' in node && Array.isArray((node).items)) {
+        for (const item of (node).items) {
             const itemPath = findPathAtOffset(item as Node, offset, newPath);
             if (itemPath) return itemPath;
         }
