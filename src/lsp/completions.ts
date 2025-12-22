@@ -101,7 +101,7 @@ const PARAM_KEYS: Record<string, CompletionItem[]> = {
         { label: 'level', kind: CompletionItemKind.Property, detail: 'info, warn, error' },
     ],
     'math': [
-        { label: 'expression', kind: CompletionItemKind.Property, detail: 'Formula to evaluate (e.g. "1 + 2 * lastResult")' },
+        { label: 'expression', kind: CompletionItemKind.Property, detail: 'Expression to evaluate (e.g. "1 + 2" or "\'Hi \' + data.user")' },
     ],
     'execute': [
         { label: 'command', kind: CompletionItemKind.Property },

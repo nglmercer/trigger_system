@@ -18,6 +18,7 @@
   "include": [
     "src/lsp/**/*.ts",
     "src/domain/**/*.ts",
+    "src/core/expression-engine.ts",
     "src/types.ts"
   ],
   "exclude": [
@@ -26,7 +27,7 @@
     "tests",
     "src/**/*.test.ts",
     "src/cli/**/*.ts",
-    "src/core/**/*.ts",
+    "src/core/!(expression-engine).ts",
     "src/io/**/*.ts",
     "src/index*.ts",
     "src/node.ts"

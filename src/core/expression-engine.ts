@@ -42,10 +42,6 @@ export class ExpressionEngine {
             return "undefined"; // Explicitly return string "undefined" or ""?
             // User request: "cases without o incorrect data ${data.username} if data is null"
             // Usually keeping it as "undefined" is honest but ugly.
-            // Let's use a standard "N/A" or empty string? 
-            // Or better: check if the user wants default values e.g. ${name || 'Guest'}
-            // evaluateExpression might handle || operator if it falls back to JS evaluation.
-            return "undefined"; 
         }
         return String(result);
       } catch (error) {

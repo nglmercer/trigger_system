@@ -37,6 +37,12 @@ export class ActionRegistry {
         return { message };
     });
 
+    // Math Action (also supports string concatenation)
+    this.register("math", (action, context) => {
+        const expression = String(action.params?.expression || "0");
+        return ExpressionEngine.evaluate(expression, context);
+    });
+
     // Response Action
     this.register("response", (action, context) => {
         const contentTemplate = action.params?.content || action.params?.body || "";

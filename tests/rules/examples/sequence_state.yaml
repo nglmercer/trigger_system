@@ -1,4 +1,5 @@
 # Example demonstrating state passing between actions in SEQUENCE mode
+# @import data from './data.json'
 - id: sequence-counter
   name: Sequence Counter
   description: Demonstrates how lastResult can be used to pass values between actions
