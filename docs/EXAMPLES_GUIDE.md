@@ -38,6 +38,18 @@ This guide walks you through the progressive examples provided in the `examples/
 
 - `SEQUENCE`: Execute actions one after another with optional delays.
 - `EITHER`: Pick exactly one action based on assigned probabilities (Loot boxes / Randomized behaviors).
+- `probability`: Individual action probability (0-1) for randomized execution.
+
+```yaml
+# Example with probability
+- id: random-reward
+  on: USER_ACTION
+  do:
+    type: "log"
+    probability: 0.3  # 30% chance to execute
+    params:
+      message: "You got lucky!"
+```
 
 ## [2. SDK Usage](./../examples/2-sdk-usage.ts)
 
@@ -46,6 +58,32 @@ This guide walks you through the progressive examples provided in the `examples/
 - Uses `RuleBuilder` to create rules without writing YAML.
 - Uses `RuleExporter` to convert rules to YAML strings or save them to disk.
 - Ideal for building dashboard integrations or automated rule generation.
+
+### Engine Selection
+
+The SDK provides two engine options:
+
+```typescript
+// Full-featured engine (recommended)
+import { RuleEngine } from "trigger_system/node";
+
+// Simple engine (for basic use cases)
+import { TriggerEngine } from "trigger_system";
+```
+
+### Built-in Actions in SDK
+
+When using the SDK, you have access to all built-in actions:
+
+```typescript
+const rule = new RuleBuilder()
+  .withId("example")
+  .on("TEST_EVENT")
+  .do("log", { message: "Hello World" })
+  .do("STATE_INCREMENT", { key: "counter", amount: 1 })
+  .do("forward", { url: "https://api.example.com", method: "POST" })
+  .build();
+```
 
 ---
 

@@ -28,11 +28,24 @@ Responsible for reading rules from external sources (Filesystem, API, Database).
 
 ### 2. Rule Engine (`src/core`)
 
-The orchestrator. It filters rules by the incoming `event` type, evaluates their conditions, and executes their actions. It handles:
+The orchestrator. It filters rules by the incoming `event` type, evaluates their conditions, and executes their actions. The system provides a hierarchical architecture:
 
+**TriggerEngine** (Base): Platform-agnostic base engine with:
+- Core rule processing logic
+- Basic action handling
+- Condition evaluation
+- Cooldown management
+- Extensible design
+
+**RuleEngine** (Extension): Extends TriggerEngine with advanced features:
 - Priority sorting
 - Error handling
-- Cooldown management
+- Observability via event emitter
+- State management integration
+- Action registry with built-in actions
+- Enhanced configuration options
+
+This design allows using TriggerEngine for simple, platform-agnostic scenarios, while RuleEngine provides full-featured capabilities for complex applications.
 
 ### 3. Expression Engine (`src/core/expression-engine.ts`)
 
@@ -50,6 +63,25 @@ Enables **Stateful Logic**. Unlike simple "If This Then That" engines, this syst
 
 A plugin system for actions. The core system knows nothing about "Discord Webhooks" or "Minecraft Commands". These are registered by the host application at runtime, keeping the core pure.
 
-### 6. Developer Tooling (`src/lsp`)
+**Built-in Actions**: The registry includes several pre-defined actions:
+- `log` - Logging with template interpolation
+- `response` - HTTP response generation
+- `execute` - Command execution (Node.js only)
+- `forward` - HTTP request forwarding
+- `STATE_SET`, `STATE_INCREMENT` - State management
+- `EMIT_EVENT` - Event emission for chaining
+
+**Integration**: RuleEngine automatically integrates with ActionRegistry, while TriggerEngine can work independently or with custom action handlers.
+
+### 6. State Manager (`src/core/state-manager.ts`)
+
+Singleton that enables **Stateful Logic** with configurable persistence. Unlike simple "If This Then That" engines, this system can remember history (e.g., "Count clicks", "Has user visited before?"). It supports:
+
+- In-memory storage (default)
+- Pluggable persistence adapters (file system, database)
+- Atomic operations (increment, decrement, delete)
+- Full state clearing and bulk operations
+
+### 7. Developer Tooling (`src/lsp`)
 
 To ensure high-quality rule development, the system includes a **Language Server Protocol (LSP)** implementation. This component shares the same validation logic as the core engine (via ArkType), providing a unified validation experience between rule authoring and runtime execution.

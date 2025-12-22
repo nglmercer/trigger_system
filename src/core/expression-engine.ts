@@ -73,7 +73,7 @@ export class ExpressionEngine {
   private static evaluateExpression(
     expression: string,
     context: TriggerContext,
-  ): any {
+  ) {
     // Intentar obtener un valor del contexto SI es una ruta simple (sin espacios, operadores, etc.)
     // Regex: Start with reserved root, followed by dots and words. No spaces.
     if (/^(data|globals|request|computed)(\.[a-zA-Z0-9_]+)+$/.test(expression)) {
@@ -101,9 +101,9 @@ export class ExpressionEngine {
    * Obtiene un valor anidado de un objeto usando notación de puntos
    * Ejemplo: getNestedValue("data.user.profile.name", context)
    */
-  static getNestedValue(path: string, context: TriggerContext): any {
+  static getNestedValue(path: string, context: TriggerContext) {
     const parts = path.split(".");
-    let current: any = context;
+    let current:Record<string,any> = context;
 
     for (const part of parts) {
       if (current === null || current === undefined || !(part in current)) {

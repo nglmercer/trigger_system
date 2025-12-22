@@ -36,33 +36,96 @@ do:
 ## Running the Engine
 
 ```typescript
-import { RuleEngine, TriggerLoader } from "./src"; // Import from your build
+// Option 1: RuleEngine (recommended for Node.js - includes built-in actions)
+import { RuleEngine, TriggerLoader } from "trigger_system/node";
+
+// Option 2: TriggerEngine (platform-agnostic - works in browser too)
+import { TriggerEngine, TriggerLoader } from "trigger_system";
 
 // 1. Load Rules
 const loader = new TriggerLoader("./rules");
 const rules = await loader.loadRules();
 
 // 2. Initialize Engine
-const engine = new RuleEngine({
+const engine = new RuleEngine({ // or TriggerEngine for platform-agnostic
   rules: rules,
   globalSettings: { debugMode: true },
 });
 
-// 3. Register Actions
-engine.registerAction("log", async (ctx, params) => {
-  console.log(`[LOG] ${params.message}`);
+// 3. Register Custom Actions (optional for RuleEngine, required for TriggerEngine)
+engine.registerAction("my_custom_action", async (ctx, params) => {
+  console.log(`[CUSTOM] ${params.message}`);
 });
 
-// 4. Process an Event
+// 4. Process an Event - two ways available:
+
+// Option A: Using processEventSimple (convenience method)
+const results = await engine.processEventSimple("USER_LOGIN", { username: "admin" });
+
+// Option B: Using processEvent with full context
 const context = {
   event: "USER_LOGIN",
   timestamp: Date.now(),
   data: { username: "admin" },
 };
-
 const results = await engine.processEvent(context);
+
 console.log(results);
 ```
+
+### Built-in Actions (RuleEngine only)
+
+The RuleEngine includes many pre-built actions:
+
+```yaml
+# Logging
+do:
+  type: log
+  params:
+    message: "User ${data.username} logged in"
+
+# HTTP Response (for web applications)
+do:
+  type: response
+  params:
+    statusCode: 200
+    body: "Hello ${data.username}"
+
+# Command Execution (Node.js only)
+do:
+  type: execute
+  params:
+    command: "echo 'User logged in'"
+    safe: true
+
+# HTTP Request Forwarding
+do:
+  type: forward
+  params:
+    url: "https://api.example.com/webhook"
+    method: "POST"
+
+# State Management
+do:
+  type: STATE_INCREMENT
+  params:
+    key: "login_count"
+    amount: 1
+```
+
+### Engine Selection Guide
+
+**Use RuleEngine when:**
+- You're in Node.js environment
+- Want built-in actions (log, response, STATE_*, etc.)
+- Need automatic state management
+- Want observability features
+
+**Use TriggerEngine when:**
+- Need browser compatibility
+- Want minimal dependencies
+- Need custom action handling
+- Building lightweight applications
 
 ## Developer Experience (LSP)
 

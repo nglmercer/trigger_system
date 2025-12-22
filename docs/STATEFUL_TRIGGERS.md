@@ -25,6 +25,32 @@ You can modify state using built-in actions:
 | :---------------- | :-------------- | :------------------------------------------------------ |
 | `STATE_SET`       | `key`, `value`  | Sets a variable. Value can be dynamic (`${data.prop}`). |
 | `STATE_INCREMENT` | `key`, `amount` | Increments a number. Default amount is 1.               |
+| `STATE_DECREMENT` | `key`, `amount` | Decrements a number. Default amount is 1.               |
+
+### StateManager API
+
+The StateManager is a singleton with additional methods:
+
+```typescript
+// Get single value
+StateManager.getInstance().get(key: string): any
+
+// Set value with persistence
+StateManager.getInstance().set(key: string, value: any): Promise<void>
+
+// Increment/decrement
+StateManager.getInstance().increment(key: string, amount?: number): Promise<number>
+StateManager.getInstance().decrement(key: string, amount?: number): Promise<number>
+
+// Delete single key
+StateManager.getInstance().delete(key: string): Promise<boolean>
+
+// Clear all state
+StateManager.getInstance().clear(): Promise<void>
+
+// Get all state as object
+StateManager.getInstance().getAll(): Record<string, any>
+```
 
 ## Examples
 
@@ -91,7 +117,25 @@ do:
     params: { key: "last_step", value: "B" } # Reset or advance
 ```
 
+## Persistence Configuration
+
+The StateManager supports pluggable persistence adapters:
+
+```typescript
+import { StateManager, FileSystemPersistence } from "trigger_system/node";
+
+// Use file system persistence instead of in-memory
+const persistence = new FileSystemPersistence("./state.json");
+StateManager.getInstance().setPersistence(persistence);
+await StateManager.getInstance().initialize();
+```
+
+Built-in adapters:
+- `InMemoryPersistence` (default)
+- `FileSystemPersistence` (Node.js only)
+
 ## Future Improvements
 
-- **Persistence**: Currently state is in-memory. Future versions will support database persistence (Redis/SQLite).
-- **TTL**: State expiration (e.g. "3 clicks _within 10 seconds_"). This can be implemented by storing timestamps in state.
+- **Database Persistence**: Redis, SQLite, PostgreSQL adapters
+- **TTL Support**: State expiration (e.g. "3 clicks _within 10 seconds_")
+- **State Namespacing**: Isolate state by rule groups or contexts
