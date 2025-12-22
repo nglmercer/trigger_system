@@ -40,7 +40,11 @@ async function runExample() {
   
   for (let i = 1; i <= 5; i++) {
     console.log(`Click #${i}`);
-    await engine.processEvent("BUTTON_CLICK", {});
+    await engine.processEvent({
+      event:"BUTTON_CLICK", 
+      data: {},
+      timestamp: Date.now()
+    });
   }
 }
 

@@ -31,7 +31,18 @@ import { BrowserPersistence } from 'trigger_system/client';
 const universalEngine = new sdk.RuleEngine();
 
 // Node.js specific SDK (includes file system features)
-const nodeEngine = new nodeSdk.RuleEngine();
+const nodeEngine = new nodeSdk.RuleEngine({rules:[],globalSettings:{}});
+/*
+export interface RuleEngineConfig {
+  rules: TriggerRule[];
+  globalSettings: {
+    debugMode?: boolean;
+    evaluateAll?: boolean; // If false, stop after first successful rule
+    strictActions?: boolean; // If true, throws error on unknown actions instead of warning
+  };
+}
+
+*/
 const filePersistence = new nodeSdk.FilePersistence('./rules');
 
 // Client SDK (browser-optimized)

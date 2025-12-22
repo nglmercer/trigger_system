@@ -30,9 +30,13 @@ async function runExample() {
   console.log("--- Running Example 1: Basic Rule ---");
   
   // Trigger the event
-  await engine.processEvent("USER_LOGIN", {
-    username: "john_doe",
-    isNew: true
+  await engine.processEvent({
+    event: "USER_LOGIN",
+    timestamp: Date.now(),
+    data: {
+      username: "john_doe",
+      isNew: true
+    }
   });
 }
 

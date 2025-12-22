@@ -38,12 +38,38 @@ async function runExample() {
   console.log("\n--- Running Example 1.4: Action Groups ---");
   
   console.log("Triggering onboarding sequence (SEQUENCE mode)...");
-  await engine.processEvent("USER_VERIFIED", {});
+  await engine.processEvent({
+    event:"USER_VERIFIED", 
+    data: {},
+    timestamp: Date.now()
+  });
 
   console.log("\nOpening 3 loot boxes (EITHER mode)...");
-  await engine.processEvent("LOOT_BOX_OPEN", {});
-  await engine.processEvent("LOOT_BOX_OPEN", {});
-  await engine.processEvent("LOOT_BOX_OPEN", {});
+  await engine.processEvent({
+    event:"LOOT_BOX_OPEN",data: {},timestamp: Date.now()
+  });
+  await engine.processEvent({
+    event:"LOOT_BOX_OPEN",data: {},timestamp: Date.now()
+  });
+  await engine.processEvent({
+    event:"LOOT_BOX_OPEN",data: {},timestamp: Date.now()
+  });
+}
+/*
+export interface TriggerContext {
+  event: string;
+  // Valid timestamps
+  timestamp: number;
+  // The data payload of the event
+  data: Record<string, any>;
+  id?: string;
+  // Global variables (env vars, server state)
+  globals?: Record<string, any>;
+  // Dynamic State (counters, flags, goals)
+  state?: Record<string, any>;
+  // Helper for computing derived values
+  helpers?: Record<string, Function>;
 }
 
+*/
 runExample().catch(console.error);

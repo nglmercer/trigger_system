@@ -29,10 +29,18 @@ async function runExample() {
   console.log("\n--- Running Example 1.1: Multiple Conditions ---");
   
   console.log("Processing qualifying purchase...");
-  await engine.processEvent("PURCHASE", { amount: 150, category: "electronics" });
+  await engine.processEvent({
+    event: "PURCHASE", 
+    timestamp: Date.now(),
+    data: { amount: 150, category: "electronics" }
+  });
 
   console.log("Processing non-qualifying purchase (wrong category)...");
-  await engine.processEvent("PURCHASE", { amount: 150, category: "books" });
+  await engine.processEvent({
+    event: "PURCHASE", 
+    timestamp: Date.now(),
+    data: { amount: 150, category: "books" }
+  });
 }
 
 runExample().catch(console.error);

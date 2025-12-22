@@ -34,10 +34,16 @@ async function runExample() {
   console.log("\n--- Running Example 1.2: Advanced Operators ---");
   
   console.log("Checking IN operator (US)...");
-  await engine.processEvent("PAGE_VIEW", { country: "US" });
+  await engine.processEvent({
+    event:"PAGE_VIEW",data: { country: "US" },timestamp: Date.now()
+  });
 
   console.log("Checking MATCHES operator (valid gmail)...");
-  await engine.processEvent("SIGNUP", { email: "test@gmail.com" });
+  await engine.processEvent({
+    event:"SIGNUP", 
+    data: { email: "test@gmail.com" },
+    timestamp: Date.now()
+  });
 }
 
 runExample().catch(console.error);
