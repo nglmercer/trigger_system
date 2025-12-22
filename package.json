@@ -15,16 +15,16 @@
     "automation",
     "workflow"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "memelser <nglmercer@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/trigger_system.git"
+    "url": "https://github.com/nglmercer/trigger_system.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/trigger_system/issues"
+    "url": "https://github.com/nglmercer/trigger_system/issues"
   },
-  "homepage": "https://github.com/your-username/trigger_system#readme",
+  "homepage": "https://github.com/nglmercer/trigger_system#readme",
   "exports": {
     ".": {
       "node": {
