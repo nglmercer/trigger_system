@@ -1,0 +1,17 @@
+# Example demonstrating state passing between actions in SEQUENCE mode
+- id: sequence-counter
+  name: Sequence Counter
+  description: Demonstrates how lastResult can be used to pass values between actions
+  on: test.sequence
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: math
+        params:
+          expression: "10 + 5"
+      - type: math
+        params:
+          expression: "${lastResult} * 2"
+      - type: print
+        params:
+          message: "The final result is ${lastResult}" # Should be 30

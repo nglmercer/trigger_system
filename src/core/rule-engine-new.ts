@@ -140,23 +140,33 @@ export class RuleEngine extends TriggerEngine {
     }
 
     if (mode === 'EITHER' && actionList.length > 0) {
-      const randomIndex = Math.floor(Math.random() * actionList.length);
-      const selectedAction = actionList[randomIndex];
-      if (selectedAction) {
-        actionList = [selectedAction];
+      const totalWeight = actionList.reduce((sum, a) => sum + (a.probability || 1), 0);
+      let random = Math.random() * totalWeight;
+      
+      let selected: Action | undefined;
+      for (const action of actionList) {
+        const weight = action.probability || 1;
+        random -= weight;
+        if (random <= 0) {
+          selected = action;
+          break;
+        }
+      }
+      
+      if (selected) {
+        actionList = [selected];
       }
     }
 
-    // Execute
-    if (mode === 'SEQUENCE') {
-      for (const action of actionList) {
-        const result = await this.executeSingleActionWithRegistry(action, context);
-        enactedActions.push(result);
-      }
-    } else {
-      for (const action of actionList) {
-        const result = await this.executeSingleActionWithRegistry(action, context);
-        enactedActions.push(result);
+    // Execute actions
+    let lastResult = context.lastResult;
+    for (const action of actionList) {
+      const actionContext = { ...context, lastResult };
+      const result = await this.executeSingleActionWithRegistry(action, actionContext);
+      enactedActions.push(result);
+      
+      if (mode === 'SEQUENCE') {
+        lastResult = result.result;
       }
     }
 
@@ -175,8 +185,16 @@ export class RuleEngine extends TriggerEngine {
     context: TriggerContext
   ): Promise<TriggerResult['executedActions'][0]> {
     
+    // Interpolate probability if it's a string expression
+    let probability = action.probability;
+    if (typeof (probability as any) === 'string') {
+      const { ExpressionEngine } = require("./expression-engine");
+      const val = ExpressionEngine.evaluate(probability as any, context);
+      probability = typeof val === 'number' ? val : Number(val);
+    }
+
     // Check probability
-    if (action.probability !== undefined && Math.random() > action.probability) {
+    if (probability !== undefined && Math.random() > probability) {
        return {
          type: action.type,
          timestamp: Date.now(),
@@ -184,17 +202,28 @@ export class RuleEngine extends TriggerEngine {
        };
     }
 
-    // Check delay
-    if (action.delay && action.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, action.delay));
+    // Interpolate delay if it's a string expression
+    let delay = action.delay;
+    if (typeof (delay as any) === 'string') {
+      const { ExpressionEngine } = require("./expression-engine");
+      const val = ExpressionEngine.evaluate(delay as any, context);
+      delay = typeof val === 'number' ? val : Number(val);
     }
+
+    // Check delay
+    if (delay && delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    // Interpolate parameters
+    const params = this.interpolateParams(action.params || {}, context);
 
     try {
       const handler = this.actionRegistry.get(action.type);
       let result;
 
       if (handler) {
-        result = await handler(action, context);
+        result = await handler({ ...action, params }, context);
       } else {
         const msg = `Generic or unknown action type: ${action.type}`;
         if (this.config?.globalSettings?.strictActions) {
@@ -205,7 +234,7 @@ export class RuleEngine extends TriggerEngine {
       }
 
       // Emitir evento de éxito
-      triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action, context, result });
+      triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action: { ...action, params }, context, result });
 
       return {
         type: action.type,

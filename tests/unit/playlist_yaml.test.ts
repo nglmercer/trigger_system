@@ -100,8 +100,8 @@ describe("YAML Playlist Control", () => {
 
         // 1. Register Actions
         registry.register("PLAYLIST_LOAD", async (action, ctx) => {
-            const tracks = action.params?.tracks || [];
-            await mockPlaylist.load(tracks);
+            const tracks = Array.isArray(action.params?.tracks) ? action.params?.tracks : [];
+            await mockPlaylist.load(tracks as string[]);
             return { loaded: tracks.length };
         });
 
@@ -112,7 +112,7 @@ describe("YAML Playlist Control", () => {
 
         registry.register("PLAYLIST_LOOP", async (action) => {
            const enable = action.params?.enable ?? true;
-           await mockPlaylist.setLoop(enable);
+           await mockPlaylist.setLoop(enable as boolean);
            return { loop: enable };
        });
 
@@ -165,7 +165,8 @@ describe("YAML Playlist Control", () => {
         expect(reactionSuccess).toBe(true);
 
         // Verify state sync
-        expect(stateManager.get("playlist").index).toBeGreaterThanOrEqual(1);
+        //@ts-expect-error
+        expect(stateManager.get("playlist")?.index ).toBeGreaterThanOrEqual(1);
     });
 
     test("YAML: Should handle loop sequence and interpolation", async () => {
@@ -186,6 +187,7 @@ describe("YAML Playlist Control", () => {
 
         // It should be playing again (index 0 or 1)
         expect(mockPlaylist.isPlaying).toBe(true);
-        expect(stateManager.get("playlist").index).toBeDefined();
+        //@ts-expect-error
+        expect(stateManager.get("playlist")?.index).toBeDefined();
     });
 });

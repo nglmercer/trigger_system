@@ -308,18 +308,14 @@ export class RuleEngine {
     }
 
     // Execute
-    if (mode === 'SEQUENCE') {
-       for (const action of actionList) {
-         const result = await this.executeSingleAction(action, context);
-         enactedActions.push(result);
-       }
-    } else {
-      // ALL (Parallel-ish)
-      // Note: We await them sequentially here to simplify, but logically they are "all". 
-      // If true parallel is needed, Promise.all could be used, but side-effects might clash.
-      for (const action of actionList) {
-         const result = await this.executeSingleAction(action, context);
-         enactedActions.push(result);
+    let lastResult = context.lastResult;
+    for (const action of actionList) {
+      const actionContext = { ...context, lastResult };
+      const result = await this.executeSingleAction(action, actionContext);
+      enactedActions.push(result);
+      
+      if (mode === 'SEQUENCE') {
+        lastResult = result.result;
       }
     }
 
@@ -336,8 +332,15 @@ export class RuleEngine {
     context: TriggerContext,
   ): Promise<TriggerResult['executedActions'][0]> {
     
+    // Interpolate probability if it's a string expression
+    let probability = action.probability;
+    if (typeof (probability as any) === 'string') {
+      const val = ExpressionEngine.evaluate(probability as any, context);
+      probability = typeof val === 'number' ? val : Number(val);
+    }
+
     // Check probability
-    if (action.probability !== undefined && Math.random() > action.probability) {
+    if (probability !== undefined && Math.random() > probability) {
        return {
          type: action.type,
          timestamp: Date.now(),
@@ -345,9 +348,16 @@ export class RuleEngine {
        };
     }
 
+    // Interpolate delay if it's a string expression
+    let delay = action.delay;
+    if (typeof (delay as any) === 'string') {
+      const val = ExpressionEngine.evaluate(delay as any, context);
+      delay = typeof val === 'number' ? val : Number(val);
+    }
+
     // Check delay
-    if (action.delay && action.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, action.delay));
+    if (delay && delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
 
     try {

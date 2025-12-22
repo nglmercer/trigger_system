@@ -292,9 +292,15 @@ export class TriggerEngine {
     }
 
     // Execute actions
+    let lastResult = context.lastResult;
     for (const action of actionsToExecute) {
-      const result = await this.executeSingleAction(action, context);
+      const actionContext = { ...context, lastResult };
+      const result = await this.executeSingleAction(action, actionContext);
       executionLogs.push(result);
+      
+      if (mode === 'SEQUENCE') {
+        lastResult = result.result;
+      }
     }
 
     return executionLogs;
@@ -308,8 +314,15 @@ export class TriggerEngine {
     context: TriggerContext
   ): Promise<ExecutedAction> {
     
+    // Interpolate probability if it's a string expression
+    let probability = action.probability;
+    if (typeof (probability as any) === 'string') {
+      const val = ExpressionEngine.evaluate(probability as any, context);
+      probability = typeof val === 'number' ? val : Number(val);
+    }
+
     // Check probability
-    if (action.probability !== undefined && Math.random() > action.probability) {
+    if (probability !== undefined && Math.random() > probability) {
        return {
          type: action.type,
          timestamp: Date.now(),
@@ -317,10 +330,20 @@ export class TriggerEngine {
        };
     }
 
-    // Check delay
-    if (action.delay && action.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, action.delay));
+    // Interpolate delay if it's a string expression
+    let delay = action.delay;
+    if (typeof (delay as any) === 'string') {
+      const val = ExpressionEngine.evaluate(delay as any, context);
+      delay = typeof val === 'number' ? val : Number(val);
     }
+
+    // Check delay
+    if (delay && delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    // Interpolate parameters
+    const params = this.interpolateParams(action.params || {}, context);
 
     try {
       // Try to get handler from registry first (if available)
@@ -331,7 +354,7 @@ export class TriggerEngine {
         const { ActionRegistry } = await import('./action-registry');
         const registryHandler = ActionRegistry.getInstance().get(action.type);
         if (registryHandler) {
-          handler = (params: ActionParams) => registryHandler({ ...action, params }, context);
+          handler = (p: ActionParams) => registryHandler({ ...action, params: p }, context);
         }
       } catch {
         // ActionRegistry not available, use local handlers
@@ -340,7 +363,7 @@ export class TriggerEngine {
 
       let result: unknown;
       if (handler) {
-        result = await handler(action.params || {}, context);
+        result = await handler(params, context);
       } else {
         // No handler registered
         const msg = `No handler registered for action type: ${action.type}`;

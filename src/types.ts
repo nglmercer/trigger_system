@@ -89,6 +89,7 @@ export interface TriggerContext {
   globals?: Record<string, unknown>;
   state?: Record<string, unknown>;
   helpers?: Record<string, (...args: unknown[]) => unknown>;
+  lastResult?: unknown;
 }
 
 export interface ExecutedAction {
