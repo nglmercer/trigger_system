@@ -1,10 +1,10 @@
 {
   "name": "trigger_system",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A powerful rule engine and trigger system for JavaScript/TypeScript applications",
   "main": "dist/node/index.js",
   "browser": "dist/browser/index.browser.js",
-  "types": "dist/node/index.d.ts",
+  "types": "dist/index.d.ts",
   "keywords": [
     "rule-engine",
     "trigger-system",
@@ -30,29 +30,29 @@
       "node": {
         "import": "./dist/node/index.js",
         "require": "./dist/node/index.js",
-        "types": "./dist/node/index.d.ts"
+        "types": "./dist/index.d.ts"
       },
       "browser": {
         "import": "./dist/browser/index.browser.js",
         "require": "./dist/browser/index.browser.js",
-        "types": "./dist/browser/index.browser.d.ts"
+        "types": "./dist/index.browser.d.ts"
       },
       "default": "./dist/node/index.js"
     },
     "./node": {
       "import": "./dist/node/node.js",
       "require": "./dist/node/node.js",
-      "types": "./dist/node/node.d.ts"
+      "types": "./dist/node.d.ts"
     },
     "./client": {
       "import": "./dist/browser/index.browser.js",
       "require": "./dist/browser/index.browser.js",
-      "types": "./dist/browser/index.browser.d.ts"
+      "types": "./dist/index.browser.d.ts"
     },
     "./browser": {
       "import": "./dist/browser/index.browser.js",
       "require": "./dist/browser/index.browser.js",
-      "types": "./dist/browser/index.browser.d.ts"
+      "types": "./dist/index.browser.d.ts"
     }
   },
   "files": [
