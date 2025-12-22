@@ -96,7 +96,8 @@ export class DependencyAnalyzer {
                     // If it's "${...}", we can't be sure, but we can warn.
                     // For static analysis, we assume strict matches if logic permits.
                     // But here we just take the string.
-                    events.push(action.params.event);
+                    const eventName = String(action.params.event);
+                    events.push(eventName);
                 }
             }
         };

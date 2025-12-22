@@ -32,7 +32,7 @@ export class ActionRegistry {
     // Log Action
     this.register("log", (action, context) => {
         const messageTemplate = action.params?.message || action.params?.content || "Log Trigger";
-        const message = ExpressionEngine.interpolate(messageTemplate, context);
+        const message = typeof messageTemplate === 'string' ? ExpressionEngine.interpolate(messageTemplate, context) : String(messageTemplate);
         console.log(`[TriggerLog] ${message}`);
         return { message };
     });
@@ -40,7 +40,7 @@ export class ActionRegistry {
     // Response Action
     this.register("response", (action, context) => {
         const contentTemplate = action.params?.content || action.params?.body || "";
-        const content = ExpressionEngine.interpolate(contentTemplate, context);
+        const content = typeof contentTemplate === 'string' ? ExpressionEngine.interpolate(contentTemplate, context) : String(contentTemplate);
         return {
             statusCode: action.params?.statusCode || 200,
             headers: action.params?.headers || { "Content-Type": "application/json" },
@@ -51,7 +51,7 @@ export class ActionRegistry {
     // Execute Action
     this.register("execute", async (action, context) => {
         const commandTemplate = action.params?.command || action.params?.content || "";
-        const command = ExpressionEngine.interpolate(commandTemplate, context);
+        const command = typeof commandTemplate === 'string' ? ExpressionEngine.interpolate(commandTemplate, context) : String(commandTemplate);
 
         if (!action.params?.safe) {
             console.warn(`[Trigger] Ejecutando comando no seguro: ${command}`);
@@ -80,15 +80,15 @@ export class ActionRegistry {
     // Forward Action
     this.register("forward", async (action, context) => {
         const urlTemplate = action.params?.url || "";
-        const url = ExpressionEngine.interpolate(urlTemplate, context);
-        const method = action.params?.method || "POST";
+        const url = typeof urlTemplate === 'string' ? ExpressionEngine.interpolate(urlTemplate, context) : String(urlTemplate);
+        const method = String(action.params?.method || "POST");
 
         try {
             const response = await fetch(url, {
                 method,
                 headers: {
                     "Content-Type": "application/json",
-                    ...action.params?.headers,
+                    ...(typeof action.params?.headers === 'object' && action.params.headers !== null && !Array.isArray(action.params.headers) ? action.params.headers : {}),
                 },
                 body: JSON.stringify(context.data),
             });
@@ -112,7 +112,7 @@ export class ActionRegistry {
     // --- State Actions ---
 
     this.register("STATE_SET", async (action, context) => {
-        const key = action.params?.key;
+        const key = String(action.params?.key || "");
         const value = action.params?.value;
         if (!key) return { error: "Missing key for STATE_SET" };
         
@@ -127,7 +127,7 @@ export class ActionRegistry {
     });
 
     this.register("STATE_INCREMENT", async (action, context) => {
-        const key = action.params?.key;
+        const key = String(action.params?.key || "");
         const amount = Number(action.params?.amount) || 1;
         if (!key) return { error: "Missing key for STATE_INCREMENT" };
 
