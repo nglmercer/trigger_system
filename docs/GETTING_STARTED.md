@@ -55,7 +55,7 @@ const engine = new RuleEngine({
 });
 
 // 3. Process an event
-const results = await engine.processEvent("USER_REGISTERED", {
+const results = await engine.processEventSimple("USER_REGISTERED", {
   userId: "123",
   plan: "premium",
   email: "user@example.com",
@@ -88,7 +88,7 @@ const userData: UserRegisteredData = {
   email: "user@example.com",
 };
 
-await engine.processEvent("USER_REGISTERED", userData);
+await engine.processEventSimple("USER_REGISTERED", userData);
 ```
 
 ## Rule Structure

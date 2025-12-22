@@ -42,7 +42,7 @@ export class DataContext {
     /**
      * Get value at a path (e.g., "data.username")
      */
-    getValue(path: string): Record<string, any>|undefined {
+    getValue(path: string) {
         if (!path) {
             return this.data; // Return all data if path is empty
         }
@@ -97,7 +97,7 @@ export class DataContext {
     /**
      * Get type of a value
      */
-    private getTypeOf(value: any): string {
+    private getTypeOf(value: any) {
         if (value === null) return 'null';
         if (Array.isArray(value)) return 'array';
         return typeof value;
@@ -124,7 +124,7 @@ export class DataContext {
     /**
      * Get formatted value for display
      */
-    getFormattedValue(value: any): string {
+    getFormattedValue(value: any) {
         if (value === null) return 'null';
         if (value === undefined) return 'undefined';
         if (typeof value === 'string') return `"${value}"`;

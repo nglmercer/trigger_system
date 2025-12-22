@@ -6,7 +6,7 @@ This document describes the internal architecture of the Agnostic Trigger System
 
 The Agnostic Trigger System is built with a modular architecture that separates concerns into distinct layers:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Application Layer                        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
@@ -65,7 +65,8 @@ The central orchestrator that coordinates all other components.
 
 **Key Methods:**
 
-- `processEvent(event, data)` - Main entry point
+- `processEvent(event, data)` - Main entry point (with globals)
+- `processEventSimple(event, data)` - Main entry point (no globals)
 - `evaluateContext(context)` - Core evaluation loop
 - `updateRules(rules)` - Hot swap rules
 
@@ -122,7 +123,7 @@ Global Event Emitter for observability. Emits events like `rule:match`, `action:
 
 ### Event Processing Flow
 
-```
+```text
 Event Fired (processEvent)
     │
     ▼

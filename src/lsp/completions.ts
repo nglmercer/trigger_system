@@ -69,6 +69,7 @@ const OPERATORS: CompletionItem[] = [
 
 const ACTION_TYPES: CompletionItem[] = [
     { label: 'log', kind: CompletionItemKind.EnumMember, detail: 'Print message to console' },
+    { label: 'math', kind: CompletionItemKind.EnumMember, detail: 'Evaluate mathematical expression' },
     { label: 'execute', kind: CompletionItemKind.EnumMember, detail: 'Run local command' },
     { label: 'forward', kind: CompletionItemKind.EnumMember, detail: 'Forward event to URL' },
     { label: 'response', kind: CompletionItemKind.EnumMember, detail: 'Return HTTP response' },
@@ -87,8 +88,8 @@ const CONDITION_KEYS: CompletionItem[] = [
 const ACTION_KEYS: CompletionItem[] = [
     { label: 'type', kind: CompletionItemKind.Field, detail: 'The type of action to perform' },
     { label: 'params', kind: CompletionItemKind.Variable, detail: 'Configuration for the action' },
-    { label: 'delay', kind: CompletionItemKind.Property, detail: 'Delay in ms (integer)' },
-    { label: 'probability', kind: CompletionItemKind.Property, detail: 'Execution chance (0-1)' },
+    { label: 'delay', kind: CompletionItemKind.Property, detail: 'Delay in ms (integer or expression)' },
+    { label: 'probability', kind: CompletionItemKind.Property, detail: 'Execution chance (0-1 or expression)' },
     { label: 'mode', kind: CompletionItemKind.Property, detail: 'Grouping mode (ALL, SEQUENCE, EITHER)' },
     { label: 'actions', kind: CompletionItemKind.Property, detail: 'List of sub-actions' }
 ];
@@ -98,6 +99,9 @@ const PARAM_KEYS: Record<string, CompletionItem[]> = {
         { label: 'message', kind: CompletionItemKind.Property },
         { label: 'content', kind: CompletionItemKind.Property },
         { label: 'level', kind: CompletionItemKind.Property, detail: 'info, warn, error' },
+    ],
+    'math': [
+        { label: 'expression', kind: CompletionItemKind.Property, detail: 'Formula to evaluate (e.g. "1 + 2 * lastResult")' },
     ],
     'execute': [
         { label: 'command', kind: CompletionItemKind.Property },
@@ -325,19 +329,31 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
     
     // If we're at root level, suggest all available top-level variables (aliases)
     if (!cleanPrefix || cleanPrefix === '') {
-        const suggestions = Object.keys(allData).map(key => {
-            const value = allData[key];
-            const valueType = Array.isArray(value) ? 'array' : typeof value;
-            const sampleValue = valueType === 'object' ? JSON.stringify(value).substring(0, 50) + '...' : String(value);
-            
-            return {
-                label: key,
-                kind: CompletionItemKind.Variable,
-                detail: `${valueType} (imported data)`,
-                documentation: `Sample value: ${sampleValue}`,
-                insertText: key
-            };
-        });
+        const suggestions: CompletionItem[] = [
+            { label: 'lastResult', kind: CompletionItemKind.Variable, detail: 'Result of the previous action (SEQUENCE mode)' },
+            { label: 'state', kind: CompletionItemKind.Variable, detail: 'Global engine state' },
+            { label: 'globals', kind: CompletionItemKind.Variable, detail: 'Global variables' },
+            { label: 'data', kind: CompletionItemKind.Variable, detail: 'Event data' },
+            { label: 'helpers', kind: CompletionItemKind.Variable, detail: 'Context helpers/functions' },
+            { label: 'Math', kind: CompletionItemKind.Variable, detail: 'Mathematical functions (round, floor, etc.)' }
+        ];
+
+        // Add imported data keys
+        if (allData && typeof allData === 'object') {
+            Object.keys(allData).forEach(key => {
+                const value = allData[key];
+                const valueType = Array.isArray(value) ? 'array' : typeof value;
+                const sampleValue = valueType === 'object' ? JSON.stringify(value).substring(0, 50) + '...' : String(value);
+                
+                suggestions.push({
+                    label: key,
+                    kind: CompletionItemKind.Variable,
+                    detail: `${valueType} (imported data)`,
+                    documentation: `Sample value: ${sampleValue}`,
+                    insertText: key
+                });
+            });
+        }
         console.log(`[LSP] Root level suggestions:`, suggestions.map(s => s.label));
         return suggestions;
     }

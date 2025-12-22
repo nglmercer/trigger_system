@@ -60,8 +60,8 @@ const types = scope({
     Action: {
         type: "string > 0", // Must define a type
         "params?": "object", // Must be an object if present
-        "delay?": "number.integer >= 0", // Integer check for milliseconds
-        "probability?": "0 <= number <= 1"
+        "delay?": "number.integer >= 0 | string", // Integer or dynamic expression
+        "probability?": "0 <= number <= 1 | string" // Number 0-1 or dynamic expression
     },
 
     ActionGroup: {

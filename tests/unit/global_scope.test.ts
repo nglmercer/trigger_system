@@ -47,7 +47,7 @@ describe("Global Scope & StateManager Access", () => {
         // Capture logs to verify output
         const logs: string[] = [];
         engine.registerAction("LOG", async (params) => { 
-            logs.push(params.msg);
+            logs.push(String(params.msg));
             return params.msg; 
         });
 

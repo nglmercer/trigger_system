@@ -29,7 +29,7 @@ const rules = await TriggerLoader.loadRulesFromDir("./rules");
 const engine = new RuleEngine({ rules, globalSettings: {} });
 
 // Fire the event
-await engine.processEvent("USER_REGISTERED", {
+await engine.processEventSimple("USER_REGISTERED", {
   userId: "user123",
   email: "user@example.com",
 });

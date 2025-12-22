@@ -76,4 +76,64 @@ describe("Sequence State Passing", () => {
         const elapsed = Date.now() - start;
         expect(elapsed).toBeGreaterThanOrEqual(40); 
     });
+
+    test("Should work with global functions and Math", async () => {
+        const results = await engine.processEventSimple("test.sequence", {}, {});
+        // After 2nd action, lastResult is 30
+        
+        const ruleWithFunctions: TriggerRule = {
+            id: "functions-test",
+            on: "test.functions",
+            do: {
+                mode: "SEQUENCE",
+                actions: [
+                    { type: "math", params: { expression: "10.5" } },
+                    { type: "print", params: { message: "Rounded: ${Math.round(lastResult)}" } }
+                ]
+            }
+        };
+
+        const engine2 = new RuleEngine({
+            rules: [ruleWithFunctions],
+            globalSettings: { evaluateAll: true }
+        });
+
+        const results2 = await engine2.processEventSimple("test.functions", {}, {});
+        const actions = (results2[0] && results2[0].executedActions) || [];
+        
+        expect(actions[1]?.result).toBe("Rounded: 11");
+    });
+
+    test("Should work with context helpers", async () => {
+        const ruleWithHelpers: TriggerRule = {
+            id: "helpers-test",
+            on: "test.helpers",
+            do: {
+                mode: "SEQUENCE",
+                actions: [
+                    { type: "math", params: { expression: "20" } },
+                    { type: "print", params: { message: "Calculated: ${helpers.double(lastResult)}" } }
+                ]
+            }
+        };
+
+        const engineWithHelpers = new RuleEngine({
+            rules: [ruleWithHelpers],
+            globalSettings: { evaluateAll: true }
+        });
+
+        const context = {
+            event: "test.helpers",
+            timestamp: Date.now(),
+            data: {},
+            helpers: {
+                double: (n: any) => n * 2
+            }
+        };
+
+        const results = await engineWithHelpers.processEvent(context);
+        const actions = (results[0] && results[0].executedActions) || [];
+        
+        expect(actions[1]?.result).toBe("Calculated: 40");
+    });
 });

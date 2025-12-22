@@ -238,7 +238,7 @@ app.post("/api/events", async (req, res) => {
   const { event, data } = req.body;
 
   // Fire!
-  const results = await engine.processEvent(event, data);
+  const results = await engine.processEventSimple(event, data);
 
   res.json({ status: "processed", results });
 });

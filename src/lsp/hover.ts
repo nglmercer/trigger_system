@@ -209,7 +209,7 @@ const ACTION_FIELD_DOCS: Record<string, { description: string; values?: string }
     },
     probability: {
         description: 'Probability of executing this action (0.0 to 1.0)',
-        values: 'Number between 0 and 1 (e.g., 0.5 for 50% chance)'
+        values: 'Number between 0 and 1 or expression (e.g. "${lastResult > 0 ? 1 : 0}")'
     },
     mode: {
         description: 'Execution mode for action groups',
@@ -218,6 +218,25 @@ const ACTION_FIELD_DOCS: Record<string, { description: string; values?: string }
     actions: {
         description: 'Array of sub-actions for action groups',
         values: 'Array of action objects'
+    }
+};
+
+const ACTION_TYPE_DOCS: Record<string, { description: string; params: string[] }> = {
+    log: {
+        description: 'Prints a message to the engine console for debugging',
+        params: ['message: string (supports interpolation)']
+    },
+    math: {
+        description: 'Calculates a mathematical expression and stores the result in lastResult',
+        params: ['expression: string (formula e.g. "1 + 2")']
+    },
+    execute: {
+        description: 'Runs a shell command on the host (Node.js only)',
+        params: ['command: string', 'safe: boolean']
+    },
+    STATE_SET: {
+        description: 'Updates a value in the global state manager',
+        params: ['key: string', 'value: any']
     }
 };
 
@@ -292,6 +311,23 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
                 };
                 return { contents: markdown };
             }
+
+            // Check if this is an action type value
+            if (ACTION_TYPE_DOCS[value]) {
+                const actionDoc = ACTION_TYPE_DOCS[value];
+                const markdown: MarkupContent = {
+                    kind: 'markdown',
+                    value: [
+                        `**Action: \`${value}\`**`,
+                        '',
+                        actionDoc.description,
+                        '',
+                        '**Parameters:**',
+                        ...actionDoc.params.map(p => `- ${p}`)
+                    ].join('\n')
+                };
+                return { contents: markdown };
+            }
         }
     }
 
@@ -314,10 +350,37 @@ function checkTemplateVariableHover(line: string, character: number): Hover | nu
             const variablePath = match[1]!.trim();
             
             // Try to get value from data context
-            const value = globalDataContext.getValue(variablePath);
+            let value: any = globalDataContext.getValue(variablePath);
+            let description = '';
             
+            // Special handling for built-in variables
+            if (value === undefined) {
+                if (variablePath === 'lastResult') {
+                    description = 'The result returned by the previous action in a sequence.';
+                    value = 'Any';
+                } else if (variablePath === 'data') {
+                    description = 'The payload data for the current event.';
+                    value = '{ ... }';
+                } else if (variablePath === 'state') {
+                    description = 'The current state of the rule engine.';
+                    value = '{ ... }';
+                } else if (variablePath === 'globals') {
+                    description = 'Global variables available across all rules.';
+                    value = '{ ... }';
+                } else if (variablePath === 'helpers') {
+                    description = 'Utility functions available in the context.';
+                    value = '{ ... }';
+                } else if (variablePath === 'Math') {
+                    description = 'Standard JavaScript Math functions.';
+                    value = 'Math Namespace';
+                }
+            }
+
             if (value !== undefined) {
-                const formattedValue = globalDataContext.getFormattedValue(value);
+                const formattedValue = typeof value === 'string' && (value === 'Any' || value === '{ ... }' || value === 'Math Namespace') 
+                    ? `*${value}*` 
+                    : globalDataContext.getFormattedValue(value);
+                    
                 const valueType = typeof value === 'object' && value !== null
                     ? (Array.isArray(value) ? 'array' : 'object')
                     : typeof value;
@@ -327,13 +390,15 @@ function checkTemplateVariableHover(line: string, character: number): Hover | nu
                     value: [
                         `**Template Variable: \`\${${variablePath}}\`**`,
                         '',
+                        description ? `${description}` : '',
+                        '',
                         `**Type:** \`${valueType}\``,
                         '',
-                        '**Test Value:**',
+                        '**Current/Test Value:**',
                         '```json',
                         formattedValue,
                         '```'
-                    ].join('\n')
+                    ].filter(p => p !== '').join('\n')
                 };
                 
                 return { contents: markdown };
