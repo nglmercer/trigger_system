@@ -53,17 +53,25 @@ connection.onInitialize((params: InitializeParams) => {
   const result: InitializeResult = {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
-      // Tell the client that this server supports code completion.
+      // Enhanced completion provider with better trigger characters
       completionProvider: {
         resolveProvider: true,
-        triggerCharacters: [':', ' ', '-', '$', '{', '.', '[', '@']
+        triggerCharacters: [':', ' ', '-', '$', '{', '.', '[', '@', '#', '"', "'"]
       },
       hoverProvider: true,
       definitionProvider: true, // Enable Go to Definition
       semanticTokensProvider: {
         legend: semanticTokensLegend,
-        full: true
-      }
+        full: true,
+        range: true // Enable range semantic tokens
+      },
+      // Add document formatting support
+      documentFormattingProvider: false, // Could be enabled later
+      documentRangeFormattingProvider: false, // Could be enabled later
+      // Add code action support for quick fixes
+      codeActionProvider: false, // Could be enabled later
+      // Add rename support
+      renameProvider: false // Could be enabled later
     }
   };
   

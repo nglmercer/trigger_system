@@ -6,7 +6,7 @@ import type { SemanticTokensLegend } from 'vscode-languageserver/node';
 import { parseDocument, isMap, isSeq, isScalar, LineCounter } from 'yaml';
 import type { Node, Pair, Scalar } from 'yaml';
 
-// Define the legend
+// Define the legend with enhanced directive coloring
 export const semanticTokensLegend: SemanticTokensLegend = {
     tokenTypes: [
         'property', // 0
@@ -19,13 +19,21 @@ export const semanticTokensLegend: SemanticTokensLegend = {
         'parameter', // 7
         'comment',   // 8
         'type',      // 9 - for directive types
-        'macro',     // 10 - for import directives
-        'namespace', // 11 - for lint control directives
-        'enumMember' // 12 - for rule control directives
+        'macro',     // 10 - for import directives (blue/cyan)
+        'namespace', // 11 - for lint control directives (green)
+        'enumMember', // 12 - for rule control directives (orange)
+        'class',      // 13 - for disable-lint (red)
+        'struct',     // 14 - for enable-lint (green)
+        'event',      // 15 - for disable-next-line (yellow)
+        'interface',  // 16 - for disable-line (purple)
+        'decorator'   // 17 - for @ symbol (gold)
     ],
     tokenModifiers: [
         'declaration',
-        'readonly'
+        'readonly',
+        'deprecated',
+        'modification',
+        'documentation'
     ]
 };
 
@@ -42,7 +50,12 @@ const TOKEN_TYPES = {
     type: 9,
     macro: 10,
     namespace: 11,
-    enumMember: 12
+    enumMember: 12,
+    class: 13,
+    struct: 14,
+    event: 15,
+    interface: 16,
+    decorator: 17
 };
 
 export function getSemanticTokens(text: string): number[] {
@@ -91,27 +104,42 @@ function processCommentsForDirectives(text: string, builder: SemanticTokensBuild
             
             const startPos = lineCounter.linePos(charOffset);
             
-            // Determine token type based on directive with specific colors for each type
+            // Determine token type based on directive with enhanced specific colors
             let tokenType = TOKEN_TYPES.keyword;
+            let tokenModifiers = 0;
             
             switch (directiveName) {
                 case 'import':
-                    tokenType = TOKEN_TYPES.macro; // Import directives as macros (distinctive color)
+                    tokenType = TOKEN_TYPES.macro; // Import directives as macros (blue/cyan)
+                    tokenModifiers = 1; // readonly modifier
                     break;
                 case 'disable-lint':
+                    tokenType = TOKEN_TYPES.class; // Global disable as class (red/warning color)
+                    tokenModifiers = 4; // modification modifier
+                    break;
                 case 'enable-lint':
-                    tokenType = TOKEN_TYPES.namespace; // Global lint control as namespace
+                    tokenType = TOKEN_TYPES.struct; // Global enable as struct (green/success color)
+                    tokenModifiers = 1; // readonly modifier
                     break;
                 case 'disable-next-line':
+                    tokenType = TOKEN_TYPES.event; // Line-specific as event (yellow/caution color)
+                    tokenModifiers = 2; // deprecated modifier
+                    break;
                 case 'disable-line':
-                    tokenType = TOKEN_TYPES.enumMember; // Line-specific control as enum member
+                    tokenType = TOKEN_TYPES.interface; // Current line as interface (purple/special color)
+                    tokenModifiers = 2; // deprecated modifier
                     break;
                 case 'disable-rule':
+                    tokenType = TOKEN_TYPES.type; // Rule disable as type (orange/warning color)
+                    tokenModifiers = 4; // modification modifier
+                    break;
                 case 'enable-rule':
-                    tokenType = TOKEN_TYPES.type; // Rule-specific control as type
+                    tokenType = TOKEN_TYPES.enumMember; // Rule enable as enum member (green/success color)
+                    tokenModifiers = 1; // readonly modifier
                     break;
                 default:
                     tokenType = TOKEN_TYPES.keyword;
+                    tokenModifiers = 0;
             }
             
             builder.push(
@@ -119,11 +147,11 @@ function processCommentsForDirectives(text: string, builder: SemanticTokensBuild
                 startPos.col - 1,
                 endIndex - startIndex,
                 tokenType,
-                0
+                tokenModifiers
             );
         }
         
-        // Also highlight the @ symbol
+        // Also highlight the @ symbol with decorator styling (gold color)
         const atSymbolRegex = /@/g;
         while ((match = atSymbolRegex.exec(line)) !== null) {
             const startIndex = match.index;
@@ -134,8 +162,8 @@ function processCommentsForDirectives(text: string, builder: SemanticTokensBuild
                 pos.line - 1,
                 pos.col - 1,
                 1, // @ symbol length
-                TOKEN_TYPES.operator,
-                0
+                TOKEN_TYPES.decorator,
+                1 // readonly modifier for @ symbol
             );
         }
     }

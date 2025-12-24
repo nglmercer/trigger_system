@@ -2,7 +2,7 @@
   "name": "trigger-system-lsp-client",
   "displayName": "Trigger System Client",
   "description": "Trigger System VS Code Extension",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "nglmercer",
   "repository": {
     "type": "git",
@@ -16,7 +16,10 @@
     "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:yaml"
+    "onLanguage:yaml",
+    "onCommand:triggerSystem.toggleLSP",
+    "onCommand:triggerSystem.enableLSP",
+    "onCommand:triggerSystem.disableLSP"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -26,6 +29,37 @@
         "aliases": ["YAML", "yaml"],
         "extensions": [".yaml", ".yml"],
         "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "triggerSystem.toggleLSP",
+        "title": "Toggle Trigger System LSP Server",
+        "category": "Trigger System"
+      },
+      {
+        "command": "triggerSystem.enableLSP",
+        "title": "Enable Trigger System LSP Server",
+        "category": "Trigger System"
+      },
+      {
+        "command": "triggerSystem.disableLSP",
+        "title": "Disable Trigger System LSP Server",
+        "category": "Trigger System"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "triggerSystem.toggleLSP",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "triggerSystem.toggleLSP",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorTextFocus"
       }
     ],
     "configuration": {
@@ -42,6 +76,12 @@
           ],
           "default": "verbose",
           "description": "Traces the communication between VS Code and the language server."
+        },
+        "triggerSystem.lsp.enabled": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the Trigger System LSP server."
         }
       }
     }
