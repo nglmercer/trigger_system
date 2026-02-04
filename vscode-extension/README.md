@@ -37,12 +37,21 @@ Whether you are building complex game mechanics, payment workflows, or IoT autom
 - Control the linter with comments:
   - `# @disable-lint`: Disable all diagnostics for a file.
   - `# @disable-rule <id>`: Disable a specific validation rule.
+  - `# @import alias from "./path"`: Import data for context.
+
+### 📂 Smart Path Autocomplete
+
+- **Cross-Platform**: Works seamlessly on Windows and Linux/Unix.
+- **Directory Navigation**: Browse your project structure directly from import directives.
+- **Quote Handling**: Intelligent quote insertion and handling.
 
 ## Getting Started
 
 1. Install the extension from the VS Code Marketplace or by installing the `.vsix` file.
 2. Open any `.yaml` or `.yml` file containing Trigger Rules.
-3. The extension will automatically activate for files with trigger system structures.
+3. **Activation**: The extension is **disabled by default** to avoid false positives. It activates automatically if:
+   - The file contains a Trigger Rule structure (e.g., `id`, `on`, `do`).
+   - You use a directive like `# @import` or `# @enable-lint`.
 
 ## Extension Settings
 

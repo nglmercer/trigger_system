@@ -144,12 +144,26 @@ connection.onCompletionResolve(
   }
 );
 
+// Provide semantic tokens for the full document
 connection.languages.semanticTokens.on((params) => {
     const document = documents.get(params.textDocument.uri);
     if (!document) {
         return { data: [] };
     }
     const text = document.getText();
+    const tokens = getSemanticTokens(text);
+    return { data: tokens };
+});
+
+// Provide semantic tokens for a range
+connection.languages.semanticTokens.onRange((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+        return { data: [] };
+    }
+    const text = document.getText();
+    // For now, we return the full tokens even for range requests. 
+    // Use getSemanticTokens with range filtering if performance becomes an issue.
     const tokens = getSemanticTokens(text);
     return { data: tokens };
 });

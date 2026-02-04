@@ -52,7 +52,7 @@ _Guide to advanced logic like counters, sequences, and combos._
 _Tools to help you build and debug rules._
 
 - CLI Validator (`bun run validate`)
-- VS Code LSP Integration
+- VS Code LSP Integration (Autocompletion, Linting Checks)
 - Circular Dependency Detection
 
 ### [📝 YAML Best Practices](./docs/yaml-best-practices.md)
@@ -74,6 +74,35 @@ _Learn by doing with progressive tutorials._
 
 ---
 
+## 🛠️ Linting & Formatting
+
+The project now includes built-in support for **Biome** to ensure code quality and consistency.
+
+```bash
+# Check for linting errors and formatting issues
+bun run check
+
+# Fix linting issues automatically
+bun run lint:fix
+
+# Format code automatically
+bun run format:fix
+```
+
+## 🧠 LSP Features & Directives
+
+The system includes a Language Server Protocol (LSP) implementation that provides:
+
+- **Autocompletion**: Context-aware suggestions for keys, operators, and paths.
+- **Path Resolution**: Smart autocomplete for file paths in imports (Linux/Windows compatible).
+- **Directives**: Control the validator directly from your YAML files.
+
+### Supported Directives
+
+- `# @import alias from "./path/to/data.json"`: Import data for autocomplete context.
+- `# @disable-lint`: Disable all linting for the file.
+- `# @disable-next-line`: Disable linting for the next line.
+
 ## 📦 Installation & Import Options
 
 ```bash
@@ -86,15 +115,15 @@ The package supports multiple import patterns for different environments:
 
 ```typescript
 // Universal import (auto-detects environment)
-import * as sdk from 'trigger_system';
+import * as sdk from "trigger_system";
 
 // Node.js specific import (includes file system features)
-import * as nodeSdk from 'trigger_system/node';
+import * as nodeSdk from "trigger_system/node";
 
 // Client/Browser import (optimized for browser environments)
-import * as clientSdk from 'trigger_system/client';
+import * as clientSdk from "trigger_system/client";
 // or
-import * as browserSdk from 'trigger_system/browser';
+import * as browserSdk from "trigger_system/browser";
 ```
 
 ### Environment-Specific Features
@@ -125,3 +154,4 @@ do:
 - **Hot Reloading**: Edit rules in YAML and see changes instantly.
 - **Type-Safe**: Built with TypeScript and ArkType for robust validation.
 - **Stateful**: Memories and counters allow for complex behaviors.
+- **Smart Validation**: LSP disabled by default to avoid false positives; activates via directives or rule heuristics.
