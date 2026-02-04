@@ -12,7 +12,7 @@ import { parseDocument, isMap, isSeq, isPair, isScalar, type Node, Scalar, YAMLM
 import { globalDataContext, loadDataFromImports } from './data-context';
 import { getImportDirectives, type DirectiveType } from './directives';
 import { existsSync } from 'fs';
-import { join, dirname, extname } from 'path';
+import { join, dirname, extname, basename } from 'path';
 
 // --- CONSTANTS & DEFINITIONS ---
 
@@ -585,147 +585,223 @@ return newPath;
 * Get completions for directive comments (lines starting with #)
 */
 function getDirectiveCompletions(line: string, character: number, document: TextDocument): CompletionItem[] {
-console.log(`[LSP] Checking directive completions for line: "${line}" at character ${character}`);
+   console.log(`[LSP] Checking directive completions for line: "${line}" at character ${character}`);
 
-// Check if we're in a directive context
-const directiveMatch = line.match(/#\s*@?([\w-]*)$/);
-if (!directiveMatch) return [];
+   // Check if we're in a directive context
+   const directiveMatch = line.match(/#\s*@?([\w-]*)$/);
+   if (!directiveMatch) {
+       // Check for import specific context (mid-typing)
+       if (line.includes('@import')) {
+           const importMatch = line.match(/@import\s+\w+\s+from\s+(['"]?)([^'"]*)$/);
+           if (importMatch) {
+               const quoteChar = importMatch[1] || '';
+               const partialPath = importMatch[2] || '';
+               return getImportFileCompletions(document.uri, partialPath, quoteChar);
+           }
+       }
+       return [];
+   }
 
-const partialDirective = directiveMatch[1] || '';
-console.log(`[LSP] Partial directive: "${partialDirective}"`);
+   const partialDirective = directiveMatch[1] || '';
+   console.log(`[LSP] Partial directive: "${partialDirective}"`);
 
-// Check if we're in an import directive and need file path completion
-if (partialDirective.startsWith('import') || line.includes('@import')) {
-    const importMatch = line.match(/@import\s+\w+\s+from\s+['"]?([^'"]*)$/);
-    if (importMatch) {
-        const partialPath = importMatch[1] || '';
-        return getImportFileCompletions(document.uri, partialPath);
-    }
-}
+   // Check if we're in an import directive and need file path completion
+   if (partialDirective.startsWith('import') || line.includes('@import')) {
+       const importMatch = line.match(/@import\s+\w+\s+from\s+(['"]?)([^'"]*)$/);
+       if (importMatch) {
+           const quoteChar = importMatch[1] || '';
+           const partialPath = importMatch[2] || '';
+           return getImportFileCompletions(document.uri, partialPath, quoteChar);
+       }
+   }
 
-// If we're just starting a directive (after # or @)
-if (partialDirective === '' || line.match(/#\s*$/)) {
-    return getAllDirectiveCompletions();
-}
+   // If we're just starting a directive (after # or @)
+   if (partialDirective === '' || line.match(/#\s*$/)) {
+       return getAllDirectiveCompletions();
+   }
 
-// If we have a partial directive, filter completions
-const allDirectives = getAllDirectiveCompletions();
-return allDirectives.filter(item =>
-    item.label.toLowerCase().startsWith(partialDirective.toLowerCase())
-);
+   // If we have a partial directive, filter completions
+   const allDirectives = getAllDirectiveCompletions();
+   return allDirectives.filter(item =>
+       item.label.toLowerCase().startsWith(partialDirective.toLowerCase())
+   );
 }
 
 /**
  * Get all available directive completions with enhanced categorization and colors
  */
 function getAllDirectiveCompletions(): CompletionItem[] {
-const directives: CompletionItem[] = [
-    // Import directives (Macro category - distinctive color)
-    {
-        label: 'import',
-        kind: CompletionItemKind.Function, // Function type for imports
-        detail: 'Import data from JSON/YAML file',
-        insertText: 'import ${1:alias} from ${2:./path/to/file.json}',
-        insertTextFormat: InsertTextFormat.Snippet,
-        documentation: 'Imports data from a JSON or YAML file for use in autocompletion and validation. Example: @import data from ./data.json',
-        data: { category: 'import', color: 'macro' }
-    },
-    
-    // Global lint control (Namespace category)
-    {
-        label: 'disable-lint',
-        kind: CompletionItemKind.Module, // Module type for global controls
-        detail: 'Disable all linting for subsequent lines',
-        insertText: 'disable-lint',
-        documentation: 'Disables all linting and validation for the rest of the document or until @enable-lint is encountered',
-        data: { category: 'global-control', color: 'namespace' }
-    },
-    {
-        label: 'enable-lint',
-        kind: CompletionItemKind.Module, // Module type for global controls
-        detail: 'Enable all linting (default state)',
-        insertText: 'enable-lint',
-        documentation: 'Enables linting and validation (this is the default state)',
-        data: { category: 'global-control', color: 'namespace' }
-    },
-    
-    // Line-specific control (EnumMember category)
-    {
-        label: 'disable-next-line',
-        kind: CompletionItemKind.EnumMember, // EnumMember for line-specific
-        detail: 'Disable lint for the next line only',
-        insertText: 'disable-next-line',
-        documentation: 'Disables linting and validation for the next line only',
-        data: { category: 'line-control', color: 'enumMember' }
-    },
-    {
-        label: 'disable-line',
-        kind: CompletionItemKind.EnumMember, // EnumMember for line-specific
-        detail: 'Disable lint for current line',
-        insertText: 'disable-line',
-        documentation: 'Disables linting and validation for the current line',
-        data: { category: 'line-control', color: 'enumMember' }
-    },
-    
-    // Rule-specific control (Type category)
-    {
-        label: 'disable-rule',
-        kind: CompletionItemKind.TypeParameter, // TypeParameter for rule-specific
-        detail: 'Disable specific rule(s)',
-        insertText: 'disable-rule ${1:rule-name}',
-        insertTextFormat: InsertTextFormat.Snippet,
-        documentation: 'Disables specific validation rules. Example: @disable-rule missing-id, invalid-operator',
-        data: { category: 'rule-control', color: 'type' }
-    },
-    {
-        label: 'enable-rule',
-        kind: CompletionItemKind.TypeParameter, // TypeParameter for rule-specific
-        detail: 'Enable specific rule(s)',
-        insertText: 'enable-rule ${1:rule-name}',
-        insertTextFormat: InsertTextFormat.Snippet,
-        documentation: 'Enables specific validation rules that were previously disabled',
-        data: { category: 'rule-control', color: 'type' }
-    }
-];
+   const directives: CompletionItem[] = [
+       // Import directives (Macro category - distinctive color)
+       {
+           label: 'import',
+           kind: CompletionItemKind.Function, // Function type for imports
+           detail: 'Import data from JSON/YAML file',
+           insertText: 'import ${1:alias} from "${2:./path/to/file.json}"',
+           insertTextFormat: InsertTextFormat.Snippet,
+           documentation: 'Imports data from a JSON or YAML file for use in autocompletion and validation. Example: @import data from "./data.json"',
+           data: { category: 'import', color: 'macro' }
+       },
+       
+       // Global lint control (Namespace category)
+       {
+           label: 'disable-lint',
+           kind: CompletionItemKind.Module, // Module type for global controls
+           detail: 'Disable all linting for subsequent lines',
+           insertText: 'disable-lint',
+           documentation: 'Disables all linting and validation for the rest of the document or until @enable-lint is encountered',
+           data: { category: 'global-control', color: 'namespace' }
+       },
+       {
+           label: 'enable-lint',
+           kind: CompletionItemKind.Module, // Module type for global controls
+           detail: 'Enable all linting (default state)',
+           insertText: 'enable-lint',
+           documentation: 'Enables linting and validation (this is the default state)',
+           data: { category: 'global-control', color: 'namespace' }
+       },
+       
+       // Line-specific control (EnumMember category)
+       {
+           label: 'disable-next-line',
+           kind: CompletionItemKind.EnumMember, // EnumMember for line-specific
+           detail: 'Disable lint for the next line only',
+           insertText: 'disable-next-line',
+           documentation: 'Disables linting and validation for the next line only',
+           data: { category: 'line-control', color: 'enumMember' }
+       },
+       {
+           label: 'disable-line',
+           kind: CompletionItemKind.EnumMember, // EnumMember for line-specific
+           detail: 'Disable lint for current line',
+           insertText: 'disable-line',
+           documentation: 'Disables linting and validation for the current line',
+           data: { category: 'line-control', color: 'enumMember' }
+       },
+       
+       // Rule-specific control (Type category)
+       {
+           label: 'disable-rule',
+           kind: CompletionItemKind.TypeParameter, // TypeParameter for rule-specific
+           detail: 'Disable specific rule(s)',
+           insertText: 'disable-rule ${1:rule-name}',
+           insertTextFormat: InsertTextFormat.Snippet,
+           documentation: 'Disables specific validation rules. Example: @disable-rule missing-id, invalid-operator',
+           data: { category: 'rule-control', color: 'type' }
+       },
+       {
+           label: 'enable-rule',
+           kind: CompletionItemKind.TypeParameter, // TypeParameter for rule-specific
+           detail: 'Enable specific rule(s)',
+           insertText: 'enable-rule ${1:rule-name}',
+           insertTextFormat: InsertTextFormat.Snippet,
+           documentation: 'Enables specific validation rules that were previously disabled',
+           data: { category: 'rule-control', color: 'type' }
+       }
+   ];
 
-return directives;
+   return directives;
 }
 
 /**
 * Get file path completions for import directives
 */
-function getImportFileCompletions(documentPath: string, partialPath: string): CompletionItem[] {
-const completions: CompletionItem[] = [];
+function getImportFileCompletions(documentPath: string, partialPath: string, quoteChar: string): CompletionItem[] {
+    const completions: CompletionItem[] = [];
 
-try {
-    const decodedUri = decodeURIComponent(documentPath);
-    const documentDir = dirname(decodedUri.replace('file:///', '').replace(/^\/([A-Z]:)/, '$1'));
-    const currentDir = partialPath.includes('/') ? dirname(join(documentDir, partialPath)) : documentDir;
-    
-    // Get list of JSON and YAML files in the directory
-    const fs = require('fs');
-    if (existsSync(currentDir)) {
-        const files = fs.readdirSync(currentDir);
-        const validExtensions = ['.json', '.yaml', '.yml'];
-        
-        files.forEach((file: string) => {
-            const ext = extname(file).toLowerCase();
-            if (validExtensions.includes(ext)) {
-                const relativePath = './' + (partialPath.includes('/') ?
-                    dirname(partialPath) + '/' + file : file);
-                
-                completions.push({
-                    label: relativePath,
-                    kind: CompletionItemKind.File,
-                    detail: `${ext.toUpperCase()} data file`,
-                    insertText: `"${relativePath}"`
-                });
+    try {
+        const decodedUri = decodeURIComponent(documentPath);
+        let resolvedPath = decodedUri;
+        if (decodedUri.startsWith('file:///')) {
+            const path = decodedUri.substring(7);
+            // Handle Windows drive letters (e.g. /C:/...)
+            if (path.match(/^\/[A-Za-z]:/)) {
+                 resolvedPath = path.substring(1);
+            } else {
+                 resolvedPath = path;
             }
-        });
-    }
-} catch (error) {
-    console.log(`[LSP] Error getting file completions:`, error);
-}
+        }
+        const documentDir = dirname(resolvedPath);
+        
+        // Resolve directory to search
+        // partialPath can be:
+        // - "" -> search documentDir
+        // - "./" -> search documentDir
+        // - "./subdir" -> search documentDir (and filter by subdir)
+        // - "./subdir/" -> search documentDir/subdir
+        
+        let searchDir = documentDir;
+        let prefix = partialPath;
+        
+        // Check if we have a directory separator
+        const lastSlashIndex = partialPath.lastIndexOf('/');
+        if (lastSlashIndex !== -1) {
+            const dirPart = partialPath.substring(0, lastSlashIndex);
+            searchDir = join(documentDir, dirPart);
+             // Keep the trailing slash in the prefix calculation if needed, 
+             // but 'join' normalizes. We typically want to list files in 'searchDir'.
+        } else if (partialPath === '.' || partialPath === '..') {
+            // Special handling for . and .. to show them as directories?
+            // Usually readdir will show content of current dir for '.'
+            // But if user typed '.', we want to suggest '/'?
+            // Let's stick to standard resolution.
+        }
 
-return completions;
+        console.log(`[LSP] Import completion - SearchDir: ${searchDir}, Partial: ${partialPath}`);
+
+        const fs = require('fs');
+        if (existsSync(searchDir) && fs.statSync(searchDir).isDirectory()) {
+            const entries = fs.readdirSync(searchDir, { withFileTypes: true });
+            const validExtensions = ['.json', '.yaml', '.yml'];
+            
+            entries.forEach((entry: any) => {
+                const name = entry.name;
+                const isDir = entry.isDirectory();
+                
+                // For directories, we always include them
+                // For files, we only include supported extensions
+                if (isDir || validExtensions.includes(extname(name).toLowerCase())) {
+                    
+                    // Determine what to reuse from partial path
+                    let relativePath: string;
+                    
+                    if (lastSlashIndex !== -1) {
+                         // We are in a subdirectory: ./subdir/
+                         // We want to append the name: ./subdir/name
+                         const dirPart = partialPath.substring(0, lastSlashIndex + 1);
+                         relativePath = dirPart + name;
+                    } else {
+                         // We are at root or start of file
+                         // If user typed "./", we preserve it. 
+                         // Logic: If partial path starts with ./, preserve it.
+                         if (partialPath.startsWith('./')) {
+                             relativePath = './' + name;
+                         } else {
+                             relativePath = name; // Just the name if at root
+                             // Could force ./ but usually not strictly required unless strict pathing
+                             if (!relativePath.startsWith('.')) relativePath = './' + relativePath;
+                         }
+                    }
+                    
+                    if (isDir) {
+                        relativePath += '/';
+                    }
+                    
+                    completions.push({
+                        label: isDir ? name + '/' : name,
+                        kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
+                        detail: isDir ? 'Directory' : `${extname(name).toUpperCase().substring(1)} File`,
+                        // If quote is present, just the path. If not, wrap in quotes.
+                        insertText: quoteChar ? relativePath : `"${relativePath}"`,
+                        // sortText to keep directories first? 
+                        sortText: isDir ? '0_' + name : '1_' + name
+                    });
+                }
+            });
+        }
+    } catch (error) {
+        console.log(`[LSP] Error getting file completions:`, error);
+    }
+
+    return completions;
 }

@@ -224,8 +224,8 @@ connection.onDefinition((params: DefinitionParams): Definition | null => {
             // Handle Windows file URIs properly
             let documentPath: string;
             if (decodedUri.startsWith('file:///')) {
-                // Remove file:/// prefix
-                documentPath = decodedUri.substring(8);
+                // Remove file:// prefix (keep leading slash for Unix)
+                documentPath = decodedUri.substring(7);
                 
                 // Handle Windows drive letters (C:, D:, etc.)
                 if (documentPath.match(/^[A-Za-z]:/)) {

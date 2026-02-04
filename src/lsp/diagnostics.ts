@@ -31,6 +31,46 @@ export async function getDiagnosticsForText(text: string): Promise<Diagnostic[]>
   // Parse YAML with CST (Concrete Syntax Tree) from 'yaml' package
   const doc = parseDocument(text);
   
+  // 0. CHECK ACTIVATION STATUS
+  // The user requested: "Default disabled, activate via # @ directive OR if valid rule detected"
+  // If invalid (not a rule file), disable by default to avoid false positives.
+
+  // Check 1: Explicit Activation via Directives (# @...)
+  const hasDirectives = directives.length > 0;
+  
+  // Check 2: Implicit Activation via File Structure Heuristic
+  let looksLikeTriggerFile = false;
+  try {
+      const json = doc.toJS();
+      if (json && typeof json === 'object') {
+          // Case A: Array of rules
+          if (Array.isArray(json)) {
+              // Check if at least one item looks like a rule (has 'id' and ('on' or 'do' or 'if'))
+              looksLikeTriggerFile = json.some(item => 
+                  item && typeof item === 'object' && item.id
+              );
+          } 
+          // Case B: Wrapper object with "rules" property
+          else if (json.rules && Array.isArray(json.rules)) {
+              looksLikeTriggerFile = true;
+          }
+          // Case C: Single rule object
+          else if (json.id && (json.on || json.do || json.if)) {
+              looksLikeTriggerFile = true;
+          }
+      }
+  } catch (e) {
+      // If we can't parse to JS, we can't verify structure.
+      // If it has syntax errors, relying on "hasDirectives" is the fallback.
+  }
+
+  const shouldValidate = hasDirectives || looksLikeTriggerFile;
+
+  if (!shouldValidate) {
+      // Return empty diagnostics if not activated
+      return [];
+  }
+
   // 1. Syntax Errors
   if (doc.errors.length > 0) {
       for (const err of doc.errors) {
@@ -321,8 +361,8 @@ function validateImportDirectives(document: TextDocument, text: string): Diagnos
                     // Handle Windows file URIs properly
                     let documentPath: string;
                     if (decodedUri.startsWith('file:///')) {
-                        // Remove file:/// prefix
-                        documentPath = decodedUri.substring(8);
+                        // Remove file:// prefix (keep leading slash for Unix)
+                        documentPath = decodedUri.substring(7);
                         
                         // Handle Windows drive letters (C:, D:, etc.)
                         if (documentPath.match(/^[A-Za-z]:/)) {
