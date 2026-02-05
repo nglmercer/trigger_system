@@ -161,16 +161,24 @@ const SNIPPETS: CompletionItem[] = [
 
 // --- MAIN LOGIC ---
 
+// Cache to avoid reloading imports on every keystroke
+let lastImportsHash = '';
+
 export function getCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
     
     // Load data from import directives only (declarative approach)
     const imports = getImportDirectives(document, document.uri);
+    const importsHash = JSON.stringify(imports);
     
-    if (imports.length > 0) {
-        loadDataFromImports(imports);
-    } else {
-        // Clear data context when no imports are defined
-        globalDataContext.clear();
+    // Only reload if imports have changed
+    if (importsHash !== lastImportsHash) {
+        if (imports.length > 0) {
+            loadDataFromImports(imports);
+        } else {
+            // Clear data context when no imports are defined
+            globalDataContext.clear();
+        }
+        lastImportsHash = importsHash;
     }
     
     const text = document.getText();
