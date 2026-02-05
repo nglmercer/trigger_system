@@ -13,6 +13,7 @@ import { parseDirectives, isDiagnosticSuppressed, processRangeDirectives, getImp
 import { existsSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import * as path from 'path';
+import { resolveImportPath } from './path-utils';
 
 /**
  * Validates the text content of a document and returns diagnostics.
@@ -347,51 +348,7 @@ function validateImportDirectives(document: TextDocument, text: string): Diagnos
     for (const directive of directives) {
         if (directive.type === 'import' && directive.importPath) {
             try {
-                // Handle test URIs and real file URIs
-                let documentDir: string;
-                
-                if (document.uri === 'file://test' || document.uri === 'file:///test') {
-                    // For test documents, use the directory where test files are located
-                    documentDir = join(process.cwd(), 'tests', 'rules', 'examples');
-                    console.log(`[LSP] Test document detected, using test directory: ${documentDir}`);
-                } else {
-                    // Resolve the path relative to the document
-                    const decodedUri = decodeURIComponent(document.uri);
-                    
-                    // Handle Windows file URIs properly
-                    let documentPath: string;
-                    if (decodedUri.startsWith('file:///')) {
-                        // Remove file:// prefix (keep leading slash for Unix)
-                        documentPath = decodedUri.substring(7);
-                        
-                        // Handle Windows drive letters (C:, D:, etc.)
-                        if (documentPath.match(/^[A-Za-z]:/)) {
-                            // Already has drive letter, just replace forward slashes
-                            documentPath = documentPath.replace(/\//g, '\\');
-                        } else if (documentPath.match(/^\/[A-Za-z]:/)) {
-                            // Has leading slash before drive letter, remove it
-                            documentPath = documentPath.substring(1).replace(/\//g, '\\');
-                        } else {
-                            // Unix-style path, keep as is
-                            documentPath = documentPath.replace(/\//g, '/');
-                        }
-                    } else {
-                        // Fallback for non-file URIs
-                        documentPath = decodedUri.replace('file:///', '');
-                    }
-                    
-                    documentDir = dirname(documentPath);
-                }
-                
-                const resolvedPath = join(documentDir, directive.importPath);
-                
-                // Debug logging
-                console.log(`[LSP] Import validation debug:`);
-                console.log(`[LSP]   Document URI: ${document.uri}`);
-                console.log(`[LSP]   Document dir: ${documentDir}`);
-                console.log(`[LSP]   Import path: ${directive.importPath}`);
-                console.log(`[LSP]   Resolved path: ${resolvedPath}`);
-                console.log(`[LSP]   File exists: ${existsSync(resolvedPath)}`);
+                const resolvedPath = resolveImportPath(document.uri, directive.importPath, []);
                 
                 // Check if file exists
                 if (!existsSync(resolvedPath)) {

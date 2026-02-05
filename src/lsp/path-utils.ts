@@ -1,0 +1,94 @@
+import { dirname, join, isAbsolute, normalize, resolve } from 'path';
+import { existsSync, realpathSync } from 'fs';
+
+/**
+ * Robustly converts a URI string to a filesystem path.
+ * Uses a more reliable regex for Windows drive letters and handles UNC paths.
+ */
+export function uriToPath(uri: string): string {
+    let decoded = decodeURIComponent(uri);
+    
+    // Handle Windows UNC paths (e.g., file://server/share)
+    if (decoded.startsWith('file://') && !decoded.startsWith('file:///')) {
+        return normalize(decoded.replace('file://', '\\\\'));
+    }
+
+    // Standard file URI conversion
+    if (decoded.startsWith('file:///')) {
+        let path = decoded.substring(8);
+        // On Windows, file:///C:/path -> C:/path
+        if (path.match(/^[A-Za-z]:/)) {
+            return normalize(path);
+        }
+        // On Unix, file:///etc/passwd -> /etc/passwd
+        return normalize('/' + path);
+    }
+
+    return normalize(decoded);
+}
+
+/**
+ * Resolves an import path with support for:
+ * 1. Relative paths
+ * 2. Workspace root resolution
+ * 3. node_modules fallback (optional)
+ * 4. Symlink resolution
+ */
+export function resolveImportPath(
+    documentUri: string,
+    importPath: string,
+    workspaceFolders: string[] = []
+): string {
+    const documentDir = dirname(uriToPath(documentUri));
+
+    // 1. Absolute Path: Clean it and return
+    if (isAbsolute(importPath)) {
+        return safeRealPath(normalize(importPath));
+    }
+
+    // 2. Relative Path (starts with ./ or ../)
+    if (importPath.startsWith('.')) {
+        const fullPath = join(documentDir, importPath);
+        if (existsSync(fullPath)) return safeRealPath(fullPath);
+    }
+
+    // 3. Workspace-relative resolution
+    // Helpful for linter configs that assume the project root
+    for (const folder of workspaceFolders) {
+        const wsBase = uriToPath(folder);
+        const candidate = join(wsBase, importPath);
+        if (existsSync(candidate)) return safeRealPath(candidate);
+    }
+
+    // 4. Node Modules Fallback (Optional)
+    // If your linter needs to find plugins/configs in node_modules
+    const nodeModulesPath = findInNodeModules(documentDir, importPath);
+    if (nodeModulesPath) return nodeModulesPath;
+
+    // Fallback to the most likely candidate
+    return join(documentDir, importPath);
+}
+
+/**
+ * Resolves symlinks safely. If the path doesn't exist, returns original.
+ */
+function safeRealPath(path: string): string {
+    try {
+        return existsSync(path) ? realpathSync(path) : path;
+    } catch {
+        return path;
+    }
+}
+
+/**
+ * Recursively looks for an import in node_modules up the directory tree.
+ */
+function findInNodeModules(startDir: string, importPath: string): string | null {
+    let current = startDir;
+    while (current !== dirname(current)) { // Stop at root
+        const candidate = join(current, 'node_modules', importPath);
+        if (existsSync(candidate)) return safeRealPath(candidate);
+        current = dirname(current);
+    }
+    return null;
+}

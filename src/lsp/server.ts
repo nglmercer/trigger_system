@@ -24,7 +24,7 @@ import { semanticTokensLegend, getSemanticTokens } from './semantic_tokens';
 import { getHover } from './hover';
 import { getImportDirectives } from './directives';
 import { existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { resolveImportPath, uriToPath } from './path-utils';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -226,58 +226,16 @@ connection.onDefinition((params: DefinitionParams): Definition | null => {
     
     // Resolve the path
     try {
-        let documentDir: string;
-        
-        if (document.uri === 'file://test' || document.uri === 'file:///test') {
-            // For test documents, use the directory where test files are located
-            documentDir = join(process.cwd(), 'tests', 'rules', 'examples');
-        } else {
-            // Decode URI components and resolve relative paths
-            const decodedUri = decodeURIComponent(document.uri);
-            
-            // Handle Windows file URIs properly
-            let documentPath: string;
-            if (decodedUri.startsWith('file:///')) {
-                // Remove file:// prefix (keep leading slash for Unix)
-                documentPath = decodedUri.substring(7);
-                
-                // Handle Windows drive letters (C:, D:, etc.)
-                if (documentPath.match(/^[A-Za-z]:/)) {
-                    // Already has drive letter, just replace forward slashes
-                    documentPath = documentPath.replace(/\//g, '\\');
-                } else if (documentPath.match(/^\/[A-Za-z]:/)) {
-                    // Has leading slash before drive letter, remove it
-                    documentPath = documentPath.substring(1).replace(/\//g, '\\');
-                } else {
-                    // Unix-style path, keep as is
-                    documentPath = documentPath.replace(/\//g, '/');
-                }
-            } else {
-                // Fallback for non-file URIs
-                documentPath = decodedUri.replace('file:///', '');
-            }
-            
-            documentDir = dirname(documentPath);
-        }
-        
-        const resolvedPath = join(documentDir, importPath);
+        const resolvedPath = resolveImportPath(document.uri, importPath);
         
         // Check if file exists
         if (!existsSync(resolvedPath)) {
             return null;
         }
         
-        // Convert back to file URI
-        let targetUri: string;
-        if (process.platform === 'win32') {
-            targetUri = `file:///${resolvedPath.replace(/\\/g, '/')}`;
-        } else {
-            targetUri = `file://${resolvedPath}`;
-        }
-        
         // Return the location
         return {
-            uri: targetUri,
+            uri: uriToPath(resolvedPath),
             range: {
                 start: { line: 0, character: 0 },
                 end: { line: 0, character: 0 }

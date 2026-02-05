@@ -2,7 +2,7 @@
   "name": "trigger-system-lsp-client",
   "displayName": "Trigger System Client",
   "description": "Trigger System VS Code Extension",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "nglmercer",
   "repository": {
     "type": "git",

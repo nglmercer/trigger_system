@@ -1,5 +1,5 @@
 import type { TextDocument } from 'vscode-languageserver-textdocument';
-import { dirname, join } from 'path';
+import { resolveImportPath } from './path-utils';
 
 /**
  * Directive types supported in comments
@@ -229,42 +229,7 @@ export function getImportDirectives(document: TextDocument, documentUri: string)
     for (const directive of directives) {
         if (directive.type === 'import' && directive.importAlias && directive.importPath) {
             try {
-                let documentDir: string;
-                
-                if (documentUri === 'file://test' || documentUri === 'file:///test') {
-                    // For test documents, use the directory where test files are located
-                    documentDir = join(process.cwd(), 'tests', 'rules', 'examples');
-                    console.log(`[LSP] Test document detected in getImportDirectives, using test directory: ${documentDir}`);
-                } else {
-                    // Decode URI components and resolve relative paths
-                    const decodedUri = decodeURIComponent(documentUri);
-                    
-                    // Handle Windows file URIs properly
-                    let documentPath: string;
-                    if (decodedUri.startsWith('file:///')) {
-                        // Remove file:// prefix (keep leading slash for Unix)
-                        documentPath = decodedUri.substring(7);
-                        
-                        // Handle Windows drive letters (C:, D:, etc.)
-                        if (documentPath.match(/^[A-Za-z]:/)) {
-                            // Already has drive letter, just replace forward slashes
-                            documentPath = documentPath.replace(/\//g, '\\');
-                        } else if (documentPath.match(/^\/[A-Za-z]:/)) {
-                            // Has leading slash before drive letter, remove it
-                            documentPath = documentPath.substring(1).replace(/\//g, '\\');
-                        } else {
-                            // Unix-style path, keep as is
-                            documentPath = documentPath.replace(/\//g, '/');
-                        }
-                    } else {
-                        // Fallback for non-file URIs
-                        documentPath = decodedUri.replace('file:///', '');
-                    }
-                    
-                    documentDir = dirname(documentPath);
-                }
-                
-                const resolvedPath = join(documentDir, directive.importPath);
+                const resolvedPath = resolveImportPath(documentUri, directive.importPath);
                 
                 imports.push({
                     alias: directive.importAlias,
