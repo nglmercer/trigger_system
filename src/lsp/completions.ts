@@ -209,8 +209,10 @@ export function getCompletionItems(document: TextDocument, position: Position): 
     const colonIndex = line.indexOf(':');
     if (colonIndex !== -1 && position.character > colonIndex) {
         const key = line.substring(0, colonIndex).trim().replace(/^- /, '');
+        // Extract the value part typed so far
+        const valuePrefix = line.substring(colonIndex + 1, position.character).trim();
         const path = findPathAtOffset(doc.contents, offset) || [];
-        return getValueCompletionsByKey(key, path);
+        return getValueCompletionsByKey(key, path, valuePrefix);
     }
 
     // 2. We are in a KEY position or start of line
@@ -229,7 +231,9 @@ export function getCompletionItems(document: TextDocument, position: Position): 
  * Check if cursor is inside a template variable and return the context
  */
 function checkTemplateVariable(line: string, character: number): { prefix: string; inTemplate: boolean } | null {
-    console.log(`[LSP] checkTemplateVariable - line: "${line}", character: ${character}`);
+    // ... (unchanged)
+    // Minimizing output for clarity
+    // console.log(`[LSP] checkTemplateVariable - line: "${line}", character: ${character}`);
     
     // Find all template variable positions in the line
     const regex = /\$\{([^}]*)\}/g;
@@ -239,15 +243,9 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
         const start = match.index;
         const end = match.index + match[0].length;
         
-        console.log(`[LSP] Found template: "${match[0]}" at positions ${start}-${end}`);
-        
-        // Check if cursor is inside this template (inclusive of start and end)
         if (character >= start && character <= end) {
             const content = match[1] || '';
             const dotIndex = content.lastIndexOf('.');
-            
-            console.log(`[LSP] Cursor inside template, content: "${content}", dotIndex: ${dotIndex}`);
-            
             return {
                 prefix: dotIndex >= 0 ? content.substring(0, dotIndex + 1) : content,
                 inTemplate: true
@@ -260,14 +258,9 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
     const lastDollarBrace = beforeCursor.lastIndexOf('${');
     const lastCloseBrace = beforeCursor.lastIndexOf('}');
     
-    console.log(`[LSP] Checking for incomplete template - lastDollarBrace: ${lastDollarBrace}, lastCloseBrace: ${lastCloseBrace}`);
-    
     if (lastDollarBrace > lastCloseBrace) {
         const content = beforeCursor.substring(lastDollarBrace + 2);
         const dotIndex = content.lastIndexOf('.');
-        
-        console.log(`[LSP] Found incomplete template, content: "${content}", dotIndex: ${dotIndex}`);
-        
         return {
             prefix: dotIndex >= 0 ? content.substring(0, dotIndex + 1) : content,
             inTemplate: true
@@ -278,7 +271,6 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
     if (character > 0) {
         const charBefore = line[character - 1];
         if (charBefore === '$' || charBefore === '{') {
-            console.log(`[LSP] Found $ or { at position ${character - 1}`);
             return {
                 prefix: '',
                 inTemplate: true
@@ -290,7 +282,6 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
     if (character < line.length) {
         const remaining = line.substring(character);
         if (remaining.startsWith('${') || remaining.startsWith('{')) {
-            console.log(`[LSP] Found potential template start at current position`);
             return {
                 prefix: '',
                 inTemplate: true
@@ -298,7 +289,6 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
         }
     }
     
-    console.log(`[LSP] No template found`);
     return null;
 }
 
@@ -399,7 +389,7 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
     return [];
 }
 
-function getValueCompletionsByKey(key: string, path: (Node | Pair)[]): CompletionItem[] {
+function getValueCompletionsByKey(key: string, path: (Node | Pair)[], valuePrefix: string = ''): CompletionItem[] {
     switch (key) {
         case 'on': return EVENTS;
         case 'operator': return OPERATORS;
@@ -415,14 +405,40 @@ function getValueCompletionsByKey(key: string, path: (Node | Pair)[]): Completio
                 { label: 'true', kind: CompletionItemKind.Value },
                 { label: 'false', kind: CompletionItemKind.Value }
             ];
-        case 'field':
-            // Only suggest imported data fields
-            const fields = globalDataContext.getFields('data');
-            return fields.map(field => ({
-                label: field.name,
-                kind: CompletionItemKind.Field,
-                detail: `${field.type}${field.value !== undefined ? ` = ${globalDataContext.getFormattedValue(field.value)}` : ''}`
-            }));
+        case 'field': {
+            // suggest imported data fields based on prefix
+            // if prefix is 'data.', we want fields of data
+            let searchPrefix = '';
+            if (valuePrefix.includes('.')) {
+                // remove the last part after the dot to get the parent path
+                if (valuePrefix.endsWith('.')) {
+                    searchPrefix = valuePrefix.substring(0, valuePrefix.length - 1);
+                } else {
+                    searchPrefix = valuePrefix.substring(0, valuePrefix.lastIndexOf('.'));
+                }
+            } else if (valuePrefix !== '') {
+                // if no dot, we are at root, or filtering root aliases.
+                // searchPrefix '' returns top level aliases.
+                searchPrefix = '';
+            }
+            
+            const fields = globalDataContext.getFields(searchPrefix);
+            
+            return fields.map(field => {
+                // If we are at root (searchPrefix is empty), the label is the alias (e.g. 'data').
+                // If we are in 'data', the label is 'username'.
+                // insertText should be appropriate.
+                
+                return {
+                    label: field.name,
+                    kind: field.type === 'object' ? CompletionItemKind.Module : CompletionItemKind.Field,
+                    detail: `${field.type}${field.value !== undefined ? ` = ${globalDataContext.getFormattedValue(field.value)}` : ''}`,
+                    // For field completion, we typically want the name only, VS Code handles the rest?
+                    // But if I typed 'data.', and I select 'username', I want 'username' inserted.
+                    insertText: field.name
+                };
+            });
+        }
         case 'value':
             return getValueSpecificToOperator(path);
     }

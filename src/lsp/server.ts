@@ -24,7 +24,7 @@ import { semanticTokensLegend, getSemanticTokens } from './semantic_tokens';
 import { getHover } from './hover';
 import { getImportDirectives } from './directives';
 import { existsSync } from 'fs';
-import { resolveImportPath, uriToPath } from './path-utils';
+import { resolveImportPath, uriToPath, pathToUri } from './path-utils';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -35,6 +35,7 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
+let workspaceFolders: string[] = [];
 
 connection.onInitialize((params: InitializeParams) => {
   connection.console.log('Trigger System LSP Server initializing...');
@@ -49,6 +50,12 @@ connection.onInitialize((params: InitializeParams) => {
 
   connection.console.log(`Configuration capability: ${hasConfigurationCapability}`);
   connection.console.log(`Workspace folder capability: ${hasWorkspaceFolderCapability}`);
+
+  // Capture workspace folders from initialization params
+  if (params.workspaceFolders) {
+    workspaceFolders = params.workspaceFolders.map(folder => folder.uri);
+    connection.console.log(`Workspace folders: ${JSON.stringify(workspaceFolders)}`);
+  }
 
   const result: InitializeResult = {
     capabilities: {
@@ -102,7 +109,7 @@ documents.onDidChangeContent(change => {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   const text = textDocument.getText();
-  const diagnostics = await getDiagnosticsForText(text);
+  const diagnostics = await getDiagnosticsForText(text, textDocument.uri, workspaceFolders);
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
@@ -235,7 +242,7 @@ connection.onDefinition((params: DefinitionParams): Definition | null => {
         
         // Return the location
         return {
-            uri: uriToPath(resolvedPath),
+            uri: pathToUri(resolvedPath),
             range: {
                 start: { line: 0, character: 0 },
                 end: { line: 0, character: 0 }

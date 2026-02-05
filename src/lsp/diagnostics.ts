@@ -14,20 +14,30 @@ import { existsSync } from 'fs';
 import { join, dirname, extname } from 'path';
 import * as path from 'path';
 import { resolveImportPath } from './path-utils';
+import { loadDataFromImports } from './data-context';
 
 /**
  * Validates the text content of a document and returns diagnostics.
  * Extracted for easier testing without the full LSP connection mock.
  */
-export async function getDiagnosticsForText(text: string): Promise<Diagnostic[]> {
+export async function getDiagnosticsForText(
+    text: string, 
+    documentUri: string = "file:///test",
+    workspaceFolders: string[] = []
+): Promise<Diagnostic[]> {
   const diagnostics: Diagnostic[] = [];
   
   // Create a minimal TextDocument object for position calculation
-  // We use the library one if accessible, but for simple calculation this is enough.
-  const textDocument = TextDocument.create("file://test", "yaml", 1, text);
+  const textDocument = TextDocument.create(documentUri, "yaml", 1, text);
 
   // Parse directives from comments
   const directives = processRangeDirectives(parseDirectives(textDocument));
+
+  // Load imported data into the global context
+  const importDirectives = getImportDirectives(textDocument, documentUri);
+  if (importDirectives.length > 0) {
+      loadDataFromImports(importDirectives);
+  }
 
   // Parse YAML with CST (Concrete Syntax Tree) from 'yaml' package
   const doc = parseDocument(text);
@@ -134,7 +144,7 @@ export async function getDiagnosticsForText(text: string): Promise<Diagnostic[]>
 
 
   // 1.6 Validate import directives
-  const importDiagnostics = validateImportDirectives(textDocument, text);
+  const importDiagnostics = validateImportDirectives(textDocument, text, workspaceFolders);
   for (const diagnostic of importDiagnostics) {
       // Check if diagnostic is suppressed
       const line = diagnostic.range.start.line;
@@ -341,7 +351,7 @@ function isScalar(node: any): node is Scalar {
 /**
  * Validate import directives and return diagnostics for invalid imports
  */
-function validateImportDirectives(document: TextDocument, text: string): Diagnostic[] {
+function validateImportDirectives(document: TextDocument, text: string, workspaceFolders: string[] = []): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     const directives = parseDirectives(document);
     

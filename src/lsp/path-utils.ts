@@ -24,7 +24,34 @@ export function uriToPath(uri: string): string {
         return normalize('/' + path);
     }
 
+    // Handle malformed URI like "file://test" (missing third slash)
+    if (decoded.startsWith('file://')) {
+        const path = decoded.substring(7);
+        // If it looks like a path without drive letter, treat as relative path
+        if (!path.match(/^[A-Za-z]:/)) {
+            return normalize('./' + path);
+        }
+        return normalize(path);
+    }
+
     return normalize(decoded);
+}
+
+/**
+ * Converts a filesystem path to a URI string.
+ */
+export function pathToUri(path: string): string {
+    let uriPath = path.replace(/\\/g, '/');
+    if (!uriPath.startsWith('/')) {
+        uriPath = '/' + uriPath;
+    }
+    // Handle Windows drive letters
+    if (uriPath.match(/^\/[A-Za-z]:/)) {
+        // file:///C:/path
+        return `file://${uriPath}`;
+    }
+    // Unix
+    return `file://${uriPath}`;
 }
 
 /**
@@ -39,34 +66,59 @@ export function resolveImportPath(
     importPath: string,
     workspaceFolders: string[] = []
 ): string {
+    console.log(`[LSP] resolveImportPath called:`);
+    console.log(`[LSP]   Document URI: ${documentUri}`);
+    console.log(`[LSP]   Import path: ${importPath}`);
+    
     const documentDir = dirname(uriToPath(documentUri));
+    console.log(`[LSP]   Document dir: ${documentDir}`);
 
     // 1. Absolute Path: Clean it and return
     if (isAbsolute(importPath)) {
-        return safeRealPath(normalize(importPath));
+        console.log(`[LSP]   Resolving as absolute path`);
+        const resolved = safeRealPath(normalize(importPath));
+        console.log(`[LSP]   Resolved path: ${resolved}`);
+        return resolved;
     }
 
     // 2. Relative Path (starts with ./ or ../)
     if (importPath.startsWith('.')) {
         const fullPath = join(documentDir, importPath);
-        if (existsSync(fullPath)) return safeRealPath(fullPath);
+        console.log(`[LSP]   Trying relative path: ${fullPath}`);
+        if (existsSync(fullPath)) {
+            const resolved = safeRealPath(fullPath);
+            console.log(`[LSP]   Resolved path (exists): ${resolved}`);
+            return resolved;
+        }
+        console.log(`[LSP]   Relative path does not exist`);
     }
 
     // 3. Workspace-relative resolution
     // Helpful for linter configs that assume the project root
+    console.log(`[LSP]   Checking workspace folders: ${JSON.stringify(workspaceFolders)}`);
     for (const folder of workspaceFolders) {
         const wsBase = uriToPath(folder);
         const candidate = join(wsBase, importPath);
-        if (existsSync(candidate)) return safeRealPath(candidate);
+        console.log(`[LSP]   Trying workspace-relative: ${candidate}`);
+        if (existsSync(candidate)) {
+            const resolved = safeRealPath(candidate);
+            console.log(`[LSP]   Resolved path (workspace): ${resolved}`);
+            return resolved;
+        }
     }
 
     // 4. Node Modules Fallback (Optional)
     // If your linter needs to find plugins/configs in node_modules
     const nodeModulesPath = findInNodeModules(documentDir, importPath);
-    if (nodeModulesPath) return nodeModulesPath;
+    if (nodeModulesPath) {
+        console.log(`[LSP]   Resolved path (node_modules): ${nodeModulesPath}`);
+        return nodeModulesPath;
+    }
 
     // Fallback to the most likely candidate
-    return join(documentDir, importPath);
+    const fallback = join(documentDir, importPath);
+    console.log(`[LSP]   Using fallback path: ${fallback}`);
+    return fallback;
 }
 
 /**

@@ -1,6 +1,9 @@
-import { readFileSync } from 'fs';
+import { readFileSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { parseDocument } from 'yaml';
+
+// Cache for loaded files: path -> { mtime, data }
+const fileCache = new Map<string, { mtime: number, data: any }>();
 
 /**
  * DataContext manages test data loaded from JSON/YAML files
@@ -15,13 +18,29 @@ export class DataContext {
      */
     loadFromFile(filePath: string): void {
         try {
-            const content = readFileSync(filePath, 'utf-8');
-            
-            if (filePath.endsWith('.json')) {
-                this.data = JSON.parse(content);
-            } else if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
-                const doc = parseDocument(content);
-                this.data = doc.toJS() || {};
+            // Check cache first
+            const stats = statSync(filePath);
+            const mtime = stats.mtimeMs;
+            const cached = fileCache.get(filePath);
+
+            if (cached && cached.mtime === mtime) {
+               // console.log(`[LSP] Cache hit for ${filePath}`);
+                this.data = cached.data;
+            } else {
+                console.log(`[LSP] Loading file ${filePath}`);
+                const content = readFileSync(filePath, 'utf-8');
+                let parsedData: any = {};
+                
+                if (filePath.endsWith('.json')) {
+                    parsedData = JSON.parse(content);
+                } else if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
+                    const doc = parseDocument(content);
+                    parsedData = doc.toJS() || {};
+                }
+                
+                // Update cache
+                fileCache.set(filePath, { mtime, data: parsedData });
+                this.data = parsedData;
             }
             
             // Build schema
