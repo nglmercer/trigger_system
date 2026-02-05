@@ -161,23 +161,26 @@ const SNIPPETS: CompletionItem[] = [
 
 // --- MAIN LOGIC ---
 
-// Cache to avoid reloading imports on every keystroke
+// Cache to avoid reloading imports on every keystroke if nothing changed
+let lastLoadedUri = '';
 let lastImportsHash = '';
 
 export function getCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
+    const uri = document.uri;
     
     // Load data from import directives only (declarative approach)
-    const imports = getImportDirectives(document, document.uri);
+    const imports = getImportDirectives(document, uri);
     const importsHash = JSON.stringify(imports);
     
-    // Only reload if imports have changed
-    if (importsHash !== lastImportsHash) {
+    // Only reload if imports have changed OR we switched files
+    if (uri !== lastLoadedUri || importsHash !== lastImportsHash) {
         if (imports.length > 0) {
             loadDataFromImports(imports);
         } else {
             // Clear data context when no imports are defined
             globalDataContext.clear();
         }
+        lastLoadedUri = uri;
         lastImportsHash = importsHash;
     }
     
@@ -350,7 +353,10 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
                 kind: field.type === 'object' ? CompletionItemKind.Module : CompletionItemKind.Field,
                 detail: `${field.type} (imported data)`,
                 documentation: `Sample value: ${sampleValue}`,
-                insertText: field.name
+                // include the prefix in filterText and insertText to ensure VS Code matches it
+                // when typing after a dot.
+                filterText: cleanPrefix ? `${cleanPrefix}.${field.name}` : field.name,
+                insertText: cleanPrefix ? `${cleanPrefix}.${field.name}` : field.name
             };
         });
         return suggestions;
@@ -418,9 +424,10 @@ function getValueCompletionsByKey(key: string, path: (Node | Pair)[], valuePrefi
                     label: field.name,
                     kind: field.type === 'object' ? CompletionItemKind.Module : CompletionItemKind.Field,
                     detail: `${field.type}${field.value !== undefined ? ` = ${globalDataContext.getFormattedValue(field.value)}` : ''}`,
-                    // For field completion, we typically want the name only, VS Code handles the rest?
-                    // But if I typed 'data.', and I select 'username', I want 'username' inserted.
-                    insertText: field.name
+                    // include the prefix in filterText and insertText to ensure VS Code matches it
+                    // when typing after a dot in a 'field' key.
+                    filterText: searchPrefix ? `${searchPrefix}.${field.name}` : field.name,
+                    insertText: searchPrefix ? `${searchPrefix}.${field.name}` : field.name
                 };
             });
         }
