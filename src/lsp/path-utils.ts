@@ -66,44 +66,28 @@ export function resolveImportPath(
     importPath: string,
     workspaceFolders: string[] = []
 ): string {
-    console.log(`[LSP] resolveImportPath called:`);
-    console.log(`[LSP]   Document URI: ${documentUri}`);
-    console.log(`[LSP]   Import path: ${importPath}`);
-    
     const documentDir = dirname(uriToPath(documentUri));
-    console.log(`[LSP]   Document dir: ${documentDir}`);
 
     // 1. Absolute Path: Clean it and return
     if (isAbsolute(importPath)) {
-        console.log(`[LSP]   Resolving as absolute path`);
-        const resolved = safeRealPath(normalize(importPath));
-        console.log(`[LSP]   Resolved path: ${resolved}`);
-        return resolved;
+        return safeRealPath(normalize(importPath));
     }
 
     // 2. Relative Path (starts with ./ or ../)
     if (importPath.startsWith('.')) {
         const fullPath = join(documentDir, importPath);
-        console.log(`[LSP]   Trying relative path: ${fullPath}`);
         if (existsSync(fullPath)) {
-            const resolved = safeRealPath(fullPath);
-            console.log(`[LSP]   Resolved path (exists): ${resolved}`);
-            return resolved;
+            return safeRealPath(fullPath);
         }
-        console.log(`[LSP]   Relative path does not exist`);
     }
 
     // 3. Workspace-relative resolution
     // Helpful for linter configs that assume the project root
-    console.log(`[LSP]   Checking workspace folders: ${JSON.stringify(workspaceFolders)}`);
     for (const folder of workspaceFolders) {
         const wsBase = uriToPath(folder);
         const candidate = join(wsBase, importPath);
-        console.log(`[LSP]   Trying workspace-relative: ${candidate}`);
         if (existsSync(candidate)) {
-            const resolved = safeRealPath(candidate);
-            console.log(`[LSP]   Resolved path (workspace): ${resolved}`);
-            return resolved;
+            return safeRealPath(candidate);
         }
     }
 
@@ -111,14 +95,11 @@ export function resolveImportPath(
     // If your linter needs to find plugins/configs in node_modules
     const nodeModulesPath = findInNodeModules(documentDir, importPath);
     if (nodeModulesPath) {
-        console.log(`[LSP]   Resolved path (node_modules): ${nodeModulesPath}`);
         return nodeModulesPath;
     }
 
     // Fallback to the most likely candidate
-    const fallback = join(documentDir, importPath);
-    console.log(`[LSP]   Using fallback path: ${fallback}`);
-    return fallback;
+    return join(documentDir, importPath);
 }
 
 /**

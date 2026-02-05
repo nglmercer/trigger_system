@@ -162,22 +162,13 @@ const SNIPPETS: CompletionItem[] = [
 // --- MAIN LOGIC ---
 
 export function getCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
-    console.log(`[LSP] getCompletionItems called for document: ${document.uri}`);
-    console.log(`[LSP] Position: line ${position.line}, character ${position.character}`);
     
     // Load data from import directives only (declarative approach)
     const imports = getImportDirectives(document, document.uri);
-    console.log(`[LSP] Found ${imports.length} import directives`);
     
     if (imports.length > 0) {
-        console.log(`[LSP] Loading data from imports:`, imports);
         loadDataFromImports(imports);
-        // Verificar datos cargados
-        const allData = globalDataContext.getValue('');
-        console.log(`[LSP] Data loaded in context:`, allData);
-        console.log(`[LSP] Available top-level keys:`, allData ? Object.keys(allData) : 'none');
     } else {
-        console.log(`[LSP] No imports found, clearing data context`);
         // Clear data context when no imports are defined
         globalDataContext.clear();
     }
@@ -187,9 +178,6 @@ export function getCompletionItems(document: TextDocument, position: Position): 
     const lines = text.split('\n');
     const line = lines[position.line] || '';
     const offset = document.offsetAt(position);
-    
-    console.log(`[LSP] Current line: "${line}"`);
-    console.log(`[LSP] Offset: ${offset}`);
     
     // Check if we're in a comment line (for directive completion)
     if (line.trim().startsWith('#')) {
@@ -218,11 +206,6 @@ export function getCompletionItems(document: TextDocument, position: Position): 
     // 2. We are in a KEY position or start of line
     const path = findPathAtOffset(doc.contents, offset) || [];
     const completions = getKeyCompletions(path, line);
-    
-    console.log(`[LSP] Returning ${completions.length} completion items`);
-    if (completions.length > 0) {
-        console.log(`[LSP] First few items:`, completions.slice(0, 3).map(c => c.label));
-    }
     
     return completions;
 }
@@ -297,11 +280,9 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
  */
 function getTemplateVariableCompletions(context: { prefix: string; inTemplate: boolean }): CompletionItem[] {
     const prefix = context.prefix.trim();
-    console.log(`[LSP] Template variable completion - prefix: "${prefix}"`);
     
     // Handle different variable types based on what's loaded in globalDataContext
     const allData = globalDataContext.getValue('');
-    console.log(`[LSP] Current data context:`, allData);
     
     if (!allData || typeof allData !== 'object') {
         console.log(`[LSP] No data available in context`);
@@ -315,7 +296,6 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
     
     // Check if we're at the root level (after ${ or ${data. etc)
     const cleanPrefix = prefix.replace('${', '').replace(/\.$/, '');
-    console.log(`[LSP] Clean prefix: "${cleanPrefix}"`);
     
     // If we're at root level, suggest all available top-level variables (aliases)
     if (!cleanPrefix || cleanPrefix === '') {
@@ -344,14 +324,12 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
                 });
             });
         }
-        console.log(`[LSP] Root level suggestions:`, suggestions.map(s => s.label));
         return suggestions;
     }
     
     // If we have a specific prefix, get fields from that path
     // The prefix might be something like "data" or "data.server" or "config.username"
     const fields = globalDataContext.getFields(cleanPrefix);
-    console.log(`[LSP] Fields for prefix "${cleanPrefix}":`, fields.map(f => f.name));
     
     if (fields.length > 0) {
         const suggestions = fields.map(field => {
@@ -367,12 +345,11 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
                 insertText: field.name
             };
         });
-        console.log(`[LSP] Field suggestions:`, suggestions.map(s => s.label));
         return suggestions;
     }
     
     // If no fields found, suggest similar paths or provide helpful message
-    console.log(`[LSP] No suggestions found for prefix "${prefix}"`);
+    // If no fields found, suggest similar paths or provide helpful message
     
     // Check if we have any data at all to provide suggestions
     const allKeys = Object.keys(allData);
@@ -601,7 +578,7 @@ return newPath;
 * Get completions for directive comments (lines starting with #)
 */
 function getDirectiveCompletions(line: string, character: number, document: TextDocument): CompletionItem[] {
-   console.log(`[LSP] Checking directive completions for line: "${line}" at character ${character}`);
+
 
    // Check if we're in a directive context
    const directiveMatch = line.match(/#\s*@?([\w-]*)$/);
@@ -763,7 +740,6 @@ function getImportFileCompletions(documentPath: string, partialPath: string, quo
             // Let's stick to standard resolution.
         }
 
-        console.log(`[LSP] Import completion - SearchDir: ${searchDir}, Partial: ${partialPath}`);
 
         const fs = require('fs');
         if (existsSync(searchDir) && fs.statSync(searchDir).isDirectory()) {

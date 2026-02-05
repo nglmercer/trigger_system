@@ -24,10 +24,8 @@ export class DataContext {
             const cached = fileCache.get(filePath);
 
             if (cached && cached.mtime === mtime) {
-               // console.log(`[LSP] Cache hit for ${filePath}`);
                 this.data = cached.data;
             } else {
-                console.log(`[LSP] Loading file ${filePath}`);
                 const content = readFileSync(filePath, 'utf-8');
                 let parsedData: any = {};
                 
@@ -186,8 +184,6 @@ export function loadDataFromImports(imports: Array<{ alias: string; path: string
                 // Store under the alias name
                 allImports[import_.alias] = importedData;
             }
-            
-            console.log(`Loaded data from import: ${import_.alias} -> ${import_.path}`);
         } catch (error) {
             console.error(`Failed to load import ${import_.alias} from ${import_.path}:`, error);
         }

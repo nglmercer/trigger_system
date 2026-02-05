@@ -120,20 +120,12 @@ connection.onDidChangeWatchedFiles(_change => {
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
   (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-    connection.console.log(`Completion requested for document: ${_textDocumentPosition.textDocument.uri}`);
-    connection.console.log(`Position: line ${_textDocumentPosition.position.line}, character ${_textDocumentPosition.position.character}`);
-    
     const document = documents.get(_textDocumentPosition.textDocument.uri);
     if (!document) {
-        connection.console.log('Document not found');
         return [];
     }
     
-    connection.console.log(`Document found, getting completions...`);
-    const completions = getCompletionItems(document, _textDocumentPosition.position);
-    connection.console.log(`Found ${completions.length} completion items`);
-    
-    return completions;
+    return getCompletionItems(document, _textDocumentPosition.position);
   }
 );
 

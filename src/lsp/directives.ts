@@ -235,10 +235,8 @@ export function getImportDirectives(document: TextDocument, documentUri: string)
                     alias: directive.importAlias,
                     path: resolvedPath
                 });
-                
-                console.log(`[LSP] Import directive resolved: ${directive.importAlias} -> ${resolvedPath}`);
             } catch (error) {
-                console.error(`[LSP] Error resolving import directive:`, error);
+                // validation will catch this later
             }
         }
     }
