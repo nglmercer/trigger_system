@@ -58,6 +58,11 @@ export class RuleEngine {
     
     // Inject current state into context
     context.state = StateManager.getInstance().getAll();
+    
+    // Initialize vars if not present
+    if (!context.vars) {
+      context.vars = {};
+    }
 
     if (this.config.globalSettings.debugMode) {
       console.log(

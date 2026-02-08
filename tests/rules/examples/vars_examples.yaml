@@ -1,0 +1,228 @@
+# ============================================================
+# VARS & VARIABLES EXAMPLES
+# ============================================================
+# This file demonstrates how to use variables (vars) in rules
+# with STATE_GET, STATE_SET, and conditional actions.
+# ============================================================
+#
+# --- Basic Variable Usage ---
+
+- id: vars-basic-set-get
+  name: "Basic Variable Set and Get"
+  description: "Set a variable and read it back using STATE_GET"
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Set initial value
+      - type: STATE_SET
+        params: { key: "counter", value: 10 }
+      # Read state into vars.currentCount
+      - type: STATE_GET
+        params: { key: "counter", as: "currentCount" }
+      # Log using the variable
+      - type: LOG
+        params: { message: "Counter is: ${vars.currentCount}" }
+
+# --- Variable Arithmetic ---
+
+- id: vars-math-operations
+  name: "Math Operations with Variables"
+  description: "Perform calculations using STATE_SET with expressions"
+  on: CALCULATE_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Set base values
+      - type: STATE_SET
+        params: { key: "price", value: 100 }
+      - type: STATE_SET
+        params: { key: "taxRate", value: 0.15 }
+      # Read for calculation
+      - type: STATE_GET
+        params: { key: "price", as: "basePrice" }
+      - type: STATE_GET
+        params: { key: "taxRate", as: "tax" }
+      # Calculate total
+      - type: STATE_SET
+        params: { key: "total", value: "${vars.basePrice + vars.basePrice * vars.tax}" }
+      # Read final total
+      - type: STATE_GET
+        params: { key: "total", as: "finalTotal" }
+      - type: LOG
+        params: { message: "Total with tax: ${vars.finalTotal}" }
+
+# --- Conditional Variable Logic ---
+
+- id: vars-conditional-scoring
+  name: "Conditional Scoring"
+  description: "Use variables to make decisions based on values"
+  on: SCORING_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Set score
+      - type: STATE_SET
+        params: { key: "score", value: 85 }
+      # Read score
+      - type: STATE_GET
+        params: { key: "score", as: "currentScore" }
+      # Conditional grade assignment
+      - if:
+          field: vars.currentScore
+          operator: GTE
+          value: 90
+        then:
+          type: STATE_SET
+          params: { key: "grade", value: "A" }
+        else:
+          if:
+            field: vars.currentScore
+            operator: GTE
+            value: 80
+          then:
+            type: STATE_SET
+            params: { key: "grade", value: "B" }
+          else:
+            type: STATE_SET
+            params: { key: "grade", value: "C" }
+      # Read and log grade
+      - type: STATE_GET
+        params: { key: "grade", as: "finalGrade" }
+      - type: LOG
+        params: { message: "Grade assigned: ${vars.finalGrade}" }
+
+# --- Counter with State ---
+
+- id: vars-increment-counter
+  name: "Increment Counter"
+  description: "Use STATE_INCREMENT with variables"
+  on: INCREMENT_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Initialize counter if not exists
+      - type: STATE_SET
+        params: { key: "visitCount", value: 0 }
+      # Increment
+      - type: STATE_INCREMENT
+        params: { key: "visitCount", amount: 1 }
+      # Read current count
+      - type: STATE_GET
+        params: { key: "visitCount", as: "visits" }
+      - type: LOG
+        params: { message: "Visit count: ${vars.visits}" }
+
+# --- State Management ---
+
+- id: vars-state-lifecycle
+  name: "State Lifecycle"
+  description: "Set, read, and delete state"
+  on: LIFECYCLE_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Set initial state
+      - type: STATE_SET
+        params: { key: "sessionId", value: "abc123" }
+      - type: STATE_SET
+        params: { key: "sessionActive", value: true }
+      # Read state
+      - type: STATE_GET
+        params: { key: "sessionId", as: "session" }
+      - type: STATE_GET
+        params: { key: "sessionActive", as: "isActive" }
+      - type: LOG
+        params: { message: "Session: ${vars.session}, Active: ${vars.isActive}" }
+      # Delete session
+      - type: STATE_DELETE
+        params: { key: "sessionId" }
+      - type: STATE_DELETE
+        params: { key: "sessionActive" }
+      - type: LOG
+        params: { message: "Session data deleted" }
+
+# --- Complex Conditional Flow ---
+
+- id: vars-complex-workflow
+  name: "Complex Workflow"
+  description: "Multi-step workflow with break conditions"
+  on: WORKFLOW_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Setup
+      - type: STATE_SET
+        params: { key: "step", value: 1 }
+      - type: STATE_SET
+        params: { key: "maxSteps", value: 5 }
+      - type: STATE_GET
+        params: { key: "step", as: "currentStep" }
+      - type: STATE_GET
+        params: { key: "maxSteps", as: "maximum" }
+      # Step 1: Check if we should start
+      - if:
+          field: vars.currentStep
+          operator: LTE
+          value: vars.maximum
+        then:
+          mode: SEQUENCE
+          actions:
+            - type: LOG
+              params: { message: "Processing step ${vars.currentStep} of ${vars.maximum}" }
+            - type: STATE_INCREMENT
+              params: { key: "step", amount: 1 }
+        else:
+          type: LOG
+          params: { message: "Max steps reached, workflow complete!" }
+      # Final status
+      - type: STATE_GET
+        params: { key: "step", as: "finalStep" }
+      - type: LOG
+        params: { message: "Final step: ${vars.finalStep}" }
+
+# --- Using Event Data with Vars ---
+
+- id: vars-event-data
+  name: "Event Data with Variables"
+  description: "Combine event data with state variables"
+  on: ORDER_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Store event data in state
+      - type: STATE_SET
+        params: { key: "orderAmount", value: "${data.amount}" }
+      - type: STATE_SET
+        params: { key: "customerTier", value: "${data.tier}" }
+      # Read values
+      - type: STATE_GET
+        params: { key: "orderAmount", as: "amount" }
+      - type: STATE_GET
+        params: { key: "customerTier", as: "tier" }
+      # Apply discount based on tier
+      - if:
+          field: vars.tier
+          operator: EQ
+          value: "premium"
+        then:
+          mode: SEQUENCE
+          actions:
+            - type: STATE_SET
+              params: { key: "discount", value: 0.2 }
+            - type: LOG
+              params: { message: "Premium customer! 20% discount applied." }
+        else:
+          mode: SEQUENCE
+          actions:
+            - type: STATE_SET
+              params: { key: "discount", value: 0.0 }
+            - type: LOG
+              params: { message: "Standard customer. No discount." }
+      # Calculate final price
+      - type: STATE_GET
+        params: { key: "discount", as: "disc" }
+      - type: MATH
+        params: { expression: "${vars.amount * (1 - vars.disc)}" }
+      - type: LOG
+        params: { message: "Final price: ${lastResult}" }

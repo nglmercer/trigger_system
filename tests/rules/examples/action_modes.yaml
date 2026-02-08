@@ -1,6 +1,6 @@
 # Test ActionGroup modes and Action properties
 # Covers: ALL, EITHER, SEQUENCE, Nested Groups, Delay, Probability
-
+# function({event:TEST_EVENT, data:{}})
 # --- Action Modes ---
 
 - id: action-mode-all
