@@ -74,7 +74,9 @@ const ACTION_TYPES: CompletionItem[] = [
     { label: 'forward', kind: CompletionItemKind.EnumMember, detail: 'Forward event to URL' },
     { label: 'response', kind: CompletionItemKind.EnumMember, detail: 'Return HTTP response' },
     { label: 'STATE_SET', kind: CompletionItemKind.EnumMember, detail: 'Save value to global state' },
+    { label: 'STATE_GET', kind: CompletionItemKind.EnumMember, detail: 'Read state and store in context.vars' },
     { label: 'STATE_INCREMENT', kind: CompletionItemKind.EnumMember, detail: 'Increment numeric state key' },
+    { label: 'STATE_DELETE', kind: CompletionItemKind.EnumMember, detail: 'Delete a state key' },
     { label: 'EMIT_EVENT', kind: CompletionItemKind.EnumMember, detail: 'Trigger another event internally' },
 ];
 
@@ -91,7 +93,13 @@ const ACTION_KEYS: CompletionItem[] = [
     { label: 'delay', kind: CompletionItemKind.Property, detail: 'Delay in ms (integer or expression)' },
     { label: 'probability', kind: CompletionItemKind.Property, detail: 'Execution chance (0-1 or expression)' },
     { label: 'mode', kind: CompletionItemKind.Property, detail: 'Grouping mode (ALL, SEQUENCE, EITHER)' },
-    { label: 'actions', kind: CompletionItemKind.Property, detail: 'List of sub-actions' }
+    { label: 'actions', kind: CompletionItemKind.Property, detail: 'List of sub-actions' },
+    // --- Control Flow ---
+    { label: 'if', kind: CompletionItemKind.Keyword, detail: 'Condition for conditional execution' },
+    { label: 'then', kind: CompletionItemKind.Keyword, detail: 'Actions to run if condition is true' },
+    { label: 'else', kind: CompletionItemKind.Keyword, detail: 'Actions to run if condition is false' },
+    { label: 'break', kind: CompletionItemKind.Keyword, detail: 'Break out of action execution' },
+    { label: 'continue', kind: CompletionItemKind.Keyword, detail: 'Skip remaining actions' }
 ];
 
 const PARAM_KEYS: Record<string, CompletionItem[]> = {
@@ -124,9 +132,16 @@ const PARAM_KEYS: Record<string, CompletionItem[]> = {
         { label: 'value', kind: CompletionItemKind.Property },
         { label: 'ttl', kind: CompletionItemKind.Property, detail: 'Time to live in ms' },
     ],
+    'STATE_GET': [
+        { label: 'key', kind: CompletionItemKind.Property, detail: 'State key to read' },
+        { label: 'as', kind: CompletionItemKind.Property, detail: 'Variable name to store value in context.vars' },
+    ],
     'STATE_INCREMENT': [
         { label: 'key', kind: CompletionItemKind.Property },
         { label: 'amount', kind: CompletionItemKind.Property },
+    ],
+    'STATE_DELETE': [
+        { label: 'key', kind: CompletionItemKind.Property, detail: 'State key to delete' },
     ],
     'EMIT_EVENT': [
         { label: 'event', kind: CompletionItemKind.Property },
@@ -156,6 +171,35 @@ const SNIPPETS: CompletionItem[] = [
         insertText: 'operator: ${1|AND,OR|}\nconditions:\n  - field: ${2:data.x}\n    operator: ${3:EQ}\n    value: ${4:val}',
         insertTextFormat: InsertTextFormat.Snippet,
         detail: 'Nested condition group'
+    },
+    // --- New Snippets for Control Flow ---
+    {
+        label: 'conditional_action',
+        kind: CompletionItemKind.Snippet,
+        insertText: '- if:\n    field: ${1:vars.condition}\n    operator: ${2:EQ}\n    value: ${3:true}\n  then:\n    type: ${4:log}\n    params:\n      message: ${5:Condition met!}\n  else:\n    type: ${6:log}\n    params:\n      message: ${7:Condition not met!}',
+        insertTextFormat: InsertTextFormat.Snippet,
+        detail: 'Conditional action with if/then/else'
+    },
+    {
+        label: 'state_get_action',
+        kind: CompletionItemKind.Snippet,
+        insertText: 'type: STATE_GET\nparams:\n  key: ${1:stateKey}\n  as: ${2:variableName}',
+        insertTextFormat: InsertTextFormat.Snippet,
+        detail: 'Read state and store in variable'
+    },
+    {
+        label: 'break_action',
+        kind: CompletionItemKind.Snippet,
+        insertText: 'break: true',
+        insertTextFormat: InsertTextFormat.Snippet,
+        detail: 'Break out of action execution'
+    },
+    {
+        label: 'continue_action',
+        kind: CompletionItemKind.Snippet,
+        insertText: 'continue: true',
+        insertTextFormat: InsertTextFormat.Snippet,
+        detail: 'Skip remaining actions in group'
     }
 ];
 
@@ -287,6 +331,33 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
 }
 
 /**
+ * Get completions for built-in variables (vars, state, globals, etc.)
+ */
+function getBuiltInVariableCompletions(prefix: string): CompletionItem[] {
+    const suggestions: CompletionItem[] = [];
+    
+    // Built-in variable prefixes
+    const builtIns = [
+        { name: 'vars', detail: 'Dynamic variables set by STATE_GET action', type: 'object' },
+        { name: 'state', detail: 'Global engine state', type: 'object' },
+        { name: 'globals', detail: 'Global variables', type: 'object' },
+        { name: 'lastResult', detail: 'Result of previous action in SEQUENCE mode', type: 'any' },
+    ];
+    
+    builtIns.forEach(bi => {
+        if (bi.name.startsWith(prefix)) {
+            suggestions.push({
+                label: bi.name,
+                kind: CompletionItemKind.Variable,
+                detail: `${bi.type} - ${bi.detail}`
+            });
+        }
+    });
+    
+    return suggestions;
+}
+
+/**
  * Get completions for template variables
  */
 function getTemplateVariableCompletions(context: { prefix: string; inTemplate: boolean }): CompletionItem[] {
@@ -341,6 +412,14 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
     // If we have a specific prefix, get fields from that path
     // The prefix might be something like "data" or "data.server" or "config.username"
     const fields = globalDataContext.getFields(cleanPrefix);
+    
+    // If no fields found in imported data, check for built-in variables
+    if (fields.length === 0) {
+        const builtInVars = getBuiltInVariableCompletions(cleanPrefix);
+        if (builtInVars.length > 0) {
+            return builtInVars;
+        }
+    }
     
     if (fields.length > 0) {
         const suggestions = fields.map(field => {

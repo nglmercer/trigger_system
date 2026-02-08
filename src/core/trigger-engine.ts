@@ -324,7 +324,7 @@ export class TriggerEngine {
     // Check probability
     if (probability !== undefined && Math.random() > probability) {
        return {
-         type: action.type,
+         type: action.type!,
          timestamp: Date.now(),
          result: { skipped: "probability check failed" }
        };
@@ -352,13 +352,13 @@ export class TriggerEngine {
       // Check if ActionRegistry is available (Node.js environment)
       try {
         const { ActionRegistry } = await import('./action-registry');
-        const registryHandler = ActionRegistry.getInstance().get(action.type);
+        const registryHandler = ActionRegistry.getInstance().get(action.type!);
         if (registryHandler) {
           handler = (p: ActionParams) => registryHandler({ ...action, params: p }, context);
         }
       } catch {
         // ActionRegistry not available, use local handlers
-        handler = this.actionHandlers.get(action.type);
+        handler = this.actionHandlers.get(action.type!);
       }
 
       let result: unknown;
@@ -372,14 +372,14 @@ export class TriggerEngine {
       }
 
       return {
-        type: action.type,
+        type: action.type!,
         result,
         timestamp: Date.now()
       };
     } catch (error) {
       console.error(`Error executing action ${action.type}:`, error);
       return {
-        type: action.type,
+        type: action.type!,
         error: String(error),
         timestamp: Date.now()
       };

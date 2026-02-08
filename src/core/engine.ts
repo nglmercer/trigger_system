@@ -167,44 +167,156 @@ export class TriggerEngine {
       }
     }
 
-    // Execute
+    // Execute actions with control flow support
+    let shouldBreak = false;
     for (const action of actionsToExecute) {
-      // Interpolate Params
-      const processedParams = this.interpolateParams(action.params || {}, context);
-      const handler = this.actionHandlers.get(action.type);
+      if (shouldBreak) break;
 
-      if (handler) {
-        try {
-          // Handle Delay
-          if (action.delay && action.delay > 0) {
-            await new Promise(r => setTimeout(r, action.delay));
+      // Handle conditional actions
+      if (action.if) {
+        const conditionMet = this.evaluateConditions(action.if, context);
+        
+        if (conditionMet) {
+          // Execute 'then' actions
+          if (action.then) {
+            const thenLogs = await this.executeNestedActions(action.then, context);
+            executionLogs.push(...thenLogs);
           }
-
-          const result = await handler(processedParams, context);
-          executionLogs.push({
-            type: action.type,
-            result,
-            timestamp: Date.now()
-          });
-        } catch (err) {
-            console.error(`Action ${action.type} failed:`, err);
-            executionLogs.push({
-                type: action.type,
-                error: err,
-                timestamp: Date.now()
-            });
+        } else {
+          // Execute 'else' actions
+          if (action.else) {
+            const elseLogs = await this.executeNestedActions(action.else, context);
+            executionLogs.push(...elseLogs);
+          }
         }
-      } else {
-        console.warn(`No handler registered for action type: ${action.type}`);
+        continue; // Move to next action
+      }
+
+      // Handle break
+      if (action.break) {
+        shouldBreak = true;
         executionLogs.push({
-            type: action.type,
-            error: "No handler registered",
-            timestamp: Date.now()
+          type: 'BREAK',
+          result: 'Breaking action execution',
+          timestamp: Date.now()
         });
+        break;
+      }
+
+      // Handle continue (skip remaining actions in this group)
+      if (action.continue) {
+        executionLogs.push({
+          type: 'CONTINUE',
+          result: 'Skipping remaining actions',
+          timestamp: Date.now()
+        });
+        continue;
+      }
+
+      // Regular action execution
+      const result = await this.executeSingleAction(action, context);
+      if (result) {
+        executionLogs.push(result);
       }
     }
 
     return executionLogs;
+  }
+
+  /**
+   * Execute nested actions (then/else branches)
+   */
+  private async executeNestedActions(
+    actions: Action | Action[] | ActionGroup,
+    context: TriggerContext
+  ): Promise<ExecutedAction[]> {
+    if (Array.isArray(actions)) {
+      const logs: ExecutedAction[] = [];
+      for (const action of actions) {
+        const log = await this.executeSingleAction(action, context);
+        if (log) logs.push(log);
+      }
+      return logs;
+    } else if ('mode' in actions && 'actions' in actions) {
+      // It's an ActionGroup
+      return this.executeRuleActions(actions, context);
+    } else {
+      // Single action
+      const log = await this.executeSingleAction(actions as Action, context);
+      return log ? [log] : [];
+    }
+  }
+
+  /**
+   * Execute a single action with delay and probability support
+   */
+  private async executeSingleAction(action: Action, context: TriggerContext): Promise<ExecutedAction | null> {
+    // Skip execution if no type and not a control flow action
+    if (!action.type && !action.break && !action.continue) {
+      return null;
+    }
+
+    // Handle probability
+    if (action.probability !== undefined && action.probability < 1.0) {
+      if (Math.random() > action.probability) {
+        return {
+          type: action.type || 'unknown',
+          result: 'Skipped due to probability',
+          timestamp: Date.now()
+        };
+      }
+    }
+
+    // Handle break/continue without executing handler
+    if (action.break) {
+      return {
+        type: 'BREAK',
+        result: 'Break action',
+        timestamp: Date.now()
+      };
+    }
+
+    if (action.continue) {
+      return {
+        type: 'CONTINUE',
+        result: 'Continue action',
+        timestamp: Date.now()
+      };
+    }
+
+    // Interpolate Params
+    const processedParams = this.interpolateParams(action.params || {}, context);
+    const handler = this.actionHandlers.get(action.type!);
+
+    if (handler) {
+      try {
+        // Handle Delay
+        if (action.delay && action.delay > 0) {
+          await new Promise(r => setTimeout(r, action.delay));
+        }
+
+        const result = await handler(processedParams, context);
+        return {
+          type: action.type!,
+          result,
+          timestamp: Date.now()
+        };
+      } catch (err) {
+          console.error(`Action ${action.type} failed:`, err);
+          return {
+              type: action.type!,
+              error: err,
+              timestamp: Date.now()
+          };
+      }
+    } else {
+      console.warn(`No handler registered for action type: ${action.type}`);
+      return {
+          type: action.type!,
+          error: "No handler registered",
+          timestamp: Date.now()
+      };
+    }
   }
 
   private interpolateParams(params: ActionParams, context: TriggerContext): ActionParams {

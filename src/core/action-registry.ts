@@ -141,6 +141,30 @@ export class ActionRegistry {
         return { key, newValue };
     });
 
+    // STATE_GET - Read state and store in context.vars
+    this.register("STATE_GET", async (action, context) => {
+        const key = String(action.params?.key || "");
+        const as = String(action.params?.as || key); // Store with this variable name
+        if (!key) return { error: "Missing key for STATE_GET" };
+
+        const value = await StateManager.getInstance().get(key);
+        
+        // Store in context.vars for interpolation in subsequent actions
+        if (!context.vars) context.vars = {};
+        context.vars[as] = value;
+        
+        return { key, value, storedAs: as };
+    });
+
+    // STATE_DELETE
+    this.register("STATE_DELETE", async (action, context) => {
+        const key = String(action.params?.key || "");
+        if (!key) return { error: "Missing key for STATE_DELETE" };
+
+        const deleted = await StateManager.getInstance().delete(key);
+        return { key, deleted };
+    });
+
     this.register("EMIT_EVENT", (action, context) => {
          // This action is special. The engine or host must handle the result 
          // and feed it back if desired. 

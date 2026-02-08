@@ -58,10 +58,16 @@ const types = scope({
     RuleCondition: "Condition | ConditionGroup",
 
     Action: {
-        type: "string > 0", // Must define a type
+        "type?": "string > 0", // Optional for conditional actions
         "params?": "object", // Must be an object if present
         "delay?": "number.integer >= 0 | string", // Integer or dynamic expression
-        "probability?": "0 <= number <= 1 | string" // Number 0-1 or dynamic expression
+        "probability?": "0 <= number <= 1 | string", // Number 0-1 or dynamic expression
+        // --- Control Flow Properties ---
+        "if?": "RuleCondition | RuleCondition[]", // Conditional execution
+        "then?": "Action | ActionGroup", // Action/Group if condition is true
+        "else?": "Action | ActionGroup", // Action/Group if condition is false
+        "break?": "boolean", // Break out of execution
+        "continue?": "boolean" // Skip remaining actions
     },
 
     ActionGroup: {

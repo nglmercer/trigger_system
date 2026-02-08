@@ -307,9 +307,51 @@ export class RuleEngine {
       }
     }
 
-    // Execute
+    // Execute actions with control flow support
     let lastResult = context.lastResult;
+    let shouldBreak = false;
+
     for (const action of actionList) {
+      if (shouldBreak) break;
+
+      // Handle conditional actions
+      if ('if' in action && action.if) {
+        const conditionMet = this.evaluateActionCondition(action.if, context);
+        
+        if (conditionMet && action.then) {
+          // Execute 'then' actions
+          const thenLogs = await this.executeNestedActions(action.then, context);
+          enactedActions.push(...thenLogs);
+        } else if (!conditionMet && action.else) {
+          // Execute 'else' actions
+          const elseLogs = await this.executeNestedActions(action.else, context);
+          enactedActions.push(...elseLogs);
+        }
+        continue;
+      }
+
+      // Handle break
+      if (action.break) {
+        shouldBreak = true;
+        enactedActions.push({
+          type: 'BREAK',
+          result: 'Breaking action execution',
+          timestamp: Date.now()
+        });
+        break;
+      }
+
+      // Handle continue (skip remaining actions in this group)
+      if (action.continue) {
+        enactedActions.push({
+          type: 'CONTINUE',
+          result: 'Skipping remaining actions',
+          timestamp: Date.now()
+        });
+        continue;
+      }
+
+      // Regular action execution
       const actionContext = { ...context, lastResult };
       const result = await this.executeSingleAction(action, actionContext);
       enactedActions.push(result);
@@ -322,6 +364,44 @@ export class RuleEngine {
     return enactedActions;
   }
 
+  /**
+   * Evaluate action-level condition (for if/then/else)
+   */
+  private evaluateActionCondition(
+    condition: RuleCondition | RuleCondition[],
+    context: TriggerContext
+  ): boolean {
+    if (Array.isArray(condition)) {
+      // Implicit AND for array of conditions
+      return condition.every(c => this.evaluateRecursiveCondition(c, context));
+    }
+    
+    // Use recursive evaluator for RuleCondition (handles both Condition and ConditionGroup)
+    return this.evaluateRecursiveCondition(condition, context);
+  }
+
+  /**
+   * Execute nested actions (then/else branches)
+   */
+  private async executeNestedActions(
+    actions: TriggerAction | TriggerAction[] | ActionGroup,
+    context: TriggerContext
+  ): Promise<TriggerResult['executedActions']> {
+    if (Array.isArray(actions)) {
+      const logs: TriggerResult['executedActions'] = [];
+      for (const action of actions) {
+        const log = await this.executeSingleAction(action, context);
+        logs.push(log);
+      }
+      return logs;
+    } else if (this.isActionGroup(actions)) {
+      return this.executeRuleActions(actions, context);
+    } else {
+      const log = await this.executeSingleAction(actions, context);
+      return [log];
+    }
+  }
+
   private isActionGroup(action: unknown): action is ActionGroup {
     return typeof action === 'object' && action !== null && 'mode' in action && 'actions' in action;
   }
@@ -331,6 +411,32 @@ export class RuleEngine {
     action: TriggerAction,
     context: TriggerContext,
   ): Promise<TriggerResult['executedActions'][0]> {
+    
+    // Skip execution if no type and not a control flow action
+    if (!action.type && !action.break && !action.continue) {
+      return {
+        type: 'unknown',
+        error: 'Action has no type and no control flow properties',
+        timestamp: Date.now()
+      };
+    }
+
+    // Handle break/continue without executing handler
+    if (action.break) {
+      return {
+        type: 'BREAK',
+        result: 'Break action',
+        timestamp: Date.now()
+      };
+    }
+
+    if (action.continue) {
+      return {
+        type: 'CONTINUE',
+        result: 'Continue action',
+        timestamp: Date.now()
+      };
+    }
     
     // Interpolate probability if it's a string expression
     let probability = action.probability;
@@ -342,7 +448,7 @@ export class RuleEngine {
     // Check probability
     if (probability !== undefined && Math.random() > probability) {
        return {
-         type: action.type,
+         type: action.type || 'unknown',
          timestamp: Date.now(),
          result: { skipped: "probability check failed" }
        };
@@ -361,7 +467,7 @@ export class RuleEngine {
     }
 
     try {
-        const handler = this.actionRegistry.get(action.type);
+        const handler = this.actionRegistry.get(action.type!);
         let result;
 
         if (handler) {
@@ -378,7 +484,7 @@ export class RuleEngine {
         triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action, context, result });
 
         return {
-          type: action.type,
+          type: action.type!,
           result,
           timestamp: Date.now()
         };
@@ -387,7 +493,7 @@ export class RuleEngine {
         triggerEmitter.emit(EngineEvent.ACTION_ERROR, { action, context, error: String(error) });
 
         return {
-          type: action.type,
+          type: action.type!,
           error: String(error),
           timestamp: Date.now()
         };

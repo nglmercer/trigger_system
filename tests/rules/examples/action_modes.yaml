@@ -88,3 +88,203 @@
       - type: LOG
         delay: 0
         probability: 0.1 # Low chance
+
+# --- Variable Assignment and Reading ---
+
+- id: action-state-set-get
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      # Set a variable
+      - type: STATE_SET
+        params: { key: "counter", value: 0 }
+      # Increment counter
+      - type: STATE_INCREMENT
+        params: { key: "counter", amount: 1 }
+      # Read state into context.vars for use in subsequent actions
+      - type: STATE_GET
+        params: { key: "counter", as: "currentCount" }
+      # Log using the read value
+      - type: LOG
+        params: { message: "Counter is now: ${vars.currentCount}" }
+
+# --- Conditional Actions (if/then/else) ---
+
+# Example 1: Simple conditional with single then action
+- id: action-conditional-simple
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: STATE_SET
+        params: { key: "score", value: 85 }
+      - type: STATE_GET
+        params: { key: "score", as: "currentScore" }
+      - type: LOG
+        params: { message: "Checking score..." }
+      - if:
+          field: vars.currentScore
+          operator: GT
+          value: 80
+        then:
+          type: LOG
+          params: { message: "Great job! Score is excellent!" }
+
+# Example 2: Conditional with then and else (single actions)
+- id: action-conditional-then-else
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: STATE_SET
+        params: { key: "userLevel", value: "basic" }
+      - type: STATE_GET
+        params: { key: "userLevel", as: "level" }
+      - if:
+          field: vars.level
+          operator: EQ
+          value: "premium"
+        then:
+          type: LOG
+          params: { message: "Welcome, Premium user!" }
+        else:
+          type: LOG
+          params: { message: "Upgrade to Premium for more features!" }
+
+# Example 3: Complex condition with AND operator
+- id: action-conditional-complex
+  on: TEST_EVENT
+  do:
+    mode: ALL
+    actions:
+      - type: STATE_SET
+        params: { key: "balance", value: 100 }
+      - type: STATE_SET
+        params: { key: "minBalance", value: 50 }
+      - type: STATE_GET
+        params: { key: "balance", as: "currentBalance" }
+      - type: STATE_GET
+        params: { key: "minBalance", as: "minimum" }
+      - if:
+          operator: AND
+          conditions:
+            - field: vars.currentBalance
+              operator: GTE
+              value: vars.minimum
+            - field: vars.currentBalance
+              operator: LT
+              value: 200
+        then:
+          type: LOG
+          params: { message: "Balance is healthy!" }
+        else:
+          type: LOG
+          params: { message: "Balance check failed" }
+
+# --- Control Flow: Break ---
+
+- id: action-break-example
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: LOG
+        params: { message: "Step 1: Always runs" }
+      - type: LOG
+        params: { message: "Step 2: Always runs" }
+      - if:
+          field: data.forceStop
+          operator: EQ
+          value: true
+        then:
+          type: LOG
+          params: { message: "Force stop triggered!" }
+        else:
+          type: BREAK
+      - type: LOG
+        params: { message: "Step 3: Skipped if forceStop was true" }
+
+# --- Control Flow: Continue ---
+
+- id: action-continue-example
+  on: TEST_EVENT
+  do:
+    mode: ALL
+    actions:
+      - type: STATE_SET
+        params: { key: "priority", value: 1 }
+      - type: STATE_GET
+        params: { key: "priority", as: "priorityLevel" }
+      - if:
+          field: vars.priorityLevel
+          operator: LT
+          value: 3
+        then:
+          type: CONTINUE
+      # These only run if priority >= 3
+      - type: LOG
+        params: { message: "Premium action: Sending notification" }
+      - type: LOG
+        params: { message: "Premium action: Updating analytics" }
+
+# --- Multiple Conditionals in Sequence ---
+
+- id: action-multi-conditional
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: STATE_SET
+        params: { key: "status", value: "pending" }
+      - type: STATE_SET
+        params: { key: "retryCount", value: 2 }
+      - type: STATE_GET
+        params: { key: "status", as: "currentStatus" }
+      - type: STATE_GET
+        params: { key: "retryCount", as: "retries" }
+      # First condition: check status
+      - if:
+          field: vars.currentStatus
+          operator: EQ
+          value: "pending"
+        then:
+          type: LOG
+          params: { message: "Status is pending, checking retries..." }
+        else:
+          type: LOG
+          params: { message: "Status is not pending" }
+      # Second condition: check retry count
+      - if:
+          field: vars.retries
+          operator: LT
+          value: 3
+        then:
+          type: LOG
+          params: { message: "Will retry (attempt ${vars.retries})" }
+        else:
+          type: LOG
+          params: { message: "Max retries exceeded!" }
+
+# --- Conditional with ActionGroup in then ---
+
+- id: action-conditional-group
+  on: TEST_EVENT
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: STATE_SET
+        params: { key: "score", value: 95 }
+      - type: STATE_GET
+        params: { key: "score", as: "currentScore" }
+      - if:
+          field: vars.currentScore
+          operator: GTE
+          value: 90
+        then:
+          mode: SEQUENCE
+          actions:
+            - type: LOG
+              params: { message: "Excellent score! A grade!" }
+            - type: LOG
+              params: { message: "Awarding honor roll..." }

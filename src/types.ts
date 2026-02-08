@@ -58,10 +58,16 @@ export interface ActionParams {
 export type ActionParamValue = string | number | boolean | null | ActionParamValue[] | ActionParams;
 
 export interface Action {
-  type: string;
+  type?: string; // Optional for conditional actions
   params?: ActionParams;
   delay?: number;
   probability?: number;
+  // --- Control Flow ---
+  if?: RuleCondition | RuleCondition[];  // Conditional execution
+  then?: Action | Action[] | ActionGroup; // Actions to run if condition is true
+  else?: Action | Action[] | ActionGroup; // Actions to run if condition is false
+  break?: boolean; // Break out of action execution
+  continue?: boolean; // Skip remaining actions
 }
 
 export type ExecutionMode = 'ALL' | 'EITHER' | 'SEQUENCE';
@@ -88,6 +94,7 @@ export interface TriggerContext {
   id?: string;
   globals?: Record<string, unknown>;
   state?: Record<string, unknown>;
+  vars?: Record<string, unknown>; // Dynamic variables for action flow
   helpers?: Record<string, (...args: unknown[]) => unknown>;
   lastResult?: unknown;
 }

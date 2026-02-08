@@ -196,10 +196,36 @@ export class RuleEngine extends TriggerEngine {
     // Check probability
     if (probability !== undefined && Math.random() > probability) {
        return {
-         type: action.type,
+         type: action.type || 'unknown',
          timestamp: Date.now(),
          result: { skipped: "probability check failed" }
        };
+    }
+
+    // Handle break/continue without executing handler
+    if (action.break) {
+      return {
+        type: 'BREAK',
+        result: 'Break action',
+        timestamp: Date.now()
+      };
+    }
+
+    if (action.continue) {
+      return {
+        type: 'CONTINUE',
+        result: 'Continue action',
+        timestamp: Date.now()
+      };
+    }
+
+    // Skip if no type
+    if (!action.type) {
+      return {
+        type: 'unknown',
+        error: 'Action has no type',
+        timestamp: Date.now()
+      };
     }
 
     // Interpolate delay if it's a string expression
@@ -219,7 +245,7 @@ export class RuleEngine extends TriggerEngine {
     const params = this.interpolateParams(action.params || {}, context);
 
     try {
-      const handler = this.actionRegistry.get(action.type);
+      const handler = this.actionRegistry.get(action.type!);
       let result;
 
       if (handler) {
@@ -237,7 +263,7 @@ export class RuleEngine extends TriggerEngine {
       triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action: { ...action, params }, context, result });
 
       return {
-        type: action.type,
+        type: action.type!,
         result,
         timestamp: Date.now()
       };
@@ -246,7 +272,7 @@ export class RuleEngine extends TriggerEngine {
       triggerEmitter.emit(EngineEvent.ACTION_ERROR, { action, context, error: String(error) });
 
       return {
-        type: action.type,
+        type: action.type!,
         error: String(error),
         timestamp: Date.now()
       };
