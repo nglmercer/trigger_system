@@ -1,0 +1,34 @@
+# LSP server - only needed for VSCode extension, not the npm package
+dist/lsp/
+
+# CLI tools - internal use only
+dist/cli/
+
+# Tests
+tests/
+*.test.ts
+*.spec.ts
+
+# Development files
+*.tsbuildinfo
+.cache
+.vscode/
+.idea/
+
+# Examples
+examples/
+
+# Documentation
+docs/
+ROADMAP.md
+TASKS.md
+
+# VSCode extension
+vscode-extension/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
