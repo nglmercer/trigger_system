@@ -1,9 +1,0 @@
-# Trigger System Language Configuration for Zed
-# Extends YAML with Trigger System-specific syntax highlighting
-
-name = "Trigger System"
-grammar = "yaml"
-path_suffixes = ["yaml", "yml"]
-line_comments = ["#"]
-tab_size = 2
-hard_tabs = false

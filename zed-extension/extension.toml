@@ -1,9 +1,0 @@
-# Trigger System Zed Extension
-# Provides syntax highlighting for Trigger System YAML files
-
-schema_version = 1
-id = "trigger-system"
-name = "Trigger System"
-description = "Syntax highlighting for Agnostic Trigger System YAML rules"
-version = "0.1.0"
-authors = ["nglmercer"]
