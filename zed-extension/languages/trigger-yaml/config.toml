@@ -1,5 +1,0 @@
-name = "Trigger YAML"
-grammar = "yaml"
-path_suffixes = ["trigger.yaml", "trigger.yml", "triggers.yaml", "triggers.yml"]
-line_comments = ["# "]
-tab_size = 2
