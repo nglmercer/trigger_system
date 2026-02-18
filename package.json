@@ -70,6 +70,8 @@
     "build:vscode": "bun build vscode-extension/src/extension.ts --outfile vscode-extension/out/extension.js --external vscode --format cjs --target node --minify",
     "build:all": "bun run build:lsp && bun run build:vscode",
     "package:vscode": "cd vscode-extension && vsce package --no-dependencies",
+    "build:zed": "cd zed-extension && cargo build --target wasm32-wasip1 --release",
+    "install:zed": "bash zed-extension/install.sh",
     "test": "bun test",
     "validate": "bun run src/cli/validate.ts",
     "lsp": "bun run src/lsp/server.ts --stdio",
