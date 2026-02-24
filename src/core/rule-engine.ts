@@ -39,12 +39,16 @@ export class RuleEngine {
    * Convenience method to process an event with a simple payload
    */
   async processEvent(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
+    return this.processEventSimple(eventType, data, vars);
+  }
+
+  async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
       vars: vars,
       timestamp: Date.now(),
-      state: {} // State will be injected by evaluateContext
+      state: {} as any // State will be injected by evaluateContext
     };
     return this.evaluateContext(context);
   }
@@ -56,8 +60,13 @@ export class RuleEngine {
   async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
     const results: TriggerResult[] = [];
     
-    // Inject current state into context
-    context.state = StateManager.getInstance().getAll();
+    // Inject current state proxy into context for direct manipulation
+    context.state = StateManager.getInstance().getLiveProxy();
+
+    // Apply state configuration if present
+    if (this.config.stateConfig) {
+        await StateManager.getInstance().applyConfig(this.config.stateConfig);
+    }
     
     // Initialize env if not present
     if (!context.env) {
@@ -320,7 +329,7 @@ export class RuleEngine {
       if (shouldBreak) break;
 
       // Handle conditional actions
-      if ('if' in action && action.if) {
+      if ('if' in action && action.if && (action.then || action.else)) {
         const conditionMet = this.evaluateActionCondition(action.if, context);
         
         if (conditionMet && action.then) {
@@ -333,6 +342,13 @@ export class RuleEngine {
           enactedActions.push(...elseLogs);
         }
         continue;
+      }
+
+      // Handle inline conditional shorthand (if: ..., notify: ...)
+      if ('if' in action && action.if) {
+          const conditionMet = this.evaluateActionCondition(action.if, context);
+          if (!conditionMet) continue;
+          // If condition met, proceed to execute the rest of the action as a single action
       }
 
       // Handle break
@@ -416,7 +432,53 @@ export class RuleEngine {
     action: TriggerAction,
     context: TriggerContext,
   ): Promise<TriggerResult['executedActions'][0]> {
+
+    // 1. Handle shorthand syntax (e.g. notify: "...", log: "...")
+    // If no type is specified, look for registered action types as keys
+    if (!action.type && !action.run && !action.break && !action.continue) {
+        const actionKeys = Object.keys(action);
+        for (const key of actionKeys) {
+            if (this.actionRegistry.get(key)) {
+                action.type = key;
+                // If it's a string, treat it as the main parameter (message or content)
+                if (typeof action[key] === 'string') {
+                    action.params = { ...action.params, message: action[key] as string, content: action[key] as string };
+                } else if (typeof action[key] === 'object') {
+                    action.params = { ...action.params, ...(action[key] as any) };
+                }
+                break;
+            }
+        }
+    }
     
+    // 2. Handle 'run' block (Direct script execution)
+    if (action.run) {
+        try {
+            const runResult = new Function(
+                "context",
+                "state",
+                "data",
+                "vars",
+                "env",
+                "helpers",
+                `with(context) { ${action.run} }`
+            )(context, context.state, context.data, context.vars, context.env, context.helpers);
+
+            return {
+                type: 'RUN',
+                result: runResult,
+                timestamp: Date.now()
+            };
+        } catch (error) {
+            console.error(`Error in run block:`, action.run, error);
+            return {
+                type: 'RUN',
+                error: String(error),
+                timestamp: Date.now()
+            };
+        }
+    }
+
     // Skip execution if no type and not a control flow action
     if (!action.type && !action.break && !action.continue) {
       return {

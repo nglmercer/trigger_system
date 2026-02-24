@@ -197,11 +197,15 @@ const CONDITION_FIELD_DOCS: Record<string, { description: string; values?: strin
 const ACTION_FIELD_DOCS: Record<string, { description: string; values?: string }> = {
     type: {
         description: 'The type of action to perform',
-        values: 'String action type (e.g., `log`, `execute`, `http`, `STATE_SET`, `EMIT_EVENT`)'
+        values: 'String action type (e.g., `log`, `execute`, `notify`, `STATE_SET`, `EMIT_EVENT`)'
     },
     params: {
         description: 'Parameters for the action (varies by action type)',
         values: 'Object with action-specific parameters'
+    },
+    run: {
+        description: 'Direct script execution block (JavaScript-like syntax)',
+        values: 'String block of code'
     },
     delay: {
         description: 'Delay in milliseconds before executing this action',
@@ -209,7 +213,6 @@ const ACTION_FIELD_DOCS: Record<string, { description: string; values?: string }
     },
     probability: {
         description: 'Probability of executing this action (0.0 to 1.0)',
-        values: 'Number between 0 and 1 or expression (e.g. "${lastResult > 0 ? 1 : 0}")'
     },
     mode: {
         description: 'Execution mode for action groups',
@@ -234,9 +237,17 @@ const ACTION_TYPE_DOCS: Record<string, { description: string; params: string[] }
         description: 'Runs a shell command on the host (Node.js only)',
         params: ['command: string', 'safe: boolean']
     },
+    notify: {
+        description: 'Sends a notification to a specified target',
+        params: ['message: string', 'target: string']
+    },
     STATE_SET: {
         description: 'Updates a value in the global state manager',
         params: ['key: string', 'value: any']
+    },
+    STATE_OP: {
+        description: 'Performs direct operations on state using a script',
+        params: ['run: string']
     }
 };
 
@@ -252,7 +263,7 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
         // Clear data context when no imports are defined
         globalDataContext.clear();
     }
-    
+
     const text = document.getText();
     const offset = document.offsetAt(position);
     const doc = parseDocument(text);
@@ -268,8 +279,7 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
             const parentPair = path[path.length - 2];
             if (isPair(parentPair) && isScalar(parentPair.key) && String(parentPair.key.value) === 'expression') {
                 const expression = String(targetNode.value);
-                const lastResultVal = expression.includes('lastResult') ? traceLastResult(doc, offset) : undefined;
-                const evaluated = simpleEvaluate(expression, { lastResult: lastResultVal });
+                const evaluated = simpleEvaluate(expression, {});
                 if (evaluated !== undefined) {
                     const markdown: MarkupContent = {
                         kind: 'markdown',
@@ -277,8 +287,6 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
                             `**Math Expression Evaluation**`,
                             '',
                             `\`${expression}\``,
-                            '',
-                            lastResultVal !== undefined ? `*Simulated lastResult: ${JSON.stringify(lastResultVal)}*` : '',
                             '',
                             '**Evaluated Result:**',
                             '```json',
@@ -304,7 +312,7 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
     if (!path || path.length === 0) return null;
 
     const targetNode = path[path.length - 1];
-    
+
     // Check if we're hovering on a key
     if ('key' in targetNode! && targetNode.key) {
         const keyNode = targetNode.key;
@@ -373,37 +381,22 @@ function checkTemplateVariableHover(line: string, position: Position, document: 
     const character = position.character;
     const regex = /\$\{([^}]+)\}/g;
     let match;
-    
+
     while ((match = regex.exec(line)) !== null) {
         const start = match.index;
         const end = match.index + match[0].length;
-        
+
         // Check if cursor is inside this template
         if (character >= start && character <= end) {
             const variablePath = match[1]!.trim();
-            const currentOffset = document.offsetAt({ line: position.line, character: start + 2 }); 
-            
+
             // Try to get value from data context
             let value: any = globalDataContext.getValue(variablePath);
             let description = '';
-            let simulated = false;
-            
+
             // Special handling for legacy/built-in variables
             if (value === undefined) {
-                if (variablePath === 'lastResult') {
-                    description = 'The result returned by the previous action in a sequence.';
-                    
-                    // Try to simulate lastResult by tracing back
-                    const text = document.getText();
-                    const doc = parseDocument(text);
-                    const tracedResult = traceLastResult(doc, currentOffset);
-                    if (tracedResult !== undefined) {
-                        value = tracedResult;
-                        simulated = true;
-                    } else {
-                        value = 'Any';
-                    }
-                } else if (variablePath === 'data') {
+                if (variablePath === 'data') {
                     description = 'The payload data for the current event.';
                     value = '{ ... }';
                 } else if (variablePath === 'state') {
@@ -425,14 +418,14 @@ function checkTemplateVariableHover(line: string, position: Position, document: 
             }
 
             if (value !== undefined) {
-                const formattedValue = typeof value === 'string' && (value === 'Any' || value === '{ ... }' || value === 'Math Namespace') 
-                    ? `*${value}*` 
+                const formattedValue = typeof value === 'string' && (value === 'Any' || value === '{ ... }' || value === 'Math Namespace')
+                    ? `*${value}*`
                     : globalDataContext.getFormattedValue(value);
-                    
+
                 const valueType = typeof value === 'object' && value !== null
                     ? (Array.isArray(value) ? 'array' : 'object')
                     : typeof value;
-                
+
                 const markdown: MarkupContent = {
                     kind: 'markdown',
                     value: [
@@ -442,13 +435,13 @@ function checkTemplateVariableHover(line: string, position: Position, document: 
                         '',
                         `**Type:** \`${valueType}\``,
                         '',
-                        simulated ? '**Simulated value (from previous action):**' : '**Current/Test Value:**',
+                        '**Current/Test Value:**',
                         '```json',
                         formattedValue,
                         '```'
                     ].filter(p => p !== '').join('\n')
                 };
-                
+
                 return { contents: markdown };
             } else {
                 // Variable not found in data context
@@ -462,75 +455,13 @@ function checkTemplateVariableHover(line: string, position: Position, document: 
                         'Add a `data.json` or `data.yaml` file in your workspace to provide test values.'
                     ].join('\n')
                 };
-                
+
                 return { contents: markdown };
             }
         }
     }
-    
+
     return null;
-}
-
-
-
-/**
- * Traces the value of lastResult by looking at previous actions in the same rule
- */
-function traceLastResult(doc: any, offset: number): any {
-    if (!doc.contents) return undefined;
-    
-    // 1. Find the current action map
-    const path = findPathAtOffsetManual(doc.contents, offset);
-    if (!path) return undefined;
-    
-    let currentAction: any = null;
-    let actionsList: any[] = [];
-    
-    // Walk up to find the action map and the list it belongs to
-    for (let i = path.length - 1; i >= 0; i--) {
-        const node = path[i];
-        if (isMap(node)) {
-            const hasType = node.items.some(p => isPair(p) && isScalar(p.key) && String(p.key.value) === 'type');
-            if (hasType) {
-                currentAction = node;
-            }
-        }
-        if (Array.isArray((node as any).items)) {
-            // Check if this is an 'actions' list
-            const parent = path[i-1];
-            if (isPair(parent) && isScalar(parent.key) && (String(parent.key.value) === 'actions' || String(parent.key.value) === 'do')) {
-                actionsList = (node as any).items;
-                break;
-            }
-        }
-    }
-    
-    if (!currentAction || actionsList.length === 0) return undefined;
-    
-    // 2. Find index of current action
-    const currentIndex = actionsList.indexOf(currentAction);
-    if (currentIndex <= 0) return undefined; // No previous action
-    
-    // 3. Look at previous actions (backwards) to find the nearest producer of lastResult
-    // We simulate by looking at the previous action
-    const prevAction = actionsList[currentIndex - 1];
-    if (isMap(prevAction)) {
-        const typePair = prevAction.items.find(p => isPair(p) && isScalar(p.key) && String(p.key.value) === 'type');
-        const paramsPair = prevAction.items.find(p => isPair(p) && isScalar(p.key) && String(p.key.value) === 'params');
-        
-        if (typePair && isScalar(typePair.value) && String(typePair.value.value) === 'math' && paramsPair && isMap(paramsPair.value)) {
-            const exprPair = paramsPair.value.items.find(p => isPair(p) && isScalar(p.key) && String(p.key.value) === 'expression');
-            if (exprPair && isScalar(exprPair.value)) {
-                const expression = String(exprPair.value.value);
-                // Recursively trace back to get the context for the previous expression
-                const prevActionOffset = prevAction.range ? prevAction.range[0] : 0;
-                const prevLastResult = prevActionOffset > 0 ? traceLastResult(doc, prevActionOffset) : undefined;
-                return simpleEvaluate(expression, { lastResult: prevLastResult });
-            }
-        }
-    }
-    
-    return undefined;
 }
 
 /**
@@ -539,10 +470,9 @@ function traceLastResult(doc: any, offset: number): any {
 function simpleEvaluate(expression: string, context: Record<string, any> = {}): any {
     try {
         const allData = globalDataContext.getValue('') || {};
-        
+
         // Handle template interpolation first to match engine behavior
         let interpolated = expression.replace(/\$\{([^}]+)\}/g, (match, path) => {
-            // Check provided context first (e.g. for simulated lastResult)
             if (path in context) {
                 const val = context[path];
                 return typeof val === 'string' ? val : JSON.stringify(val);
@@ -566,7 +496,7 @@ function simpleEvaluate(expression: string, context: Record<string, any> = {}): 
             const fullContext = { ...allData, ...context, Math };
             return new Function('ctx', 'with(ctx) { try { return ' + interpolated + '; } catch(e) { return undefined; } }')(fullContext);
         }
-        
+
         return undefined;
     } catch (e) {
         return undefined;
@@ -574,51 +504,12 @@ function simpleEvaluate(expression: string, context: Record<string, any> = {}): 
 }
 
 /**
- * Manual findPathAtOffset since the one in the file is specifically for hovers
- */
-function findPathAtOffsetManual(node: any, offset: number, currentPath: any[] = []): any[] | null {
-    if (!node) return null;
-    
-    const isPairLocal = (n: any): n is Pair => n && typeof n === 'object' && 'key' in n && 'value' in n;
-    
-    if (isPairLocal(node)) {
-        const newPath = [...currentPath, node];
-        if (node.value) {
-            const vPath = findPathAtOffsetManual(node.value, offset, newPath);
-            if (vPath) return vPath;
-        }
-        return null;
-    }
-    
-    if (!node.range) return null;
-    const [start, end] = node.range;
-    if (offset < start || offset > end) return null;
-    
-    const newPath = [...currentPath, node];
-    
-    if (isMap(node)) {
-        for (const item of node.items) {
-            const iPath = findPathAtOffsetManual(item, offset, newPath);
-            if (iPath) return iPath;
-        }
-    } else if (node.items && Array.isArray(node.items)) {
-        for (const item of node.items) {
-            const iPath = findPathAtOffsetManual(item, offset, newPath);
-            if (iPath) return iPath;
-        }
-    }
-    
-    return newPath;
-}
-
-
-/**
  * Get documentation for a specific key based on its context
  */
 function getKeyDocumentation(key: string, path: (Node | Pair)[]): MarkupContent | null {
     // Try to determine context
     const parentContext = getParentContext(path);
-    
+
     let doc: { description: string; values?: string; examples?: string[] } | undefined;
 
     // Check in order of specificity
@@ -627,7 +518,7 @@ function getKeyDocumentation(key: string, path: (Node | Pair)[]): MarkupContent 
     } else if (parentContext === 'condition') {
         doc = CONDITION_FIELD_DOCS[key];
     }
-    
+
     // Fall back to general field docs
     if (!doc) {
         doc = FIELD_DOCS[key];
@@ -665,39 +556,34 @@ function getParentContext(path: (Node | Pair)[]): 'rule' | 'condition' | 'action
     // Walk up the path to find context clues
     for (let i = path.length - 1; i >= 0; i--) {
         const node = path[i];
-        
+
         if (!('key' in node!) || !node.key) continue;
         if (!isScalar(node.key)) continue;
-        
+
         const keyValue = String(node.key.value);
-        
+
         // If we're inside an 'if' or 'conditions', we're in condition context
         if (keyValue === 'if' || keyValue === 'conditions') {
             return 'condition';
         }
-        
+
         // If we're inside a 'do' or 'actions', we're in action context
         if (keyValue === 'do' || keyValue === 'actions') {
             return 'action';
         }
     }
-    
+
     return 'rule';
 }
 
 function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath: (Node | Pair)[] = []): (Node | Pair)[] | null {
     if (!node) return null;
-    
-    // For Pair types, we need to check manually if they can be processed
-    // Pairs are used in Maps, and we need different logic for them
+
     const isPair = (n: unknown): n is Pair => typeof n === 'object' && n !== null && 'key' in n && 'value' in n;
-    
+
     if (isPair(node)) {
-        // Pair doesn't have range, but we can check its key and value
         const pair = node;
         const newPath = [...currentPath, node];
-        
-        // Check if key has range and if offset is within it
         if (pair.key && typeof pair.key === 'object' && 'range' in pair.key) {
             const keyNode = pair.key as Node;
             if (keyNode.range) {
@@ -707,26 +593,19 @@ function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath:
                 }
             }
         }
-        
-        // Check value recursively
         if (pair.value) {
             const valuePath = findPathAtOffset(pair.value as Node, offset, newPath);
             if (valuePath) return valuePath;
         }
-        
         return null;
     }
-    
-    // From here, we're dealing with Node types that should have range
+
     if (!('range' in node) || !node.range) return null;
-    
     const [start, end] = node.range;
     if (offset < start || offset > end) return null;
 
-    // Add current node to path
     const newPath = [...currentPath, node];
 
-    // If it's a Map, check items (which are Pairs)
     if (isMap(node)) {
         for (const item of node.items) {
             const itemPath = findPathAtOffset(item as Pair, offset, newPath);
@@ -735,7 +614,6 @@ function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath:
         return newPath;
     }
 
-    // If it's a Seq, check items
     if ('items' in node && Array.isArray((node).items)) {
         for (const item of (node).items) {
             const itemPath = findPathAtOffset(item as Node, offset, newPath);
@@ -744,6 +622,5 @@ function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath:
         return newPath;
     }
 
-    // Scalar or other leaf node
     return newPath;
 }

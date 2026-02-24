@@ -73,10 +73,12 @@ const ACTION_TYPES: CompletionItem[] = [
     { label: 'execute', kind: CompletionItemKind.EnumMember, detail: 'Run local command' },
     { label: 'forward', kind: CompletionItemKind.EnumMember, detail: 'Forward event to URL' },
     { label: 'response', kind: CompletionItemKind.EnumMember, detail: 'Return HTTP response' },
+    { label: 'notify', kind: CompletionItemKind.EnumMember, detail: 'Send a notification' },
     { label: 'STATE_SET', kind: CompletionItemKind.EnumMember, detail: 'Save value to global state' },
     { label: 'STATE_GET', kind: CompletionItemKind.EnumMember, detail: 'Read state and store in context.env' },
     { label: 'STATE_INCREMENT', kind: CompletionItemKind.EnumMember, detail: 'Increment numeric state key' },
     { label: 'STATE_DELETE', kind: CompletionItemKind.EnumMember, detail: 'Delete a state key' },
+    { label: 'STATE_OP', kind: CompletionItemKind.EnumMember, detail: 'Perform direct operations on state' },
     { label: 'EMIT_EVENT', kind: CompletionItemKind.EnumMember, detail: 'Trigger another event internally' },
 ];
 
@@ -90,6 +92,9 @@ const CONDITION_KEYS: CompletionItem[] = [
 const ACTION_KEYS: CompletionItem[] = [
     { label: 'type', kind: CompletionItemKind.Field, detail: 'The type of action to perform' },
     { label: 'params', kind: CompletionItemKind.Variable, detail: 'Configuration for the action' },
+    { label: 'run', kind: CompletionItemKind.Keyword, detail: 'Direct script execution block' },
+    { label: 'notify', kind: CompletionItemKind.Field, detail: 'Shorthand for notification' },
+    { label: 'log', kind: CompletionItemKind.Field, detail: 'Shorthand for logging' },
     { label: 'delay', kind: CompletionItemKind.Property, detail: 'Delay in ms (integer or expression)' },
     { label: 'probability', kind: CompletionItemKind.Property, detail: 'Execution chance (0-1 or expression)' },
     { label: 'mode', kind: CompletionItemKind.Property, detail: 'Grouping mode (ALL, SEQUENCE, EITHER)' },
@@ -341,7 +346,6 @@ function getBuiltInVariableCompletions(prefix: string): CompletionItem[] {
         { name: 'vars', detail: 'Global variables (configuration)', type: 'object' },
         { name: 'state', detail: 'Global engine state', type: 'object' },
         { name: 'env', detail: 'Dynamic variables set by actions', type: 'object' },
-        { name: 'lastResult', detail: 'Result of previous action in SEQUENCE mode', type: 'any' },
     ];
 
     builtIns.forEach(bi => {
@@ -382,7 +386,6 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
     // If we're at root level, suggest all available top-level variables (aliases)
     if (!cleanPrefix || cleanPrefix === '') {
         const suggestions: CompletionItem[] = [
-            { label: 'lastResult', kind: CompletionItemKind.Variable, detail: 'Result of the previous action (SEQUENCE mode)' },
             { label: 'state', kind: CompletionItemKind.Variable, detail: 'Global engine state' },
             { label: 'vars', kind: CompletionItemKind.Variable, detail: 'Global variables' },
             { label: 'env', kind: CompletionItemKind.Variable, detail: 'Dynamic variables' },

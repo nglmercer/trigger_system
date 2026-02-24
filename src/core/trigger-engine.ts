@@ -68,6 +68,11 @@ export class TriggerEngine {
   async processEvent(context: TriggerContext): Promise<TriggerResult[]> {
     const results: TriggerResult[] = [];
 
+    // Ensure state is at least an object
+    if (!context.state) {
+        context.state = {};
+    }
+
     // Filtrar reglas por evento y estado habilitado
     const candidates = this._rules.filter(r => r.enabled !== false && r.on === context.event);
 
@@ -81,7 +86,7 @@ export class TriggerEngine {
       if (this.evaluateConditions(rule.if, context)) {
         // Ejecutar acciones
         const execResult = await this.executeRuleActions(rule.do, context);
-        
+
         // Actualizar cooldown
         this.lastExecution.set(rule.id, Date.now());
 
@@ -103,7 +108,6 @@ export class TriggerEngine {
 
   /**
    * Método convenience para procesar eventos simples
-   * Renombrado para evitar conflicto con processEvent(context)
    */
   async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
@@ -123,25 +127,25 @@ export class TriggerEngine {
     const oldRules = this.getRules();
     const oldRuleIds = new Set(oldRules.map(r => r.id));
     const newRuleIds = new Set(newRules.map(r => r.id));
-    
+
     // Detect changes
     const added = newRules.filter(r => !oldRuleIds.has(r.id));
     const removed = oldRules.filter(r => !newRuleIds.has(r.id));
-    
+
     // Update rules
     this.rules = [...newRules];
     this.sortRules();
-    
+
     // Emit events for added rules
     added.forEach(rule => {
       this.emitRuleEvent(ruleEvents.RULE_ADDED, { ruleId: rule.id, timestamp: Date.now() });
     });
-    
+
     // Emit events for removed rules
     removed.forEach(rule => {
       this.emitRuleEvent(ruleEvents.RULE_REMOVED, { ruleId: rule.id, timestamp: Date.now() });
     });
-    
+
     // Emit general update event
     this.emitRuleEvent(ruleEvents.RULE_UPDATED, {
       count: newRules.length,
@@ -203,7 +207,7 @@ export class TriggerEngine {
    * Evalúa condiciones de una regla
    */
   protected evaluateConditions(
-    condition: RuleCondition | RuleCondition[] | undefined, 
+    condition: RuleCondition | RuleCondition[] | undefined,
     context: TriggerContext
   ): boolean {
     if (!condition) return true;
@@ -232,13 +236,13 @@ export class TriggerEngine {
     // It's a simple Condition
     const c = cond as Condition;
     const actualValue = ExpressionEngine.evaluate(c.field, context);
-    
+
     // Interpolate the expected value if it's a string containing variables
     let expectedValue = c.value;
     if (typeof expectedValue === 'string' && expectedValue.includes('${')) {
         expectedValue = ExpressionEngine.interpolate(expectedValue, context);
     }
-    
+
     return TriggerUtils.compare(actualValue, c.operator, expectedValue);
   }
 
@@ -257,7 +261,7 @@ export class TriggerEngine {
 
     if (Array.isArray(actionConfig)) {
       actionsToExecute = actionConfig;
-    } else if ('mode' in actionConfig && 'actions' in actionConfig) {
+    } else if (actionConfig && typeof actionConfig === 'object' && 'mode' in actionConfig && 'actions' in actionConfig) {
       const group = actionConfig as ActionGroup;
       mode = group.mode;
       actionsToExecute = group.actions;
@@ -269,7 +273,7 @@ export class TriggerEngine {
     if (mode === 'EITHER' && actionsToExecute.length > 0) {
       const totalWeight = actionsToExecute.reduce((sum, a) => sum + (a.probability || 1), 0);
       let random = Math.random() * totalWeight;
-      
+
       let selected: Action | undefined;
       for (const action of actionsToExecute) {
         const weight = action.probability || 1;
@@ -279,7 +283,7 @@ export class TriggerEngine {
           break;
         }
       }
-      
+
       if (!selected && actionsToExecute.length > 0) {
         selected = actionsToExecute[actionsToExecute.length - 1];
       }
@@ -292,15 +296,9 @@ export class TriggerEngine {
     }
 
     // Execute actions
-    let lastResult = context.lastResult;
     for (const action of actionsToExecute) {
-      const actionContext = { ...context, lastResult };
-      const result = await this.executeSingleAction(action, actionContext);
+      const result = await this.executeSingleAction(action, context);
       executionLogs.push(result);
-      
-      if (mode === 'SEQUENCE') {
-        lastResult = result.result;
-      }
     }
 
     return executionLogs;
@@ -313,7 +311,37 @@ export class TriggerEngine {
     action: Action,
     context: TriggerContext
   ): Promise<ExecutedAction> {
-    
+
+    // 1. Handle shorthand syntax
+    if (!action.type && !action.run && !action.break && !action.continue) {
+        const reserved = ['params', 'run', 'delay', 'probability', 'if', 'then', 'else', 'break', 'continue', 'mode', 'actions'];
+        const actionKeys = Object.keys(action).filter(k => !reserved.includes(k));
+
+        for (const key of actionKeys) {
+            action.type = key;
+            if (typeof action[key] === 'string') {
+                action.params = { ...action.params, message: action[key] as string, content: action[key] as string };
+            } else if (typeof action[key] === 'object' && action[key] !== null) {
+                action.params = { ...action.params, ...(action[key] as any) };
+            }
+            break;
+        }
+    }
+
+    // 2. Handle 'run' block
+    if (action.run) {
+        try {
+            const runResult = new Function(
+                "context", "state", "data", "vars", "env", "helpers",
+                `with(context) { ${action.run} }`
+            )(context, context.state, context.data, context.vars, context.env, context.helpers);
+
+            return { type: 'RUN', result: runResult, timestamp: Date.now() };
+        } catch (error) {
+            return { type: 'RUN', error: String(error), timestamp: Date.now() };
+        }
+    }
+
     // Interpolate probability if it's a string expression
     let probability = action.probability;
     if (typeof (probability as any) === 'string') {
@@ -324,7 +352,7 @@ export class TriggerEngine {
     // Check probability
     if (probability !== undefined && Math.random() > probability) {
        return {
-         type: action.type!,
+         type: action.type || 'skipped',
          timestamp: Date.now(),
          result: { skipped: "probability check failed" }
        };
@@ -348,7 +376,7 @@ export class TriggerEngine {
     try {
       // Try to get handler from registry first (if available)
       let handler: EngineActionHandler | undefined;
-      
+
       // Check if ActionRegistry is available (Node.js environment)
       try {
         const { ActionRegistry } = await import('./action-registry');
