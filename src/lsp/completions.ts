@@ -74,7 +74,7 @@ const ACTION_TYPES: CompletionItem[] = [
     { label: 'forward', kind: CompletionItemKind.EnumMember, detail: 'Forward event to URL' },
     { label: 'response', kind: CompletionItemKind.EnumMember, detail: 'Return HTTP response' },
     { label: 'STATE_SET', kind: CompletionItemKind.EnumMember, detail: 'Save value to global state' },
-    { label: 'STATE_GET', kind: CompletionItemKind.EnumMember, detail: 'Read state and store in context.vars' },
+    { label: 'STATE_GET', kind: CompletionItemKind.EnumMember, detail: 'Read state and store in context.env' },
     { label: 'STATE_INCREMENT', kind: CompletionItemKind.EnumMember, detail: 'Increment numeric state key' },
     { label: 'STATE_DELETE', kind: CompletionItemKind.EnumMember, detail: 'Delete a state key' },
     { label: 'EMIT_EVENT', kind: CompletionItemKind.EnumMember, detail: 'Trigger another event internally' },
@@ -134,7 +134,7 @@ const PARAM_KEYS: Record<string, CompletionItem[]> = {
     ],
     'STATE_GET': [
         { label: 'key', kind: CompletionItemKind.Property, detail: 'State key to read' },
-        { label: 'as', kind: CompletionItemKind.Property, detail: 'Variable name to store value in context.vars' },
+        { label: 'as', kind: CompletionItemKind.Property, detail: 'Variable name to store value in context.env' },
     ],
     'STATE_INCREMENT': [
         { label: 'key', kind: CompletionItemKind.Property },
@@ -151,9 +151,9 @@ const PARAM_KEYS: Record<string, CompletionItem[]> = {
 
 
 const SNIPPETS: CompletionItem[] = [
-    { 
-        label: 'trigger_rule', 
-        kind: CompletionItemKind.Snippet, 
+    {
+        label: 'trigger_rule',
+        kind: CompletionItemKind.Snippet,
         insertText: '- id: ${1:rule-id}\n  on: ${2:EVENT}\n  if:\n    field: ${3:data.field}\n    operator: ${4:EQ}\n    value: ${5:target}\n  do:\n    type: ${6:log}\n    params:\n      message: ${7:Done}',
         insertTextFormat: InsertTextFormat.Snippet,
         detail: 'New rule template'
@@ -176,7 +176,7 @@ const SNIPPETS: CompletionItem[] = [
     {
         label: 'conditional_action',
         kind: CompletionItemKind.Snippet,
-        insertText: '- if:\n    field: ${1:vars.condition}\n    operator: ${2:EQ}\n    value: ${3:true}\n  then:\n    type: ${4:log}\n    params:\n      message: ${5:Condition met!}\n  else:\n    type: ${6:log}\n    params:\n      message: ${7:Condition not met!}',
+        insertText: '- if:\n    field: ${1:env.condition}\n    operator: ${2:EQ}\n    value: ${3:true}\n  then:\n    type: ${4:log}\n    params:\n      message: ${5:Condition met!}\n  else:\n    type: ${6:log}\n    params:\n      message: ${7:Condition not met!}',
         insertTextFormat: InsertTextFormat.Snippet,
         detail: 'Conditional action with if/then/else'
     },
@@ -211,11 +211,11 @@ let lastImportsHash = '';
 
 export function getCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
     const uri = document.uri;
-    
+
     // Load data from import directives only (declarative approach)
     const imports = getImportDirectives(document, uri);
     const importsHash = JSON.stringify(imports);
-    
+
     // Only reload if imports have changed OR we switched files
     if (uri !== lastLoadedUri || importsHash !== lastImportsHash) {
         if (imports.length > 0) {
@@ -227,13 +227,13 @@ export function getCompletionItems(document: TextDocument, position: Position): 
         lastLoadedUri = uri;
         lastImportsHash = importsHash;
     }
-    
+
     const text = document.getText();
     const doc = parseDocument(text);
     const lines = text.split('\n');
     const line = lines[position.line] || '';
     const offset = document.offsetAt(position);
-    
+
     // Check if we're in a comment line (for directive completion)
     if (line.trim().startsWith('#')) {
         const directiveCompletions = getDirectiveCompletions(line, position.character, document);
@@ -241,13 +241,13 @@ export function getCompletionItems(document: TextDocument, position: Position): 
             return directiveCompletions;
         }
     }
-    
+
     // Check if we're inside a template variable ${...}
     const templateMatch = checkTemplateVariable(line, position.character);
     if (templateMatch) {
         return getTemplateVariableCompletions(templateMatch);
     }
-    
+
     // 1. Check if we are in a VALUE position (after colon)
     const colonIndex = line.indexOf(':');
     if (colonIndex !== -1 && position.character > colonIndex) {
@@ -261,7 +261,7 @@ export function getCompletionItems(document: TextDocument, position: Position): 
     // 2. We are in a KEY position or start of line
     const path = findPathAtOffset(doc.contents, offset) || [];
     const completions = getKeyCompletions(path, line);
-    
+
     return completions;
 }
 
@@ -272,15 +272,15 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
     // ... (unchanged)
     // Minimizing output for clarity
     // console.log(`[LSP] checkTemplateVariable - line: "${line}", character: ${character}`);
-    
+
     // Find all template variable positions in the line
     const regex = /\$\{([^}]*)\}/g;
     let match;
-    
+
     while ((match = regex.exec(line)) !== null) {
         const start = match.index;
         const end = match.index + match[0].length;
-        
+
         if (character >= start && character <= end) {
             const content = match[1] || '';
             const dotIndex = content.lastIndexOf('.');
@@ -290,12 +290,12 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
             };
         }
     }
-    
+
     // Check if we're typing after ${
     const beforeCursor = line.substring(0, character);
     const lastDollarBrace = beforeCursor.lastIndexOf('${');
     const lastCloseBrace = beforeCursor.lastIndexOf('}');
-    
+
     if (lastDollarBrace > lastCloseBrace) {
         const content = beforeCursor.substring(lastDollarBrace + 2);
         const dotIndex = content.lastIndexOf('.');
@@ -304,7 +304,7 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
             inTemplate: true
         };
     }
-    
+
     // Check if we're right at the $ or { position and should start a new template
     if (character > 0) {
         const charBefore = line[character - 1];
@@ -315,7 +315,7 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
             };
         }
     }
-    
+
     // Special check: if we're at the very beginning of a potential template
     if (character < line.length) {
         const remaining = line.substring(character);
@@ -326,24 +326,24 @@ function checkTemplateVariable(line: string, character: number): { prefix: strin
             };
         }
     }
-    
+
     return null;
 }
 
 /**
- * Get completions for built-in variables (vars, state, globals, etc.)
+ * Get completions for built-in variables (vars, state, env, etc.)
  */
 function getBuiltInVariableCompletions(prefix: string): CompletionItem[] {
     const suggestions: CompletionItem[] = [];
-    
+
     // Built-in variable prefixes
     const builtIns = [
-        { name: 'vars', detail: 'Dynamic variables set by STATE_GET action', type: 'object' },
+        { name: 'vars', detail: 'Global variables (configuration)', type: 'object' },
         { name: 'state', detail: 'Global engine state', type: 'object' },
-        { name: 'globals', detail: 'Global variables', type: 'object' },
+        { name: 'env', detail: 'Dynamic variables set by actions', type: 'object' },
         { name: 'lastResult', detail: 'Result of previous action in SEQUENCE mode', type: 'any' },
     ];
-    
+
     builtIns.forEach(bi => {
         if (bi.name.startsWith(prefix)) {
             suggestions.push({
@@ -353,7 +353,7 @@ function getBuiltInVariableCompletions(prefix: string): CompletionItem[] {
             });
         }
     });
-    
+
     return suggestions;
 }
 
@@ -362,10 +362,10 @@ function getBuiltInVariableCompletions(prefix: string): CompletionItem[] {
  */
 function getTemplateVariableCompletions(context: { prefix: string; inTemplate: boolean }): CompletionItem[] {
     const prefix = context.prefix.trim();
-    
+
     // Handle different variable types based on what's loaded in globalDataContext
     const allData = globalDataContext.getValue('');
-    
+
     if (!allData || typeof allData !== 'object') {
         console.log(`[LSP] No data available in context`);
         return [{
@@ -375,16 +375,17 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
             documentation: 'Add a data import directive like: # @import data from ./data.json'
         }];
     }
-    
+
     // Check if we're at the root level (after ${ or ${data. etc)
     const cleanPrefix = prefix.replace('${', '').replace(/\.$/, '');
-    
+
     // If we're at root level, suggest all available top-level variables (aliases)
     if (!cleanPrefix || cleanPrefix === '') {
         const suggestions: CompletionItem[] = [
             { label: 'lastResult', kind: CompletionItemKind.Variable, detail: 'Result of the previous action (SEQUENCE mode)' },
             { label: 'state', kind: CompletionItemKind.Variable, detail: 'Global engine state' },
-            { label: 'globals', kind: CompletionItemKind.Variable, detail: 'Global variables' },
+            { label: 'vars', kind: CompletionItemKind.Variable, detail: 'Global variables' },
+            { label: 'env', kind: CompletionItemKind.Variable, detail: 'Dynamic variables' },
             { label: 'data', kind: CompletionItemKind.Variable, detail: 'Event data' },
             { label: 'helpers', kind: CompletionItemKind.Variable, detail: 'Context helpers/functions' },
             { label: 'Math', kind: CompletionItemKind.Variable, detail: 'Mathematical functions (round, floor, etc.)' }
@@ -396,7 +397,7 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
                 const value = allData[key];
                 const valueType = Array.isArray(value) ? 'array' : typeof value;
                 const sampleValue = valueType === 'object' ? JSON.stringify(value).substring(0, 50) + '...' : String(value);
-                
+
                 suggestions.push({
                     label: key,
                     kind: CompletionItemKind.Variable,
@@ -408,11 +409,11 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
         }
         return suggestions;
     }
-    
+
     // If we have a specific prefix, get fields from that path
     // The prefix might be something like "data" or "data.server" or "config.username"
     const fields = globalDataContext.getFields(cleanPrefix);
-    
+
     // If no fields found in imported data, check for built-in variables
     if (fields.length === 0) {
         const builtInVars = getBuiltInVariableCompletions(cleanPrefix);
@@ -420,13 +421,13 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
             return builtInVars;
         }
     }
-    
+
     if (fields.length > 0) {
         const suggestions = fields.map(field => {
             const sampleValue = field.type === 'object' ?
                 JSON.stringify(field.value).substring(0, 50) + '...' :
                 globalDataContext.getFormattedValue(field.value);
-            
+
             return {
                 label: field.name,
                 kind: field.type === 'object' ? CompletionItemKind.Module : CompletionItemKind.Field,
@@ -440,10 +441,10 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
         });
         return suggestions;
     }
-    
+
     // If no fields found, suggest similar paths or provide helpful message
     // If no fields found, suggest similar paths or provide helpful message
-    
+
     // Check if we have any data at all to provide suggestions
     const allKeys = Object.keys(allData);
     if (allKeys.length > 0) {
@@ -455,7 +456,7 @@ function getTemplateVariableCompletions(context: { prefix: string; inTemplate: b
             insertText: cleanPrefix
         }];
     }
-    
+
     return [];
 }
 
@@ -491,14 +492,14 @@ function getValueCompletionsByKey(key: string, path: (Node | Pair)[], valuePrefi
                 // searchPrefix '' returns top level aliases.
                 searchPrefix = '';
             }
-            
+
             const fields = globalDataContext.getFields(searchPrefix);
-            
+
             return fields.map(field => {
                 // If we are at root (searchPrefix is empty), the label is the alias (e.g. 'data').
                 // If we are in 'data', the label is 'username'.
                 // insertText should be appropriate.
-                
+
                 return {
                     label: field.name,
                     kind: field.type === 'object' ? CompletionItemKind.Module : CompletionItemKind.Field,
@@ -535,7 +536,7 @@ function getKeyCompletions(path: (Node | Pair)[], line: string): CompletionItem[
     const key = String((contextPair.key as Scalar).value);
     if (key === 'if' || key === 'conditions') return CONDITION_KEYS;
     if (key === 'do' || key === 'actions') return ACTION_KEYS;
-    
+
     if (key === 'params') {
         const actionMap = findNearestActionMap(path);
         if (actionMap) {
@@ -601,15 +602,15 @@ function getValueSpecificToOperator(path: (Node | Pair)[]): CompletionItem[] {
 
 export function findPathAtOffset(node: Node | Pair | null, offset: number, currentPath: (Node | Pair)[] = []): (Node | Pair)[] | null {
     if (!node) return null;
-    
+
     // Check range
     const range = (node as Node).range;
     if (range) {
         // [start, end, optional_something]
-        // Parser range is [start, end]. 
+        // Parser range is [start, end].
         // We want to be inclusive and a bit more for completions at the end of a line.
         if (offset < range[0] || offset > range[1] + 1) {
-             // If we are exactly 1 char past the end (like at the end of "mode: "), 
+             // If we are exactly 1 char past the end (like at the end of "mode: "),
              // we still might want this node if it's the most specific one.
         }
     }
@@ -637,7 +638,7 @@ export function findPathAtOffset(node: Node | Pair | null, offset: number, curre
         }
         return newPath;
     }
-    
+
     if (isSeq(node)) {
         for (const item of node.items) {
             const itemRange = (item as Node).range;
@@ -647,14 +648,14 @@ export function findPathAtOffset(node: Node | Pair | null, offset: number, curre
         }
         return newPath;
     }
-    
+
     if (isPair(node)) {
         // If we are in a pair, we could be in key or value
         const keyRange = (node.key as Node)?.range;
         if (keyRange && offset >= keyRange[0] && offset <= keyRange[1] + 1) {
             return findPathAtOffset(node.key as Node, offset, newPath);
         }
-        
+
         // If there's a value, check it
         if (node.value) {
             const valRange = (node.value as Node)?.range;
@@ -662,7 +663,7 @@ export function findPathAtOffset(node: Node | Pair | null, offset: number, curre
                 return findPathAtOffset(node.value as Node, offset, newPath);
             }
         }
-        
+
         return newPath;
     }
 return newPath;
@@ -729,7 +730,7 @@ function getAllDirectiveCompletions(): CompletionItem[] {
            documentation: 'Imports data from a JSON or YAML file for use in autocompletion and validation. Example: @import data from "./data.json"',
            data: { category: 'import', color: 'macro' }
        },
-       
+
        // Global lint control (Namespace category)
        {
            label: 'disable-lint',
@@ -747,7 +748,7 @@ function getAllDirectiveCompletions(): CompletionItem[] {
            documentation: 'Enables linting and validation (this is the default state)',
            data: { category: 'global-control', color: 'namespace' }
        },
-       
+
        // Line-specific control (EnumMember category)
        {
            label: 'disable-next-line',
@@ -765,7 +766,7 @@ function getAllDirectiveCompletions(): CompletionItem[] {
            documentation: 'Disables linting and validation for the current line',
            data: { category: 'line-control', color: 'enumMember' }
        },
-       
+
        // Rule-specific control (Type category)
        {
            label: 'disable-rule',
@@ -809,23 +810,23 @@ function getImportFileCompletions(documentPath: string, partialPath: string, quo
             }
         }
         const documentDir = dirname(resolvedPath);
-        
+
         // Resolve directory to search
         // partialPath can be:
         // - "" -> search documentDir
         // - "./" -> search documentDir
         // - "./subdir" -> search documentDir (and filter by subdir)
         // - "./subdir/" -> search documentDir/subdir
-        
+
         let searchDir = documentDir;
         let prefix = partialPath;
-        
+
         // Check if we have a directory separator
         const lastSlashIndex = partialPath.lastIndexOf('/');
         if (lastSlashIndex !== -1) {
             const dirPart = partialPath.substring(0, lastSlashIndex);
             searchDir = join(documentDir, dirPart);
-             // Keep the trailing slash in the prefix calculation if needed, 
+             // Keep the trailing slash in the prefix calculation if needed,
              // but 'join' normalizes. We typically want to list files in 'searchDir'.
         } else if (partialPath === '.' || partialPath === '..') {
             // Special handling for . and .. to show them as directories?
@@ -839,18 +840,18 @@ function getImportFileCompletions(documentPath: string, partialPath: string, quo
         if (existsSync(searchDir) && fs.statSync(searchDir).isDirectory()) {
             const entries = fs.readdirSync(searchDir, { withFileTypes: true });
             const validExtensions = ['.json', '.yaml', '.yml'];
-            
+
             entries.forEach((entry: any) => {
                 const name = entry.name;
                 const isDir = entry.isDirectory();
-                
+
                 // For directories, we always include them
                 // For files, we only include supported extensions
                 if (isDir || validExtensions.includes(extname(name).toLowerCase())) {
-                    
+
                     // Determine what to reuse from partial path
                     let relativePath: string;
-                    
+
                     if (lastSlashIndex !== -1) {
                          // We are in a subdirectory: ./subdir/
                          // We want to append the name: ./subdir/name
@@ -858,7 +859,7 @@ function getImportFileCompletions(documentPath: string, partialPath: string, quo
                          relativePath = dirPart + name;
                     } else {
                          // We are at root or start of file
-                         // If user typed "./", we preserve it. 
+                         // If user typed "./", we preserve it.
                          // Logic: If partial path starts with ./, preserve it.
                          if (partialPath.startsWith('./')) {
                              relativePath = './' + name;
@@ -868,18 +869,18 @@ function getImportFileCompletions(documentPath: string, partialPath: string, quo
                              if (!relativePath.startsWith('.')) relativePath = './' + relativePath;
                          }
                     }
-                    
+
                     if (isDir) {
                         relativePath += '/';
                     }
-                    
+
                     completions.push({
                         label: isDir ? name + '/' : name,
                         kind: isDir ? CompletionItemKind.Folder : CompletionItemKind.File,
                         detail: isDir ? 'Directory' : `${extname(name).toUpperCase().substring(1)} File`,
                         // If quote is present, just the path. If not, wrap in quotes.
                         insertText: quoteChar ? relativePath : `"${relativePath}"`,
-                        // sortText to keep directories first? 
+                        // sortText to keep directories first?
                         sortText: isDir ? '0_' + name : '1_' + name
                     });
                 }

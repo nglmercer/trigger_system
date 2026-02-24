@@ -75,7 +75,7 @@ describe("Vars Examples Tests", () => {
             expect(StateManager.getInstance().get("taxRate")).toBe(0.15);
             
             // Total is stored as the result of expression evaluation
-            // The expression ${vars.basePrice + vars.basePrice * vars.tax} evaluates to 115
+            // The expression ${env.basePrice + env.basePrice * env.tax} evaluates to 115
             const total = StateManager.getInstance().get("total");
             // Accept either number or string form
             expect(total === 115 || total === "115").toBe(true);
@@ -253,7 +253,7 @@ describe("Vars Examples Tests", () => {
     });
 
     describe("Variable interpolation in actions", () => {
-        test("Should interpolate vars.currentCount in LOG message", async () => {
+        test("Should interpolate env.currentCount in LOG message", async () => {
             const context: TriggerContext = {
                 event: "TEST_EVENT",
                 timestamp: Date.now(),
@@ -275,8 +275,8 @@ describe("Vars Examples Tests", () => {
         });
     });
 
-    describe("STATE_GET stores in context.vars", () => {
-        test("Should store retrieved state in context.vars for subsequent actions", async () => {
+    describe("STATE_GET stores in context.env", () => {
+        test("Should store retrieved state in context.env for subsequent actions", async () => {
             // First set some state
             await StateManager.getInstance().set("testKey", "testValue");
 
@@ -289,7 +289,7 @@ describe("Vars Examples Tests", () => {
                         mode: "SEQUENCE",
                         actions: [
                             { type: "STATE_GET", params: { key: "testKey", as: "myVar" } },
-                            { type: "LOG", params: { message: "Value is: ${vars.myVar}" } }
+                            { type: "LOG", params: { message: "Value is: ${env.myVar}" } }
                         ]
                     }
                 }],
@@ -329,7 +329,7 @@ describe("Vars Examples Tests", () => {
                             mode: "SEQUENCE",
                             actions: [
                                 { type: "STATE_GET", params: { key: "persistedValue", as: "retrieved" } },
-                                { type: "LOG", params: { message: "Retrieved: ${vars.retrieved}" } }
+                                { type: "LOG", params: { message: "Retrieved: ${env.retrieved}" } }
                             ]
                         }
                     }

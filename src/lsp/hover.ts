@@ -409,8 +409,11 @@ function checkTemplateVariableHover(line: string, position: Position, document: 
                 } else if (variablePath === 'state') {
                     description = 'The current state of the rule engine.';
                     value = '{ ... }';
-                } else if (variablePath === 'globals') {
+                } else if (variablePath === 'vars') {
                     description = 'Global variables available across all rules.';
+                    value = '{ ... }';
+                } else if (variablePath === 'env') {
+                    description = 'Dynamic environment variables set during rule execution.';
                     value = '{ ... }';
                 } else if (variablePath === 'helpers') {
                     description = 'Utility functions available in the context.';

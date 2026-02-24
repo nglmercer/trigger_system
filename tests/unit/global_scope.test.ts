@@ -63,13 +63,13 @@ describe("Global Scope & StateManager Access", () => {
                  // Condition: Check if counter in StateManager is 10
                  field: "data.value",
                  operator: "EQ",
-                 value: "${globals.StateManager.get('test_counter')}"
+                 value: "${vars.StateManager.get('test_counter')}"
              },
              do: {
                  type: "LOG",
                  params: {
                      // Action: Interpolate values from StateManager
-                     msg: "Counter: ${globals.StateManager.get('test_counter')}, Status: ${globals.StateManager.get('global_status')}"
+                     msg: "Counter: ${vars.StateManager.get('test_counter')}, Status: ${vars.StateManager.get('global_status')}"
                  }
              }
          };
@@ -112,7 +112,7 @@ describe("Global Scope & StateManager Access", () => {
                     // This expression invokes the emit method. 
                     // Note: ensure 'emit' returns something string-friendly or is ignored?
                     // emit returns true if had listeners.
-                    msg: "Emitted: ${globals.emitter.emit('ping', 'hello from rule')}"
+                    msg: "Emitted: ${vars.emitter.emit('ping', 'hello from rule')}"
                 }
             }
         };
@@ -147,7 +147,7 @@ describe("Global Scope & StateManager Access", () => {
             on: "TEST_EVENT",
             if: {
                 // Testing complex expression in field
-                field: "globals.utils.trim(data.comment).toLowerCase()",
+                field: "vars.utils.trim(data.comment).toLowerCase()",
                 operator: "EQ",
                 value: "hello"
             },
@@ -178,7 +178,7 @@ describe("Global Scope & StateManager Access", () => {
             id: "field-regex-test",
             on: "TEST_EVENT",
             if: {
-                field: "globals.spamRegex.test(data.comment)",
+                field: "vars.spamRegex.test(data.comment)",
                 operator: "EQ",
                 value: true
             },

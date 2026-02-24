@@ -102,12 +102,12 @@
       # Increment counter
       - type: STATE_INCREMENT
         params: { key: "counter", amount: 1 }
-      # Read state into context.vars for use in subsequent actions
+      # Read state into context.env for use in subsequent actions
       - type: STATE_GET
         params: { key: "counter", as: "currentCount" }
       # Log using the read value
       - type: LOG
-        params: { message: "Counter is now: ${vars.currentCount}" }
+        params: { message: "Counter is now: ${env.currentCount}" }
 
 # --- Conditional Actions (if/then/else) ---
 
@@ -124,7 +124,7 @@
       - type: LOG
         params: { message: "Checking score..." }
       - if:
-          field: vars.currentScore
+          field: env.currentScore
           operator: GT
           value: 80
         then:
@@ -142,7 +142,7 @@
       - type: STATE_GET
         params: { key: "userLevel", as: "level" }
       - if:
-          field: vars.level
+          field: env.level
           operator: EQ
           value: "premium"
         then:
@@ -169,10 +169,10 @@
       - if:
           operator: AND
           conditions:
-            - field: vars.currentBalance
+            - field: env.currentBalance
               operator: GTE
-              value: vars.minimum
-            - field: vars.currentBalance
+              value: env.minimum
+            - field: env.currentBalance
               operator: LT
               value: 200
         then:
@@ -217,7 +217,7 @@
       - type: STATE_GET
         params: { key: "priority", as: "priorityLevel" }
       - if:
-          field: vars.priorityLevel
+          field: env.priorityLevel
           operator: LT
           value: 3
         then:
@@ -245,7 +245,7 @@
         params: { key: "retryCount", as: "retries" }
       # First condition: check status
       - if:
-          field: vars.currentStatus
+          field: env.currentStatus
           operator: EQ
           value: "pending"
         then:
@@ -256,12 +256,12 @@
           params: { message: "Status is not pending" }
       # Second condition: check retry count
       - if:
-          field: vars.retries
+          field: env.retries
           operator: LT
           value: 3
         then:
           type: LOG
-          params: { message: "Will retry (attempt ${vars.retries})" }
+          params: { message: "Will retry (attempt ${env.retries})" }
         else:
           type: LOG
           params: { message: "Max retries exceeded!" }
@@ -278,7 +278,7 @@
       - type: STATE_GET
         params: { key: "score", as: "currentScore" }
       - if:
-          field: vars.currentScore
+          field: env.currentScore
           operator: GTE
           value: 90
         then:

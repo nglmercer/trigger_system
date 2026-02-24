@@ -38,11 +38,11 @@ export class RuleEngine {
   /**
    * Convenience method to process an event with a simple payload
    */
-  async processEvent(eventType: string, data: Record<string, unknown> = {}, globals: Record<string, unknown> = {}): Promise<TriggerResult[]> {
+  async processEvent(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
-      globals: globals,
+      vars: vars,
       timestamp: Date.now(),
       state: {} // State will be injected by evaluateContext
     };
@@ -59,9 +59,9 @@ export class RuleEngine {
     // Inject current state into context
     context.state = StateManager.getInstance().getAll();
     
-    // Initialize vars if not present
-    if (!context.vars) {
-      context.vars = {};
+    // Initialize env if not present
+    if (!context.env) {
+      context.env = {};
     }
 
     if (this.config.globalSettings.debugMode) {
@@ -178,9 +178,9 @@ export class RuleEngine {
       );
 
       // Process condition.value - if it's a string, try to interpolate it
-      // This allows comparing field: "data.amount" with value: "${globals.threshold}"
+      // This allows comparing field: "data.amount" with value: "${vars.threshold}"
       let targetValue = condition.value;
-      if (typeof targetValue === 'string' && (targetValue.includes('${') || targetValue.startsWith('data.') || targetValue.startsWith('globals.'))) {
+      if (typeof targetValue === 'string' && (targetValue.includes('${') || targetValue.startsWith('data.') || targetValue.startsWith('vars.'))) {
           // If it looks like an expression or variable reference, evaluate it
           const evaluated = ExpressionEngine.evaluate(targetValue, context);
           targetValue = evaluated as ConditionValue;

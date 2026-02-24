@@ -129,7 +129,7 @@ describe("Comprehensive Rule Engine Tests", () => {
             data: {
                 target: "hit_me"
             },
-            globals: {
+            vars: {
                 secret_target: "hit_me"
             }
         };

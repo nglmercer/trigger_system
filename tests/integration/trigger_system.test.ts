@@ -126,14 +126,14 @@ describe("Trigger System Integration", () => {
              rules: [{
                  id: "dyn", 
                  on: "LimitCheck", 
-                 if: { field: "data.amt", operator: "GT", value: "${globals.limit}" },
+                 if: { field: "data.amt", operator: "GT", value: "${vars.limit}" },
                  do: { type: "LOG" } 
              }],
              globalSettings: { evaluateAll: true }
          });
          
          const ctx: TriggerContext = {
-             event: "LimitCheck", timestamp: Date.now(), data: { amt: 150 }, globals: { limit: 100 }
+             event: "LimitCheck", timestamp: Date.now(), data: { amt: 150 }, vars: { limit: 100 }
          };
          
          const res = await ruleEngine.evaluateContext(ctx);

@@ -141,7 +141,7 @@ export class ActionRegistry {
         return { key, newValue };
     });
 
-    // STATE_GET - Read state and store in context.vars
+    // STATE_GET - Read state and store in context.env
     this.register("STATE_GET", async (action, context) => {
         const key = String(action.params?.key || "");
         const as = String(action.params?.as || key); // Store with this variable name
@@ -149,9 +149,9 @@ export class ActionRegistry {
 
         const value = await StateManager.getInstance().get(key);
         
-        // Store in context.vars for interpolation in subsequent actions
-        if (!context.vars) context.vars = {};
-        context.vars[as] = value;
+        // Store in context.env for interpolation in subsequent actions
+        if (!context.env) context.env = {};
+        context.env[as] = value;
         
         return { key, value, storedAs: as };
     });

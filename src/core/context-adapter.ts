@@ -16,12 +16,12 @@ export class ContextAdapter {
     /**
      * Creates a standardized TriggerContext from a generic source.
      */
-    static create(event: string, data: unknown, globals: Record<string, unknown> = {}): TriggerContext {
+    static create(event: string, data: unknown, vars: Record<string, unknown> = {}): TriggerContext {
         return {
             event,
             timestamp: Date.now(),
             data: typeof data === 'object' && data !== null ? data as Record<string, unknown> : { value: data },
-            globals,
+            vars,
             helpers: this.getDefaultHelpers()
         };
     }
@@ -30,7 +30,7 @@ export class ContextAdapter {
      * Adapts a standard HTTP Request (like from Bun.serve) into a TriggerContext.
      * Note: Accessing body requires it to be read previously or passed mainly as objects.
      */
-    static fromRequest(req: Request, bodyData?: unknown, globals: Record<string, unknown> = {}): TriggerContext {
+    static fromRequest(req: Request, bodyData?: unknown, vars: Record<string, unknown> = {}): TriggerContext {
         const url = new URL(req.url);
         
         return {
@@ -47,8 +47,8 @@ export class ContextAdapter {
                 })(),
                 body: bodyData || {}
             },
-            globals: {
-                ...globals,
+            vars: {
+                ...vars,
                 ip: req.headers.get("x-forwarded-for") || "unknown"
             },
             helpers: this.getDefaultHelpers()
@@ -58,13 +58,13 @@ export class ContextAdapter {
     /**
      * Adapts a generic Webhook payload.
      */
-    static fromWebhook(provider: string, eventName: string, payload: ContextPayload, globals: Record<string, unknown> = {}): TriggerContext {
+    static fromWebhook(provider: string, eventName: string, payload: ContextPayload, vars: Record<string, unknown> = {}): TriggerContext {
         return {
             event: `WEBHOOK_${provider.toUpperCase()}_${eventName.toUpperCase()}`,
             timestamp: Date.now(),
             data: payload,
-            globals: {
-                ...globals,
+            vars: {
+                ...vars,
                 provider
             },
             helpers: this.getDefaultHelpers()

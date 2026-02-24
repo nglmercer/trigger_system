@@ -4,7 +4,7 @@ import type { TriggerContext, ConditionValue, ComparisonOperator } from "../type
 export class TriggerUtils {
   /**
    * Retrieves a nested value from the context using dot notation.
-   * supports: data.field, globals.envVal, computed.result
+   * supports: data.field, vars.envVal, computed.result
    */
   static getNestedValue(path: string, context: TriggerContext): unknown {
     const parts = path.split(".");

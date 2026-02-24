@@ -105,11 +105,11 @@ export class TriggerEngine {
    * Método convenience para procesar eventos simples
    * Renombrado para evitar conflicto con processEvent(context)
    */
-  async processEventSimple(eventType: string, data: Record<string, unknown> = {}, globals: Record<string, unknown> = {}): Promise<TriggerResult[]> {
+  async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
-      globals: globals,
+      vars: vars,
       timestamp: Date.now(),
       state: this.getStateContext ? this.getStateContext() : {}
     };

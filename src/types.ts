@@ -92,9 +92,9 @@ export interface TriggerContext {
   timestamp: number;
   data: Record<string, unknown>;
   id?: string;
-  globals?: Record<string, unknown>;
+  vars?: Record<string, unknown>;
   state?: Record<string, unknown>;
-  vars?: Record<string, unknown>; // Dynamic variables for action flow
+  env?: Record<string, unknown>; // Dynamic variables for action flow
   helpers?: Record<string, (...args: unknown[]) => unknown>;
   lastResult?: unknown;
 }

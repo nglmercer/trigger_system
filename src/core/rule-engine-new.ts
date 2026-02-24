@@ -106,11 +106,11 @@ export class RuleEngine extends TriggerEngine {
    * Método convenience para procesar eventos simples
    * Usa el método renombrado del padre
    */
-  override async processEventSimple(eventType: string, data: Record<string, unknown> = {}, globals: Record<string, unknown> = {}): Promise<TriggerResult[]> {
+  override async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
-      globals: globals,
+      vars: vars,
       timestamp: Date.now(),
       state: this.stateManager.getAll()
     };

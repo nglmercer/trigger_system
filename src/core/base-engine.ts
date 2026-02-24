@@ -24,7 +24,7 @@ export interface ITriggerEngine {
   
   // Métodos principales
   processEvent(context: TriggerContext): Promise<TriggerResult[]>;
-  processEvent(eventType: string, data?: Record<string, unknown>, globals?: Record<string, unknown>): Promise<TriggerResult[]>;
+  processEvent(eventType: string, data?: Record<string, unknown>, vars?: Record<string, unknown>): Promise<TriggerResult[]>;
   
   // Gestión de acciones
   registerAction(type: string, handler: EngineActionHandler): void;
