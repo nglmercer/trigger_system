@@ -11,24 +11,19 @@ import type {
   InitializeParams,
   InitializeResult,
   DefinitionParams,
-  Definition,
-  Location,
-  Range
+  Definition
 } from 'vscode-languageserver/node';
 import {
   TextDocument
 } from 'vscode-languageserver-textdocument';
-import { getDiagnosticsForText } from './diagnostics';
-import { getCompletionItems } from './completions';
-import { semanticTokensLegend, getSemanticTokens } from './semantic_tokens';
-import { getHover } from './hover';
-import { getImportDirectives } from './directives';
-import { existsSync } from 'fs';
-import { resolveImportPath, uriToPath, pathToUri } from './path-utils';
+import { semanticTokensLegend } from './semantic_tokens';
+import { LspEngine } from './engine';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
+
+const engine = new LspEngine();
 
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -81,9 +76,9 @@ connection.onInitialize((params: InitializeParams) => {
       renameProvider: false // Could be enabled later
     }
   };
-  
+
   connection.console.log(`Server capabilities registered: ${JSON.stringify(result.capabilities, null, 2)}`);
-  
+
   if (hasWorkspaceFolderCapability) {
     result.capabilities.workspace = {
       workspaceFolders: {
@@ -109,7 +104,7 @@ documents.onDidChangeContent(change => {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   const text = textDocument.getText();
-  const diagnostics = await getDiagnosticsForText(text, textDocument.uri, workspaceFolders);
+  const diagnostics = await engine.getDiagnostics(text, textDocument.uri, workspaceFolders);
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
@@ -124,8 +119,8 @@ connection.onCompletion(
     if (!document) {
         return [];
     }
-    
-    return getCompletionItems(document, _textDocumentPosition.position);
+
+    return engine.getCompletions(document.getText(), document.uri, _textDocumentPosition.position);
   }
 );
 
@@ -133,12 +128,6 @@ connection.onCompletion(
 // the completion list.
 connection.onCompletionResolve(
   (item: CompletionItem): CompletionItem => {
-    /* 
-    if (item.data === 1) {
-      item.detail = 'TypeScript details';
-      item.documentation = 'TypeScript documentation';
-    }
-    */
     return item;
   }
 );
@@ -149,8 +138,7 @@ connection.languages.semanticTokens.on((params) => {
     if (!document) {
         return { data: [] };
     }
-    const text = document.getText();
-    const tokens = getSemanticTokens(text);
+    const tokens = engine.getSemanticTokens(document.getText());
     return { data: tokens };
 });
 
@@ -160,10 +148,7 @@ connection.languages.semanticTokens.onRange((params) => {
     if (!document) {
         return { data: [] };
     }
-    const text = document.getText();
-    // For now, we return the full tokens even for range requests. 
-    // Use getSemanticTokens with range filtering if performance becomes an issue.
-    const tokens = getSemanticTokens(text);
+    const tokens = engine.getSemanticTokens(document.getText());
     return { data: tokens };
 });
 
@@ -173,77 +158,17 @@ connection.onHover((params) => {
     if (!document) {
         return null;
     }
-    return getHover(document, params.position);
+    return engine.getHover(document.getText(), document.uri, params.position);
 });
 
 // Provide Go to Definition for import paths
-connection.onDefinition((params: DefinitionParams): Definition | null => {
+connection.onDefinition((params: DefinitionParams) => {
     const document = documents.get(params.textDocument.uri);
     if (!document) {
         return null;
     }
 
-    const text = document.getText();
-    const position = params.position;
-    const offset = document.offsetAt(position);
-    
-    // Find the line at the current position
-    const lines = text.split('\n');
-    let currentOffset = 0;
-    let currentLine = 0;
-    let lineStartOffset = 0;
-    
-    for (let i = 0; i < lines.length; i++) {
-        const lineText = lines[i];
-        if (!lineText) continue;
-        const lineLength = lineText.length + 1; // +1 for newline
-        if (currentOffset + lineLength > offset) {
-            currentLine = i;
-            lineStartOffset = currentOffset;
-            break;
-        }
-        currentOffset += lineLength;
-    }
-    
-    const line = lines[currentLine] || '';
-    const characterInLine = offset - lineStartOffset;
-    
-    // Check if we're in an import directive
-    const importMatch = line.match(/#\s*@import\s+\w+\s+from\s+['"]([^'"]+)['"]/);
-    if (!importMatch || !importMatch[1]) {
-        return null;
-    }
-    
-    const importPath = importMatch[1];
-    const pathStart = line.indexOf(importPath);
-    const pathEnd = pathStart + importPath.length;
-    
-    // Check if cursor is within the import path
-    if (characterInLine < pathStart || characterInLine > pathEnd) {
-        return null;
-    }
-    
-    // Resolve the path
-    try {
-        const resolvedPath = resolveImportPath(document.uri, importPath);
-        
-        // Check if file exists
-        if (!existsSync(resolvedPath)) {
-            return null;
-        }
-        
-        // Return the location
-        return {
-            uri: pathToUri(resolvedPath),
-            range: {
-                start: { line: 0, character: 0 },
-                end: { line: 0, character: 0 }
-            }
-        };
-    } catch (error) {
-        connection.console.log(`Error resolving import path: ${error}`);
-        return null;
-    }
+    return engine.getDefinition(document.getText(), document.uri, params.position);
 });
 
 documents.listen(connection);
