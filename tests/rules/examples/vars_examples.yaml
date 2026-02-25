@@ -222,7 +222,6 @@
       # Calculate final price
       - type: STATE_GET
         params: { key: "discount", as: "disc" }
-      - type: MATH
-        params: { expression: "${env.amount * (1 - env.disc)}" }
+      - run: state.final_price = env.amount * (1 - env.disc)
       - type: LOG
-        params: { message: "Final price: ${lastResult}" }
+        params: { message: "Final price: ${state.final_price}" }

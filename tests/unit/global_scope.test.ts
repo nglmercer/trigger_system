@@ -7,13 +7,13 @@ import type { TriggerRule } from "../../src/types";
 
 describe("Global Scope & StateManager Access", () => {
     
-    test("Should access standard globals (e.g. Math, Date)", async () => {
+    test("Should access standard vars (e.g. Math, Date)", async () => {
         const engine = new TriggerEngine();
         engine.registerAction("LOG", async (params) => {
             return params.msg; 
         });
         
-        // Rule using accessible globals
+        // Rule using accessible vars
         const rule: TriggerRule = {
             id: "global-test",
             on: "TEST_EVENT",
@@ -41,7 +41,7 @@ describe("Global Scope & StateManager Access", () => {
         expect(results[0]!.executedActions[0]!.result).toBeDefined(); // LOG usually returns undefined, but checks execution
     });
 
-    test("Should access explicitly injected globals (StateManager)", async () => {
+    test("Should access explicitly injected vars (StateManager)", async () => {
         const engine = new TriggerEngine();
         
         // Capture logs to verify output
@@ -55,9 +55,9 @@ describe("Global Scope & StateManager Access", () => {
         await stateManager.set("test_counter", 10);
         await stateManager.set("global_status", "ACTIVE");
 
-        // Rule accessing StateManager via globals
-        const ruleUsingGlobals: TriggerRule = {
-             id: "state-test-globals",
+        // Rule accessing StateManager via vars
+        const ruleUsingVars: TriggerRule = {
+             id: "state-test-vars",
              on: "TEST_EVENT",
              if: {
                  // Condition: Check if counter in StateManager is 10
@@ -74,9 +74,9 @@ describe("Global Scope & StateManager Access", () => {
              }
          };
          
-         (engine as any).rules = [ruleUsingGlobals];
+         (engine as any).rules = [ruleUsingVars];
 
-         // Inject StateManager into context globals when creating context
+         // Inject StateManager into context vars when creating context
          const context = ContextAdapter.create("TEST_EVENT", { value: 10 }, { StateManager: stateManager });
          
          const results = await engine.processEvent(context);

@@ -72,7 +72,7 @@ export class ExpressionEngine {
   ) {
     // Intentar obtener un valor del contexto SI es una ruta simple (sin espacios, operadores, etc.)
     // Regex: Start with reserved root, followed by dots and words. No spaces.
-    if (/^(data|vars|request|computed|env|state|lastResult)(\.[a-zA-Z0-9_]+)+$/.test(expression)) {
+    if (/^(data|vars|request|computed|env|state)(\.[a-zA-Z0-9_]+)+$/.test(expression)) {
       const val = this.getNestedValue(expression, context);
       // If found, return. If undefined, we might accept it as undefined,
       // OR if technically it shouldn't be undefined, we might fail?
@@ -81,7 +81,7 @@ export class ExpressionEngine {
     }
 
     // Handle simple single-level vars access (e.g., "vars.myVar" or "env.myVar")
-    if (/^(vars|env|state|lastResult)(\.[a-zA-Z0-9_]+)$/.test(expression)) {
+    if (/^(vars|env|state)(\.[a-zA-Z0-9_]+)$/.test(expression)) {
       const val = this.getNestedValue(expression, context);
       return val;
     }

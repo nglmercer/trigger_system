@@ -2,17 +2,13 @@
 # @import data from './data.json'
 - id: sequence-counter
   name: Sequence Counter
-  description: Demonstrates how lastResult can be used to pass values between actions
+  description: Demonstrates state passing between actions
   on: test.sequence
   do:
     mode: SEQUENCE
     actions:
-      - type: math
+      - run: state.val = 10 + 5
+      - run: state.val = state.val * 2
+      - type: LOG
         params:
-          expression: "10 + 5"
-      - type: math
-        params:
-          expression: "${lastResult} * 2"
-      - type: print
-        params:
-          message: "The final result is ${lastResult}" # Should be 30
+          message: "The final result is ${state.val}" # Should be 30

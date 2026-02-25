@@ -122,7 +122,7 @@ describe("Comprehensive Rule Engine Tests", () => {
         expect(stateManager.get("or_group_result")).toBe(true);
     });
 
-    it("should handle dynamic values from globals", async () => {
+    it("should handle dynamic values from vars", async () => {
         const context = {
             event: "TEST_EVENT",
             timestamp: Date.now(),

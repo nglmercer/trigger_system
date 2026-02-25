@@ -1,5 +1,6 @@
 
 import type { TriggerContext } from "../types";
+import { StateManager } from "./state-manager";
 
 interface ContextPayload {
     [key: string]: unknown;
@@ -12,7 +13,7 @@ export interface ContextSource {
 }
 
 export class ContextAdapter {
-    
+
     /**
      * Creates a standardized TriggerContext from a generic source.
      */
@@ -22,6 +23,7 @@ export class ContextAdapter {
             timestamp: Date.now(),
             data: typeof data === 'object' && data !== null ? data as Record<string, unknown> : { value: data },
             vars,
+            state: StateManager.getInstance().getLiveProxy(),
             helpers: this.getDefaultHelpers()
         };
     }
@@ -32,7 +34,7 @@ export class ContextAdapter {
      */
     static fromRequest(req: Request, bodyData?: unknown, vars: Record<string, unknown> = {}): TriggerContext {
         const url = new URL(req.url);
-        
+
         return {
             event: "HTTP_REQUEST",
             timestamp: Date.now(),
@@ -51,6 +53,7 @@ export class ContextAdapter {
                 ...vars,
                 ip: req.headers.get("x-forwarded-for") || "unknown"
             },
+            state: StateManager.getInstance().getLiveProxy(),
             helpers: this.getDefaultHelpers()
         };
     }
@@ -67,6 +70,7 @@ export class ContextAdapter {
                 ...vars,
                 provider
             },
+            state: StateManager.getInstance().getLiveProxy(),
             helpers: this.getDefaultHelpers()
         };
     }

@@ -123,11 +123,11 @@ export class StateManager {
           ms = ttl;
       } else {
           const match = ttl.match(/^(\d+)([smhd])$/);
-          if (match) {
+          if (match && match[1] && match[2]) {
               const val = parseInt(match[1]);
               const unit = match[2];
               const multi: Record<string, number> = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
-              ms = val * multi[unit];
+              ms = val * (multi[unit] || 0);
           }
       }
 
@@ -168,11 +168,14 @@ export class StateManager {
                   return val;
               },
               set(target, prop, value) {
-                  target[prop as string] = value;
+                  if (typeof prop !== 'string') return false;
+                  target[prop] = value;
 
                   // Find the root key to persist
-                  const rootKey = path.length > 0 ? path[0] : prop as string;
-                  self.persistence.saveState(rootKey, self.state[rootKey]);
+                  const rootKey = path.length > 0 ? path[0] : prop;
+                  if (rootKey) {
+                      self.persistence.saveState(rootKey, self.state[rootKey]);
+                  }
                   return true;
               }
           });

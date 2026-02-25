@@ -67,7 +67,7 @@ export class RuleEngine {
     if (this.config.stateConfig) {
         await StateManager.getInstance().applyConfig(this.config.stateConfig);
     }
-    
+
     // Initialize env if not present
     if (!context.env) {
       context.env = {};
@@ -322,7 +322,6 @@ export class RuleEngine {
     }
 
     // Execute actions with control flow support
-    let lastResult = context.lastResult;
     let shouldBreak = false;
 
     for (const action of actionList) {
@@ -373,13 +372,8 @@ export class RuleEngine {
       }
 
       // Regular action execution
-      const actionContext = { ...context, lastResult };
-      const result = await this.executeSingleAction(action, actionContext);
+      const result = await this.executeSingleAction(action, context);
       enactedActions.push(result);
-      
-      if (mode === 'SEQUENCE') {
-        lastResult = result.result;
-      }
     }
 
     return enactedActions;
