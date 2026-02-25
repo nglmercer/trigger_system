@@ -65,8 +65,8 @@ The central orchestrator that coordinates all other components.
 
 **Key Methods:**
 
-- `processEvent(data)` - Main entry point (with globals)
-- `processEventSimple(event, data)` - Main entry point (no globals)
+- `processEvent(data)` - Main entry point (with vars)
+- `processEventSimple(event, data)` - Main entry point (no vars)
 - `evaluateContext(context)` - Core evaluation loop
 - `updateRules(rules)` - Hot swap rules
 
@@ -130,7 +130,7 @@ Event Fired (processEvent)
 ┌─────────────────┐
 │  Context Setup  │
 │  - User Data    │
-│  - Globals      │
+│  - Vars      │
 │  - Current State│
 └────────┬────────┘
          │

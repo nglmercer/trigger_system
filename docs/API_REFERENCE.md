@@ -18,11 +18,11 @@ class RuleEngine {
   processEventSimple(
     eventType: string,
     data?: Record<string, unknown>,
-    globals?: Record<string, unknown>
+    vars?: Record<string, unknown>
   ): Promise<TriggerResult[]>;
   processEvent(
     event: TriggerEvent,
-    globals?: Record<string, unknown>
+    vars?: Record<string, unknown>
   ): Promise<TriggerResult[]>;
   evaluateContext(context: TriggerContext): Promise<TriggerResult[]>;
 
@@ -162,7 +162,7 @@ interface TriggerContext {
   event: string;
   timestamp: number;
   data: Record<string, unknown>;
-  globals?: Record<string, unknown>;
+  vars?: Record<string, unknown>;
   state?: Record<string, unknown>;
   id?: string;
 }

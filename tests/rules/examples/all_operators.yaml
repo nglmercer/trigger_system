@@ -223,7 +223,7 @@
   if:
     field: data.target
     operator: EQ
-    value: "${globals.secret_target}"
+    value: "${vars.secret_target}"
   do:
     type: STATE_SET
     params:

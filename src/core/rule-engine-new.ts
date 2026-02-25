@@ -10,7 +10,8 @@ import type {
   RuleEngineConfig,
   Action,
   ActionGroup,
-  ExecutedAction
+  ExecutedAction,
+  ActionParams
 } from "../types";
 
 import { TriggerEngine } from "./trigger-engine";
@@ -25,7 +26,7 @@ export class RuleEngine extends TriggerEngine {
   constructor(config: RuleEngineConfig) {
     // Llamar al constructor padre con la configuración
     super(config);
-    
+
     // Inicializar componentes adicionales
     this.actionRegistry = ActionRegistry.getInstance();
     this.stateManager = StateManager.getInstance();
@@ -37,14 +38,19 @@ export class RuleEngine extends TriggerEngine {
    */
   override async processEvent(context: TriggerContext): Promise<TriggerResult[]> {
     const results: TriggerResult[] = [];
-    
-    // Inyectar estado actual en el contexto
-    context.state = this.stateManager.getAll();
+
+    // Inyectar proxy de estado en el contexto
+    context.state = this.stateManager.getLiveProxy();
+
+    // Aplicar configuración de estado si existe
+    if (this.config?.stateConfig) {
+        await this.stateManager.applyConfig(this.config.stateConfig);
+    }
 
     // Emitir evento de inicio
-    triggerEmitter.emit(EngineEvent.ENGINE_START, { 
-      context, 
-      rulesCount: this.rules.length 
+    triggerEmitter.emit(EngineEvent.ENGINE_START, {
+      context,
+      rulesCount: this.rules.length
     });
 
     // Si hay modo debug, loggear
@@ -104,15 +110,14 @@ export class RuleEngine extends TriggerEngine {
 
   /**
    * Método convenience para procesar eventos simples
-   * Usa el método renombrado del padre
    */
-  override async processEventSimple(eventType: string, data: Record<string, unknown> = {}, globals: Record<string, unknown> = {}): Promise<TriggerResult[]> {
+  override async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
       event: eventType,
       data: data,
-      globals: globals,
+      vars: vars,
       timestamp: Date.now(),
-      state: this.stateManager.getAll()
+      state: this.stateManager.getLiveProxy()
     };
     return this.processEvent(context);
   }
@@ -142,7 +147,7 @@ export class RuleEngine extends TriggerEngine {
     if (mode === 'EITHER' && actionList.length > 0) {
       const totalWeight = actionList.reduce((sum, a) => sum + (a.probability || 1), 0);
       let random = Math.random() * totalWeight;
-      
+
       let selected: Action | undefined;
       for (const action of actionList) {
         const weight = action.probability || 1;
@@ -152,22 +157,16 @@ export class RuleEngine extends TriggerEngine {
           break;
         }
       }
-      
+
       if (selected) {
         actionList = [selected];
       }
     }
 
     // Execute actions
-    let lastResult = context.lastResult;
     for (const action of actionList) {
-      const actionContext = { ...context, lastResult };
-      const result = await this.executeSingleActionWithRegistry(action, actionContext);
+      const result = await this.executeSingleActionWithRegistry(action, context);
       enactedActions.push(result);
-      
-      if (mode === 'SEQUENCE') {
-        lastResult = result.result;
-      }
     }
 
     return enactedActions;
@@ -184,7 +183,37 @@ export class RuleEngine extends TriggerEngine {
     action: Action,
     context: TriggerContext
   ): Promise<TriggerResult['executedActions'][0]> {
-    
+
+    // 1. Handle shorthand syntax
+    if (!action.type && !action.run && !action.break && !action.continue) {
+        const actionKeys = Object.keys(action);
+        for (const key of actionKeys) {
+            if (this.actionRegistry.get(key)) {
+                action.type = key;
+                if (typeof action[key] === 'string') {
+                    action.params = { ...action.params, message: action[key] as string, content: action[key] as string };
+                } else if (typeof action[key] === 'object' && action[key] !== null) {
+                    action.params = { ...action.params, ...(action[key] as any) };
+                }
+                break;
+            }
+        }
+    }
+
+    // 2. Handle 'run' block
+    if (action.run) {
+        try {
+            const runResult = new Function(
+                "context", "state", "data", "vars", "env", "helpers",
+                `with(context) { ${action.run} }`
+            )(context, context.state, context.data, context.vars, context.env, context.helpers);
+
+            return { type: 'RUN', result: runResult, timestamp: Date.now() };
+        } catch (error) {
+            return { type: 'RUN', error: String(error), timestamp: Date.now() };
+        }
+    }
+
     // Interpolate probability if it's a string expression
     let probability = action.probability;
     if (typeof (probability as any) === 'string') {
@@ -215,15 +244,6 @@ export class RuleEngine extends TriggerEngine {
       return {
         type: 'CONTINUE',
         result: 'Continue action',
-        timestamp: Date.now()
-      };
-    }
-
-    // Skip if no type
-    if (!action.type) {
-      return {
-        type: 'unknown',
-        error: 'Action has no type',
         timestamp: Date.now()
       };
     }

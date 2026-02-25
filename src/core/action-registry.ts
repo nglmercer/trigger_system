@@ -141,7 +141,7 @@ export class ActionRegistry {
         return { key, newValue };
     });
 
-    // STATE_GET - Read state and store in context.vars
+    // STATE_GET - Read state and store in context.env
     this.register("STATE_GET", async (action, context) => {
         const key = String(action.params?.key || "");
         const as = String(action.params?.as || key); // Store with this variable name
@@ -149,9 +149,9 @@ export class ActionRegistry {
 
         const value = await StateManager.getInstance().get(key);
         
-        // Store in context.vars for interpolation in subsequent actions
-        if (!context.vars) context.vars = {};
-        context.vars[as] = value;
+        // Store in context.env for interpolation in subsequent actions
+        if (!context.env) context.env = {};
+        context.env[as] = value;
         
         return { key, value, storedAs: as };
     });
@@ -173,6 +173,25 @@ export class ActionRegistry {
              event: action.params?.event, 
              payload: action.params?.data || {} 
          };
+    });
+
+    this.register("notify", (action, context) => {
+        const message = action.params?.message || action.params?.content || "Notification";
+        const target = action.params?.target || "default";
+        console.log(`[Notification] To: ${target}, Msg: ${message}`);
+        return { target, message };
+    });
+
+    this.register("STATE_OP", (action, context) => {
+        // Handled directly by engine's 'run' block support,
+        // but can be called explicitly too.
+        if (action.params?.run) {
+            return new Function(
+                "context", "state", "data", "vars", "env", "helpers",
+                `with(context) { ${action.params.run} }`
+            )(context, context.state, context.data, context.vars, context.env, context.helpers);
+        }
+        return { warning: "Missing 'run' param for STATE_OP" };
     });
   }
 }

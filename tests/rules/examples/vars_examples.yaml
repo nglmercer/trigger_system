@@ -17,12 +17,12 @@
       # Set initial value
       - type: STATE_SET
         params: { key: "counter", value: 10 }
-      # Read state into vars.currentCount
+      # Read state into env.currentCount
       - type: STATE_GET
         params: { key: "counter", as: "currentCount" }
       # Log using the variable
       - type: LOG
-        params: { message: "Counter is: ${vars.currentCount}" }
+        params: { message: "Counter is: ${env.currentCount}" }
 
 # --- Variable Arithmetic ---
 
@@ -45,12 +45,12 @@
         params: { key: "taxRate", as: "tax" }
       # Calculate total
       - type: STATE_SET
-        params: { key: "total", value: "${vars.basePrice + vars.basePrice * vars.tax}" }
+        params: { key: "total", value: "${env.basePrice + env.basePrice * env.tax}" }
       # Read final total
       - type: STATE_GET
         params: { key: "total", as: "finalTotal" }
       - type: LOG
-        params: { message: "Total with tax: ${vars.finalTotal}" }
+        params: { message: "Total with tax: ${env.finalTotal}" }
 
 # --- Conditional Variable Logic ---
 
@@ -69,7 +69,7 @@
         params: { key: "score", as: "currentScore" }
       # Conditional grade assignment
       - if:
-          field: vars.currentScore
+          field: env.currentScore
           operator: GTE
           value: 90
         then:
@@ -77,7 +77,7 @@
           params: { key: "grade", value: "A" }
         else:
           if:
-            field: vars.currentScore
+            field: env.currentScore
             operator: GTE
             value: 80
           then:
@@ -90,7 +90,7 @@
       - type: STATE_GET
         params: { key: "grade", as: "finalGrade" }
       - type: LOG
-        params: { message: "Grade assigned: ${vars.finalGrade}" }
+        params: { message: "Grade assigned: ${env.finalGrade}" }
 
 # --- Counter with State ---
 
@@ -111,7 +111,7 @@
       - type: STATE_GET
         params: { key: "visitCount", as: "visits" }
       - type: LOG
-        params: { message: "Visit count: ${vars.visits}" }
+        params: { message: "Visit count: ${env.visits}" }
 
 # --- State Management ---
 
@@ -133,7 +133,7 @@
       - type: STATE_GET
         params: { key: "sessionActive", as: "isActive" }
       - type: LOG
-        params: { message: "Session: ${vars.session}, Active: ${vars.isActive}" }
+        params: { message: "Session: ${env.session}, Active: ${env.isActive}" }
       # Delete session
       - type: STATE_DELETE
         params: { key: "sessionId" }
@@ -162,14 +162,14 @@
         params: { key: "maxSteps", as: "maximum" }
       # Step 1: Check if we should start
       - if:
-          field: vars.currentStep
+          field: env.currentStep
           operator: LTE
-          value: vars.maximum
+          value: env.maximum
         then:
           mode: SEQUENCE
           actions:
             - type: LOG
-              params: { message: "Processing step ${vars.currentStep} of ${vars.maximum}" }
+              params: { message: "Processing step ${env.currentStep} of ${env.maximum}" }
             - type: STATE_INCREMENT
               params: { key: "step", amount: 1 }
         else:
@@ -179,7 +179,7 @@
       - type: STATE_GET
         params: { key: "step", as: "finalStep" }
       - type: LOG
-        params: { message: "Final step: ${vars.finalStep}" }
+        params: { message: "Final step: ${env.finalStep}" }
 
 # --- Using Event Data with Vars ---
 
@@ -202,7 +202,7 @@
         params: { key: "customerTier", as: "tier" }
       # Apply discount based on tier
       - if:
-          field: vars.tier
+          field: env.tier
           operator: EQ
           value: "premium"
         then:
@@ -222,7 +222,6 @@
       # Calculate final price
       - type: STATE_GET
         params: { key: "discount", as: "disc" }
-      - type: MATH
-        params: { expression: "${vars.amount * (1 - vars.disc)}" }
+      - run: state.final_price = env.amount * (1 - env.disc)
       - type: LOG
-        params: { message: "Final price: ${lastResult}" }
+        params: { message: "Final price: ${state.final_price}" }

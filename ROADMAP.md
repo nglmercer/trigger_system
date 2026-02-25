@@ -31,7 +31,7 @@ The Trigger System is a generic, rule-based execution engine designed to handle 
 | **Recursive Groups**       | ✅ Done | AND/OR groups can be nested infinitely.                      |
 | **Action Modes**           | ✅ Done | SEQUENCE, ALL, EITHER (Random).                              |
 | **Validation Suggestions** | ✅ Done | "Did you mean..?" hints for YAML errors.                     |
-| **Dynamic Values**         | ✅ Done | Compare field against variables (e.g. `"${globals.limit}"`). |
+| **Dynamic Values**         | ✅ Done | Compare field against variables (e.g. `"${vars.limit}"`). |
 | **Date/Regex Ops**         | ✅ Done | `SINCE`, `BEFORE`, `MATCHES` operators supported.            |
 | **Extensible Actions**     | ✅ Done | `ActionRegistry` allows custom action handlers.              |
 

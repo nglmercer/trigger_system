@@ -58,8 +58,10 @@ export interface ActionParams {
 export type ActionParamValue = string | number | boolean | null | ActionParamValue[] | ActionParams;
 
 export interface Action {
+  name?: string;
   type?: string; // Optional for conditional actions
   params?: ActionParams;
+  run?: string; // Script block for direct operations
   delay?: number;
   probability?: number;
   // --- Control Flow ---
@@ -68,6 +70,8 @@ export interface Action {
   else?: Action | Action[] | ActionGroup; // Actions to run if condition is false
   break?: boolean; // Break out of action execution
   continue?: boolean; // Skip remaining actions
+  // Shorthand support
+  [key: string]: unknown;
 }
 
 export type ExecutionMode = 'ALL' | 'EITHER' | 'SEQUENCE';
@@ -92,11 +96,10 @@ export interface TriggerContext {
   timestamp: number;
   data: Record<string, unknown>;
   id?: string;
-  globals?: Record<string, unknown>;
-  state?: Record<string, unknown>;
-  vars?: Record<string, unknown>; // Dynamic variables for action flow
+  vars?: Record<string, unknown>;
+  state: Record<string, unknown>;
+  env?: Record<string, unknown>; // Dynamic variables for action flow
   helpers?: Record<string, (...args: unknown[]) => unknown>;
-  lastResult?: unknown;
 }
 
 export interface ExecutedAction {
@@ -119,9 +122,25 @@ export interface GlobalSettings {
   strictActions?: boolean;
 }
 
+export interface StateLifecycle {
+  reset?: string; // cron-like or "00:00 UTC"
+  ttl?: string | number; // "1h", "30m", or ms
+}
+
+export interface StateDefinition {
+  value: unknown;
+  lifecycle?: StateLifecycle;
+}
+
+export interface GlobalStateConfig {
+  namespace?: string;
+  state?: Record<string, unknown | StateDefinition>;
+}
+
 export interface RuleEngineConfig {
   rules: TriggerRule[];
   globalSettings: GlobalSettings;
+  stateConfig?: GlobalStateConfig;
 }
 
 // --- Rule Update Events ---
