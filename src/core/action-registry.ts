@@ -87,7 +87,11 @@ export class ActionRegistry {
     this.register("forward", async (action, context) => {
         const urlTemplate = action.params?.url || "";
         const url = typeof urlTemplate === 'string' ? ExpressionEngine.interpolate(urlTemplate, context) : String(urlTemplate);
-        const method = String(action.params?.method || "POST");
+        const method = String(action.params?.method || "POST").toUpperCase();
+
+        // Only send body for methods that support it
+        const methodsWithBody = ['POST', 'PUT', 'PATCH'];
+        const hasBody = methodsWithBody.includes(method);
 
         try {
             const response = await fetch(url, {
@@ -96,7 +100,7 @@ export class ActionRegistry {
                     "Content-Type": "application/json",
                     ...(typeof action.params?.headers === 'object' && action.params.headers !== null && !Array.isArray(action.params.headers) ? action.params.headers : {}),
                 },
-                body: JSON.stringify(context.data),
+                ...(hasBody ? { body: JSON.stringify(context.data) } : {}),
             });
             return {
                 url,
