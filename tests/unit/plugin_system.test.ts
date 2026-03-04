@@ -33,7 +33,7 @@ describe("Plugin System", () => {
         // We can manually invoke the handler or use engine if we add a rule
         // New RuleEngine logic fetches from registry during execution
         
-        const result = await handler!({ type: "test-plugin:hello" }, { event: "TEST", timestamp: 0, data: {} });
+        const result = await handler!({ type: "test-plugin:hello" }, { event: "TEST", timestamp: 0, data: {}, state: {} });
         expect(executed).toBe(true);
         expect(result).toBe("world");
     });

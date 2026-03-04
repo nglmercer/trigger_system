@@ -121,8 +121,12 @@ describe("Playlist Logic & Rules Integration", () => {
         
         registry.register("PLAYLIST_LOAD", async (action, ctx) => {
             const tracks = action.params?.tracks || [];
-            await mockPlaylist.load(tracks);
-            return { loaded: tracks.length };
+            if (typeof tracks === 'string') {
+                await mockPlaylist.load([tracks]);
+            } else {
+                await mockPlaylist.load(tracks as string[]);
+            }
+            return { loaded: (tracks as string[]).length };
         });
 
         registry.register("PLAYLIST_PLAY", async () => {
@@ -137,8 +141,8 @@ describe("Playlist Logic & Rules Integration", () => {
 
        registry.register("PLAYLIST_LOOP", async (action) => {
            const enable = action.params?.enable ?? true;
-           await mockPlaylist.setLoop(enable);
-           return { loop: enable };
+           await mockPlaylist.setLoop(Boolean(enable));
+           return { loop: Boolean(enable) };
        });
     });
 
@@ -297,6 +301,6 @@ describe("Playlist Logic & Rules Integration", () => {
         // It sets 'reaction_success' to true in state.
         const success = stateManager.get("reaction_success");
         expect(success).toBe(true);
-        expect(stateManager.get("playlist").index).toBe(1); // Confirm state is synced
+        expect((stateManager.get("playlist") as any).index).toBe(1); // Confirm state is synced
     });
 });

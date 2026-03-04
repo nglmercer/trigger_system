@@ -16,7 +16,7 @@ describe("Concurrency and Race Conditions Analysis", () => {
         // Register a slow action to simulate latency
         registry.register("SLOW_INCREMENT", async (action) => {
             const key = action.params?.key;
-            const current = stateManager.get(key) || 0;
+            const current = stateManager.get(key as string) || 0;
             
             // Artificial Delay to invite race conditions if not handled
             await new Promise(r => setTimeout(r, 50)); 
@@ -24,7 +24,7 @@ describe("Concurrency and Race Conditions Analysis", () => {
             // This is the CRITICAL part:
             // If get() happened before delay, and set() happens after,
             // another interleaved execution could have updated it.
-            await stateManager.set(key, Number(current) + 1);
+            await stateManager.set(key as string, Number(current) + 1);
             return { value: Number(current) + 1 };
         });
 
@@ -34,7 +34,7 @@ describe("Concurrency and Race Conditions Analysis", () => {
             // StateManager.increment does get/set but internally in one JS event loop tick usually,
             // unless it awaits persistence in between.
             // Let's test if our implementation is safe against parallel calls.
-            await stateManager.increment(key);
+            await stateManager.increment(key as string);
         });
     });
 

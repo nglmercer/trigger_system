@@ -1,0 +1,205 @@
+# HTTP Methods with Fetch Examples
+# Demonstrates all HTTP methods using the FORWARD action
+# Tests: GET, POST, PUT, PATCH, DELETE, Headers, Dynamic URLs
+
+# --- GET Methods ---
+
+# Basic GET request
+- id: fetch-get-users
+  on: API_GET_USERS
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/users"
+      method: GET
+
+# GET with dynamic URL parameters
+- id: fetch-get-user-by-id
+  on: API_GET_USER
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/users/${data.userId}"
+      method: GET
+
+# GET with custom headers
+- id: fetch-get-with-auth
+  on: API_GET_PROTECTED
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/posts/1"
+      method: GET
+      headers:
+        Authorization: "Bearer ${vars.apiToken}"
+        X-Custom-Header: "custom-value"
+
+# --- POST Methods ---
+
+# POST with automatic body from context data
+- id: fetch-post-create-user
+  on: API_CREATE_USER
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/users"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+
+# POST with custom body mapping
+- id: fetch-post-custom-body
+  on: API_SUBMIT_FORM
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/posts"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+      body:
+        title: "${data.title}"
+        body: "${data.content}"
+        userId: "${data.userId}"
+
+# --- PUT Method (Full Update) ---
+
+- id: fetch-put-update-user
+  on: API_UPDATE_USER
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/users/${data.userId}"
+      method: PUT
+      headers:
+        Content-Type: "application/json"
+      body:
+        id: "${data.userId}"
+        name: "${data.name}"
+        email: "${data.email}"
+        username: "${data.username}"
+
+# --- PATCH Method (Partial Update) ---
+
+- id: fetch-patch-partial-update
+  on: API_PATCH_USER
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/users/${data.userId}"
+      method: PATCH
+      headers:
+        Content-Type: "application/json"
+      body:
+        email: "${data.email}"
+
+# --- DELETE Methods ---
+
+# Basic DELETE
+- id: fetch-delete-user
+  on: API_DELETE_USER
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/users/${data.userId}"
+      method: DELETE
+
+# DELETE with conditional (only executes if confirm is true)
+- id: fetch-delete-conditional
+  on: API_SOFT_DELETE
+  if:
+    field: data.confirm
+    operator: EQ
+    value: true
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/users/${data.userId}"
+      method: DELETE
+      headers:
+        X-Soft-Delete: "true"
+
+# --- Conditional HTTP Methods ---
+
+# Dynamic method selection based on action field
+- id: conditional-method-create
+  on: API_DYNAMIC_METHOD
+  if:
+    field: data.action
+    operator: EQ
+    value: "create"
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/posts"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+      body: "${data.payload}"
+
+- id: conditional-method-update
+  on: API_DYNAMIC_METHOD
+  if:
+    field: data.action
+    operator: EQ
+    value: "update"
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/posts/${data.id}"
+      method: PUT
+      headers:
+        Content-Type: "application/json"
+      body: "${data.payload}"
+
+- id: conditional-method-delete
+  on: API_DYNAMIC_METHOD
+  if:
+    field: data.action
+    operator: EQ
+    value: "delete"
+  do:
+    type: FORWARD
+    params:
+      url: "https://jsonplaceholder.typicode.com/posts/${data.id}"
+      method: DELETE
+
+# --- Action Group: Full CRUD Sequence ---
+
+- id: full-crud-example
+  on: API_FULL_CRUD
+  do:
+    mode: SEQUENCE
+    actions:
+      # Step 1: Create (POST)
+      - type: FORWARD
+        params:
+          url: "https://jsonplaceholder.typicode.com/posts"
+          method: POST
+          headers:
+            Content-Type: "application/json"
+          body:
+            title: "${data.title}"
+            body: "${data.body}"
+            userId: 1
+      # Step 2: Log
+      - type: LOG
+        params:
+          message: "Created post, now fetching..."
+      # Step 3: Update (PUT)
+      - type: FORWARD
+        params:
+          url: "https://jsonplaceholder.typicode.com/posts/1"
+          method: PUT
+          headers:
+            Content-Type: "application/json"
+          body:
+            id: 1
+            title: "Updated: ${data.title}"
+            body: "${data.body}"
+            userId: 1
+      # Step 4: Delete
+      - type: FORWARD
+        params:
+          url: "https://jsonplaceholder.typicode.com/posts/1"
+          method: DELETE

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { workspace, type ExtensionContext, commands, window, StatusBarAlignment, StatusBarItem } from 'vscode';
+import { workspace, type ExtensionContext, commands, window, StatusBarAlignment,type StatusBarItem } from 'vscode';
 import {
   LanguageClient,
   type LanguageClientOptions,

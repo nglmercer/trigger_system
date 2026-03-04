@@ -48,7 +48,7 @@ describe("Lite Syntax & Direct State Access", () => {
         });
 
         const results = await engine.processEventSimple("TEST");
-        const notifyAction = results[0].executedActions.find(a => a.type === "notify");
+        const notifyAction = results[0]!.executedActions.find(a => a.type === "notify");
         expect(notifyAction).toBeDefined();
         expect((notifyAction!.result as any).message).toBe("Hello World");
     });
@@ -87,9 +87,9 @@ describe("Lite Syntax & Direct State Access", () => {
         });
 
         const res1 = await engine.processEventSimple("TEST", { val: 5 });
-        expect(res1[0].executedActions.filter(a => a.type === "notify")).toHaveLength(0);
+        expect(res1[0]!.executedActions.filter(a => a.type === "notify")).toHaveLength(0);
 
         const res2 = await engine.processEventSimple("TEST", { val: 15 });
-        expect(res2[0].executedActions.find(a => a.type === "notify")).toBeDefined();
+        expect(res2[0]!.executedActions.find(a => a.type === "notify")).toBeDefined();
     });
 });

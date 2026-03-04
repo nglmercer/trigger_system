@@ -69,8 +69,16 @@ _Learn by doing with progressive tutorials._
 
 - 1.0 Basic Rule
 - 1.1 Multiple Conditions
+- 1.2 Advanced Operators
 - 1.3 Stateful Counters
+- 1.4 Action Groups
 - 2.0 SDK Usage
+- 2.1 Dynamic Rule Updates
+- 2.2 File-Based Rule Updates
+- 2.3 Real-Time Rule Updates
+- 2.4 Loader Watch
+- 3.0 HTTP Methods (Fetch) - TypeScript
+- 3.1 HTTP Methods (Fetch) - YAML
 
 ---
 
