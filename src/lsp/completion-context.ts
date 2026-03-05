@@ -40,7 +40,9 @@ import { globalDataContext } from './data-context';
 export function getValueCompletionsByKey(
     key: string, 
     path: (Node | Pair)[], 
-    valuePrefix: string = ''
+    valuePrefix: string = '',
+    line: string = '',
+    position: Position | null = null
 ): CompletionItem[] {
     switch (key) {
         case 'on': 
@@ -68,6 +70,47 @@ export function getValueCompletionsByKey(
 
             const fields = globalDataContext.getFields(searchPrefix);
 
+            // If position is available, use textEdit for precise replacement
+            if (position && line) {
+                // Calculate the replace range
+                const colonIndex = line.indexOf(':');
+                const valueStartAfterColon = colonIndex + 1;
+                const valueStart = valueStartAfterColon + line.substring(valueStartAfterColon).indexOf(valuePrefix);
+                const replaceEnd = valueStart + valuePrefix.length;
+
+                return fields.map(field => {
+                    // If valuePrefix ends with '.', preserve it and add field name
+                    // Otherwise use the old behavior
+                    let newText: string;
+                    let displayFilter: string;
+                    
+                    if (valuePrefix.endsWith('.')) {
+                        // Preserve the prefix user already typed (e.g., "data.")
+                        newText = valuePrefix + field.name;
+                        displayFilter = valuePrefix + field.name;
+                    } else {
+                        newText = field.name;
+                        displayFilter = searchPrefix ? `${searchPrefix}.${field.name}` : field.name;
+                    }
+
+                    return {
+                        label: field.name,
+                        kind: field.type === 'object' ? CompletionItemKind.Module : CompletionItemKind.Field,
+                        detail: `${field.type}${field.value !== undefined ? ` = ${globalDataContext.getFormattedValue(field.value)}` : ''}`,
+                        filterText: displayFilter,
+                        insertText: field.name,
+                        textEdit: {
+                            range: {
+                                start: { line: position.line, character: valueStart },
+                                end: { line: position.line, character: replaceEnd }
+                            },
+                            newText: newText
+                        }
+                    };
+                });
+            }
+
+            // Fall back to old behavior without textEdit
             return fields.map(field => {
                 return {
                     label: field.name,

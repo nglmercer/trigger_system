@@ -117,7 +117,7 @@ export function getCompletionItems(document: TextDocument, position: Position): 
         
         // Import context completions dynamically
         const { getValueCompletionsByKey } = require('./completion-context');
-        return getValueCompletionsByKey(key, path, valuePrefix);
+        return getValueCompletionsByKey(key, path, valuePrefix, line, position);
     }
 
     // 2. We are in a KEY position or start of line
