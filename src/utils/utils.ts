@@ -47,7 +47,7 @@ export class TriggerUtils {
   /**
    * Checks if a value satisfies a comparison operator against a criteria.
    */
-  static compare(actual: unknown, operator: ComparisonOperator, criteria: ConditionValue): boolean {
+  static compare(actual: unknown, operator: ComparisonOperator, criteria: ConditionValue | undefined): boolean {
     switch (operator) {
       case 'EQ':
       case '==':
@@ -74,6 +74,35 @@ export class TriggerUtils {
       case 'CONTAINS':
         if (Array.isArray(actual) || typeof actual === 'string') {
           return actual.includes(criteria as string);
+        }
+        return false;
+      case 'NOT_CONTAINS':
+        if (Array.isArray(actual) || typeof actual === 'string') {
+          return !actual.includes(criteria as string);
+        }
+        return false;
+      case 'STARTS_WITH':
+        if (typeof actual === 'string' && typeof criteria === 'string') {
+          return actual.startsWith(criteria);
+        }
+        return false;
+      case 'ENDS_WITH':
+        if (typeof actual === 'string' && typeof criteria === 'string') {
+          return actual.endsWith(criteria);
+        }
+        return false;
+      case 'IS_EMPTY':
+        if (typeof actual === 'string') return actual === '';
+        if (Array.isArray(actual)) return actual.length === 0;
+        if (actual === null || actual === undefined) return true;
+        if (typeof actual === 'object') return Object.keys(actual).length === 0;
+        return false;
+      case 'IS_NULL':
+      case 'IS_NONE':
+        return actual === null || actual === undefined;
+      case 'HAS_KEY':
+        if (typeof actual === 'object' && actual !== null && typeof criteria === 'string') {
+          return criteria in (actual as Record<string, unknown>);
         }
         return false;
       case 'MATCHES':

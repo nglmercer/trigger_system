@@ -110,18 +110,24 @@ do: # Required: Action to perform
 
 ## Available Operators
 
-| Operator   | Description           | Example                         |
-| ---------- | --------------------- | ------------------------------- |
-| `EQ`       | Equal                 | `value: "premium"`              |
-| `NEQ`      | Not equal             | `value: "premium"`              |
-| `GT`       | Greater than          | `value: 100`                    |
-| `GTE`      | Greater than or equal | `value: 100`                    |
-| `LT`       | Less than             | `value: 100`                    |
-| `LTE`      | Less than or equal    | `value: 100`                    |
-| `MATCHES`  | Regex match           | `value: "^[A-Z].*"`             |
-| `IN`       | In array              | `value: ["admin", "moderator"]` |
-| `NOT_IN`   | Not in array          | `value: ["guest", "banned"]`    |
-| `CONTAINS` | String/Array contains | `value: "foo"`                  |
+| Operator      | Description                       | Example                         |
+| ------------- | --------------------------------- | ------------------------------- |
+| `EQ`          | Equal                             | `value: "premium"`            |
+| `NEQ`         | Not equal                         | `value: "premium"`            |
+| `GT`          | Greater than                      | `value: 100`                    |
+| `GTE`         | Greater than or equal            | `value: 100`                    |
+| `LT`          | Less than                         | `value: 100`                    |
+| `LTE`         | Less than or equal                | `value: 100`                    |
+| `MATCHES`     | Regex match                       | `value: "^[A-Z].*"`           |
+| `IN`          | In array                          | `value: ["admin", "moderator"]` |
+| `NOT_IN`      | Not in array                      | `value: ["guest", "banned"]` |
+| `CONTAINS`    | String/Array contains             | `value: "foo"`                 |
+| `NOT_CONTAINS`| String/Array does not contain     | `value: "foo"`                 |
+| `STARTS_WITH` | String starts with prefix         | `value: "https://"`            |
+| `ENDS_WITH`   | String ends with suffix           | `value: ".com"`                 |
+| `IS_EMPTY`    | Value is empty                    | (no value needed)               |
+| `IS_NULL`     | Value is null or undefined        | (no value needed)               |
+| `HAS_KEY`     | Object has the specified key      | `value: "userId"`              |
 
 ## Next Steps
 

@@ -256,6 +256,32 @@ export class RuleEngine {
         case "CONTAINS":
           return String(fieldValue).includes(String(targetValue));
         
+        case "NOT_CONTAINS":
+          return !String(fieldValue).includes(String(targetValue));
+        
+        case "STARTS_WITH":
+          return String(fieldValue).startsWith(String(targetValue));
+        
+        case "ENDS_WITH":
+          return String(fieldValue).endsWith(String(targetValue));
+        
+        case "IS_EMPTY":
+          if (typeof fieldValue === 'string') return fieldValue === '';
+          if (Array.isArray(fieldValue)) return fieldValue.length === 0;
+          if (fieldValue === null || fieldValue === undefined) return true;
+          if (typeof fieldValue === 'object') return Object.keys(fieldValue).length === 0;
+          return false;
+        
+        case "IS_NULL":
+        case "IS_NONE":
+          return fieldValue === null || fieldValue === undefined;
+        
+        case "HAS_KEY":
+          if (typeof fieldValue === 'object' && fieldValue !== null) {
+            return String(targetValue) in (fieldValue as Record<string, unknown>);
+          }
+          return false;
+        
         case "MATCHES":
           return new RegExp(String(targetValue)).test(String(fieldValue));
         

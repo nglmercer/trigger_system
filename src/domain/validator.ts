@@ -27,8 +27,32 @@ const types = scope({
 
     ContainsCondition: {
         field: "string > 0",
-        operator: "'CONTAINS'",
+        operator: "'CONTAINS' | 'NOT_CONTAINS'",
         value: "string | unknown[]" // Can be string (substring) or array (includes)
+    },
+    
+    StringOperatorCondition: {
+        field: "string > 0",
+        operator: "'STARTS_WITH' | 'ENDS_WITH'",
+        value: "string" // Prefix or suffix to check
+    },
+
+    HasKeyCondition: {
+        field: "string > 0",
+        operator: "'HAS_KEY'",
+        value: "string" // Key name to check
+    },
+    
+    NullCondition: {
+        field: "string > 0",
+        operator: "'IS_NULL' | 'IS_NONE'",
+        value: "null" // No value needed
+    },
+    
+    EmptyCondition: {
+        field: "string > 0",
+        operator: "'IS_EMPTY'",
+        value: "null" // No value needed
     },
     
     NumericCondition: {
@@ -216,7 +240,7 @@ export class TriggerValidator {
       const { operator, value } = condition as Record<string, unknown>;
       
       // 1. List/Collection Operators (IN, NOT_IN, RANGE, CONTAINS)
-      if (typeof operator === 'string' && ['IN', 'NOT_IN', 'RANGE', 'CONTAINS'].includes(operator)) {
+      if (typeof operator === 'string' && ['IN', 'NOT_IN', 'RANGE', 'CONTAINS', 'NOT_CONTAINS'].includes(operator)) {
           if (operator === 'CONTAINS') {
               if (typeof value !== 'string' && !Array.isArray(value)) {
                   issues.push({
@@ -282,6 +306,26 @@ export class TriggerValidator {
                issues.push({
                    path: `${path}.value`,
                    message: `Incorrect value type: Operator '${operator}' expects a number or expression string, but received ${typeof value}.`,
+                   severity: "error"
+               });
+           }
+      }
+      // 4. String prefix/suffix operators (STARTS_WITH, ENDS_WITH)
+      else if (typeof operator === 'string' && ['STARTS_WITH', 'ENDS_WITH'].includes(operator)) {
+           if (typeof value !== 'string') {
+               issues.push({
+                   path: `${path}.value`,
+                   message: `Incorrect value type: Operator '${operator}' expects a string, but received ${typeof value}.`,
+                   severity: "error"
+               });
+           }
+      }
+      // 5. HAS_KEY operator
+      else if (operator === 'HAS_KEY') {
+           if (typeof value !== 'string') {
+               issues.push({
+                   path: `${path}.value`,
+                   message: `Incorrect value type: Operator 'HAS_KEY' expects a string (key name), but received ${typeof value}.`,
                    severity: "error"
                });
            }

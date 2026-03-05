@@ -105,7 +105,165 @@ describe("Rule Engine Unit Tests", () => {
         });
         expect(res).toHaveLength(1);
     });
-    
+
+    // --- New String Operators ---
+
+    test("NOT_CONTAINS: should match when string does not contain substring", async () => {
+        const rule: TriggerRule = {
+            id: "not-contains",
+            on: "TEST",
+            if: { field: "data.email", operator: "NOT_CONTAINS", value: "@spam.com" },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Should match (not spam)
+        const resMatch = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { email: "user@example.com" }
+        });
+        expect(resMatch).toHaveLength(1);
+
+        // Should not match (is spam)
+        const resNoMatch = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { email: "user@spam.com" }
+        });
+        expect(resNoMatch).toHaveLength(0);
+    });
+
+    test("STARTS_WITH: should match when string starts with prefix", async () => {
+        const rule: TriggerRule = {
+            id: "starts-with",
+            on: "TEST",
+            if: { field: "data.url", operator: "STARTS_WITH", value: "https://" },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Should match
+        const resMatch = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { url: "https://example.com" }
+        });
+        expect(resMatch).toHaveLength(1);
+
+        // Should not match
+        const resNoMatch = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { url: "http://example.com" }
+        });
+        expect(resNoMatch).toHaveLength(0);
+    });
+
+    test("ENDS_WITH: should match when string ends with suffix", async () => {
+        const rule: TriggerRule = {
+            id: "ends-with",
+            on: "TEST",
+            if: { field: "data.filename", operator: "ENDS_WITH", value: ".pdf" },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Should match
+        const resMatch = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { filename: "document.pdf" }
+        });
+        expect(resMatch).toHaveLength(1);
+
+        // Should not match
+        const resNoMatch = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { filename: "document.docx" }
+        });
+        expect(resNoMatch).toHaveLength(0);
+    });
+
+    test("IS_EMPTY: should match empty values", async () => {
+        const rule: TriggerRule = {
+            id: "is-empty",
+            on: "TEST",
+            if: { field: "data.notes", operator: "IS_EMPTY" },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Empty string
+        const resEmptyStr = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { notes: "" }
+        });
+        expect(resEmptyStr).toHaveLength(1);
+
+        // Empty array
+        const resEmptyArr = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { notes: [] }
+        });
+        expect(resEmptyArr).toHaveLength(1);
+
+        // Null
+        const resNull = await engine.evaluateContext({
+            event: "TEST", id: "3", timestamp: Date.now(), data: { notes: null }
+        });
+        expect(resNull).toHaveLength(1);
+
+        // Non-empty string (should not match)
+        const resNotEmpty = await engine.evaluateContext({
+            event: "TEST", id: "4", timestamp: Date.now(), data: { notes: "some text" }
+        });
+        expect(resNotEmpty).toHaveLength(0);
+    });
+
+    test("IS_NULL: should match null or undefined values", async () => {
+        const rule: TriggerRule = {
+            id: "is-null",
+            on: "TEST",
+            if: { field: "data.deletedAt", operator: "IS_NULL" },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Null should match
+        const resNull = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { deletedAt: null }
+        });
+        expect(resNull).toHaveLength(1);
+
+        // Undefined should match (field not present)
+        const resUndefined = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: {}
+        });
+        expect(resUndefined).toHaveLength(1);
+
+        // Has value (should not match)
+        const resHasValue = await engine.evaluateContext({
+            event: "TEST", id: "3", timestamp: Date.now(), data: { deletedAt: Date.now() }
+        });
+        expect(resHasValue).toHaveLength(0);
+    });
+
+    test("HAS_KEY: should match when object has specified key", async () => {
+        const rule: TriggerRule = {
+            id: "has-key",
+            on: "TEST",
+            if: { field: "data.user", operator: "HAS_KEY", value: "role" },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Has key
+        const resHasKey = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { user: { name: "John", role: "admin" } }
+        });
+        expect(resHasKey).toHaveLength(1);
+
+        // Does not have key
+        const resNoKey = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { user: { name: "John" } }
+        });
+        expect(resNoKey).toHaveLength(0);
+
+        // Not an object
+        const resNotObject = await engine.evaluateContext({
+            event: "TEST", id: "3", timestamp: Date.now(), data: { user: "string" }
+        });
+        expect(resNotObject).toHaveLength(0);
+    });
+
     // --- 4. Action Groups & Execution Modes ---
 
     test("Should execute EITHER action randomly", async () => {

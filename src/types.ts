@@ -29,6 +29,12 @@ export type ComparisonOperator =
   | 'IN'           // Value in Array
   | 'NOT_IN'       // Value not in Array
   | 'CONTAINS'     // String/Array contains
+  | 'NOT_CONTAINS' // String/Array does not contain
+  | 'STARTS_WITH'  // String starts with prefix
+  | 'ENDS_WITH'    // String ends with suffix
+  | 'IS_EMPTY'     // Value is empty (string/array/object)
+  | 'IS_NULL' | 'IS_NONE'  // Value is null or undefined
+  | 'HAS_KEY'      // Object has the specified key
   | 'MATCHES'      // Regex match
   | 'SINCE' | 'AFTER'   // Date >= Value
   | 'BEFORE' | 'UNTIL'  // Date < Value
@@ -39,7 +45,7 @@ export type ConditionValue = string | number | boolean | Date | string[] | numbe
 export interface Condition {
   field: string;         // Path to variable in context (e.g. "data.amount" or "user.role")
   operator: ComparisonOperator;
-  value: ConditionValue; // The value to compare against
+  value?: ConditionValue; // The value to compare against (optional for IS_NULL, IS_EMPTY, IS_NONE)
 }
 
 export interface ConditionGroup {
