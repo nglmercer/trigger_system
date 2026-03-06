@@ -226,7 +226,7 @@ export function activate(context: ExtensionContext) {
       try {
         createLanguageClient(context);
         if (client) {
-          (client as any).start();
+          (client as LanguageClient).start();
         }
       } catch (error) {
         console.error('Trigger System LSP Client: Failed to start language client for open file:', error);
@@ -242,7 +242,7 @@ export function activate(context: ExtensionContext) {
         try {
           createLanguageClient(context);
           if (client) {
-            (client as any).start();
+            (client as LanguageClient).start();
           }
           window.showInformationMessage('Trigger System LSP activated for this YAML file');
         } catch (error) {

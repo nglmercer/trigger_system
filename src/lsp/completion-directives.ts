@@ -176,7 +176,7 @@ export function getImportFileCompletions(
             const entries = fs.readdirSync(searchDir, { withFileTypes: true });
             const validExtensions = ['.json', '.yaml', '.yml'];
 
-            entries.forEach((entry: any) => {
+            entries.forEach((entry: Record<string, any>) => {
                 const name = entry.name;
                 const isDir = entry.isDirectory();
 

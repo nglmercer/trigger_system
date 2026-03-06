@@ -27,7 +27,7 @@ export class DataContext {
                 this.data = cached.data;
             } else {
                 const content = readFileSync(filePath, 'utf-8');
-                let parsedData: any = {};
+                let parsedData: Record<string, any> = {};
                 
                 if (filePath.endsWith('.json')) {
                     parsedData = JSON.parse(content);
@@ -123,7 +123,7 @@ export class DataContext {
     /**
      * Build schema from data
      */
-    private buildSchema(obj: any, prefix: string = ''): void {
+    private buildSchema(obj: Record<string, any>, prefix: string = ''): void {
         if (!obj || typeof obj !== 'object') return;
 
         for (const key in obj) {

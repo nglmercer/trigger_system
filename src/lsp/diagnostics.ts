@@ -160,7 +160,7 @@ export async function getDiagnosticsForText(
       const json = doc.toJS();
       if (json && typeof json === 'object') {
           // Handle Wrapper Object (Headers), Array of Rules, or Single Rule
-          let items: any[] = [];
+          let items: Record<string, any>[] = [];
           
           // Check if it's a wrapper object with "rules"
           const isWrapper = !Array.isArray(json) && json.rules && Array.isArray(json.rules);

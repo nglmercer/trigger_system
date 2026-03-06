@@ -128,10 +128,105 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
                 };
                 return { contents: markdown };
             }
+
+            // Check if this is a variable path meaning (used in field, left, right etc.)
+            let isFieldPath = false;
+            if (path.length >= 2) {
+                const parentPair = path[path.length - 2];
+                if (isPair(parentPair) && isScalar(parentPair.key)) {
+                    const keyName = String(parentPair.key.value);
+                    if (keyName === 'field' || keyName === 'left' || keyName === 'right') {
+                        isFieldPath = true;
+                    }
+                }
+            }
+
+            const isKnownRoot = value === 'data' || value === 'state' || value === 'env' || value === 'vars' || 
+                                value.startsWith('data.') || value.startsWith('state.') || value.startsWith('env.') || value.startsWith('vars.');
+            
+            if (isFieldPath || isKnownRoot) {
+                return createVariableInfoHover(value, false);
+            }
         }
     }
 
     return null;
+}
+
+/**
+ * Create hover information for a variable path
+ */
+function createVariableInfoHover(variablePath: string, isTemplate: boolean): Hover {
+    // Try to get value from data context
+    let value: string | Record<string, any> | undefined = globalDataContext.getValue(variablePath);
+    let description = '';
+
+    // Special handling for legacy/built-in variables
+    if (value === undefined) {
+        if (variablePath === 'data') {
+            description = 'The payload data for the current event.';
+            value = '{ ... }';
+        } else if (variablePath === 'state') {
+            description = 'The current state of the rule engine.';
+            value = '{ ... }';
+        } else if (variablePath === 'vars') {
+            description = 'Global variables available across all rules.';
+            value = '{ ... }';
+        } else if (variablePath === 'env') {
+            description = 'Dynamic environment variables set during rule execution.';
+            value = '{ ... }';
+        } else if (variablePath === 'helpers') {
+            description = 'Utility functions available in the context.';
+            value = '{ ... }';
+        } else if (variablePath === 'Math') {
+            description = 'Standard JavaScript Math functions.';
+            value = 'Math Namespace';
+        }
+    }
+
+    const title = isTemplate ? `Template Variable: \`\${${variablePath}}\`` : `Variable Path: \`${variablePath}\``;
+
+    if (value !== undefined) {
+        const formattedValue = typeof value === 'string' && (value === 'Any' || value === '{ ... }' || value === 'Math Namespace')
+            ? `*${value}*`
+            : globalDataContext.getFormattedValue(value);
+
+        const valueType = typeof value === 'object' && value !== null
+            ? (Array.isArray(value) ? 'array' : 'object')
+            : typeof value;
+
+        const markdown: MarkupContent = {
+            kind: 'markdown',
+            value: [
+                `**${title}**`,
+                '',
+                description ? `${description}` : '',
+                '',
+                `**Type:** \`${valueType}\``,
+                '',
+                '**Current/Test Value:**',
+                '```json',
+                formattedValue,
+                '```'
+            ].filter(p => p !== '').join('\n')
+        };
+
+        return { contents: markdown };
+    } else {
+        // Variable not found in data context
+        const markdown: MarkupContent = {
+            kind: 'markdown',
+            value: [
+                `**${title}**`,
+                '',
+                '_No test data available for this variable._',
+                '',
+                'Add a `data.json` or `data.yaml` file in your workspace to provide test values.'
+            ].join('\n')
+        };
+
+        return { contents: markdown };
+    }
 }
 
 /**
@@ -149,75 +244,7 @@ function checkTemplateVariableHover(line: string, position: Position, document: 
         // Check if cursor is inside this template
         if (character >= start && character <= end) {
             const variablePath = match[1]!.trim();
-
-            // Try to get value from data context
-            let value: any = globalDataContext.getValue(variablePath);
-            let description = '';
-
-            // Special handling for legacy/built-in variables
-            if (value === undefined) {
-                if (variablePath === 'data') {
-                    description = 'The payload data for the current event.';
-                    value = '{ ... }';
-                } else if (variablePath === 'state') {
-                    description = 'The current state of the rule engine.';
-                    value = '{ ... }';
-                } else if (variablePath === 'vars') {
-                    description = 'Global variables available across all rules.';
-                    value = '{ ... }';
-                } else if (variablePath === 'env') {
-                    description = 'Dynamic environment variables set during rule execution.';
-                    value = '{ ... }';
-                } else if (variablePath === 'helpers') {
-                    description = 'Utility functions available in the context.';
-                    value = '{ ... }';
-                } else if (variablePath === 'Math') {
-                    description = 'Standard JavaScript Math functions.';
-                    value = 'Math Namespace';
-                }
-            }
-
-            if (value !== undefined) {
-                const formattedValue = typeof value === 'string' && (value === 'Any' || value === '{ ... }' || value === 'Math Namespace')
-                    ? `*${value}*`
-                    : globalDataContext.getFormattedValue(value);
-
-                const valueType = typeof value === 'object' && value !== null
-                    ? (Array.isArray(value) ? 'array' : 'object')
-                    : typeof value;
-
-                const markdown: MarkupContent = {
-                    kind: 'markdown',
-                    value: [
-                        `**Template Variable: \`\${${variablePath}}\`**`,
-                        '',
-                        description ? `${description}` : '',
-                        '',
-                        `**Type:** \`${valueType}\``,
-                        '',
-                        '**Current/Test Value:**',
-                        '```json',
-                        formattedValue,
-                        '```'
-                    ].filter(p => p !== '').join('\n')
-                };
-
-                return { contents: markdown };
-            } else {
-                // Variable not found in data context
-                const markdown: MarkupContent = {
-                    kind: 'markdown',
-                    value: [
-                        `**Template Variable: \`\${${variablePath}}\`**`,
-                        '',
-                        '_No test data available for this variable._',
-                        '',
-                        'Add a `data.json` or `data.yaml` file in your workspace to provide test values.'
-                    ].join('\n')
-                };
-
-                return { contents: markdown };
-            }
+            return createVariableInfoHover(variablePath, true);
         }
     }
 
@@ -227,7 +254,7 @@ function checkTemplateVariableHover(line: string, position: Position, document: 
 /**
  * Simple evaluator for math expressions in the LSP
  */
-function simpleEvaluate(expression: string, context: Record<string, any> = {}): any {
+function simpleEvaluate(expression: string, context: Record<string, any> = {}) {
     try {
         const allData = globalDataContext.getValue('') || {};
 

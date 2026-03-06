@@ -1,4 +1,6 @@
 # @import data from './data.json'
+# @import list from './list.json'
+
 # Comprehensive test using imported data for autocompletion
 
 - id: test-imported-data
@@ -6,7 +8,7 @@
   if:
     field: data.username
     operator: EQ
-    value: "admin"
+    value: list.username[0]
   do:
     type: log
     params:

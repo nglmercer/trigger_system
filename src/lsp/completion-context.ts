@@ -121,8 +121,11 @@ export function getValueCompletionsByKey(
                 };
             });
         }
-        case 'value':
-            return getValueSpecificToOperator(path);
+        case 'value': {
+            const operatorCompletions = getValueSpecificToOperator(path);
+            const fieldBasedCompletions = getValueCompletionsBasedOnField(path);
+            return [...operatorCompletions, ...fieldBasedCompletions];
+        }
     }
     return [];
 }
