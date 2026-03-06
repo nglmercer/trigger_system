@@ -288,35 +288,37 @@ function getDataPathCompletions(valuePrefix: string, line: string, position: Pos
                         return;
                     }
                     
-                    // Skip if looking for a specific prefix and it doesn't match
-                    if (prefixLower && !itemPath.toLowerCase().includes(prefixLower)) return;
-
                     const isString = typeof item === 'string';
                     const insertText = isString ? `"${item}"` : String(item);
+
+                    // Skip if looking for a prefix and it doesn't match either the path or the actual value
+                    if (prefixLower && !itemPath.toLowerCase().includes(prefixLower) && !insertText.toLowerCase().includes(prefixLower)) return;
                     
                     completions.push({
                         label: itemPath,
                         kind: CompletionItemKind.Value,
                         detail: `Value: ${insertText}`,
                         insertText: insertText,
-                        filterText: itemPath
+                        // Include the value in filterText so VS Code fuzzy match works for both
+                        filterText: `${itemPath} ${insertText}`
                     });
                 });
             } else if (typeof val === 'object' && val !== null) {
                 traverse(val, newPath);
             } else {
-                // Scalar value handling
-                if (prefixLower && !newPath.toLowerCase().includes(prefixLower)) continue;
-
                 const isString = typeof val === 'string';
                 const insertText = isString ? `"${val}"` : String(val);
+
+                // Scalar value handling
+                if (prefixLower && !newPath.toLowerCase().includes(prefixLower) && !insertText.toLowerCase().includes(prefixLower)) continue;
                 
                 completions.push({
                     label: newPath,
                     kind: CompletionItemKind.Value,
                     detail: `Value: ${insertText}`,
                     insertText: insertText,
-                    filterText: newPath
+                    // Include the value in filterText so VS Code fuzzy match works for both
+                    filterText: `${newPath} ${insertText}`
                 });
             }
         }

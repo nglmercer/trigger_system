@@ -2,7 +2,7 @@
   "name": "trigger-system-lsp-client",
   "displayName": "Trigger System Client",
   "description": "Trigger System VS Code Extension",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "nglmercer",
   "repository": {
     "type": "git",
@@ -26,8 +26,14 @@
     "languages": [
       {
         "id": "yaml",
-        "aliases": ["YAML", "yaml"],
-        "extensions": [".yaml", ".yml"],
+        "aliases": [
+          "YAML",
+          "yaml"
+        ],
+        "extensions": [
+          ".yaml",
+          ".yml"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],

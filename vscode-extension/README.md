@@ -8,13 +8,7 @@ The **Trigger System** is a protocol-agnostic, event-driven engine designed to e
 
 Whether you are building complex game mechanics, payment workflows, or IoT automation, this extension ensures your rules are syntactically correct and perfectly typed before they ever reach production.
 
-## Features
-
-### 🔍 Real-time Validation
-
-- Instant feedback on YAML syntax errors.
-- Deep schema validation using **ArkType**.
-- Highlight missing required fields (like `id`, `on`, `do`).
+## ✨ Features
 
 ### ⌨️ Smart Autocompletion
 
@@ -22,10 +16,20 @@ Whether you are building complex game mechanics, payment workflows, or IoT autom
 - Context-aware completions for condition operators (e.g., `EQ`, `GT`, `MATCHES`).
 - Suggestions for schema keys and common values.
 
+![Smart Autocompletion](./assets_autocomplete.png)
+
 ### ℹ️ Hover Documentation
 
 - Detailed descriptions for every field in the rule schema.
 - Instant access to documentation for operators and action types.
+
+![Hover Documentation](./assets_hover.png)
+
+### 🔍 Real-time Validation
+
+- Instant feedback on YAML syntax errors.
+- Deep schema validation using **ArkType**.
+- Highlight missing required fields (like `id`, `on`, `do`).
 
 ### 🎯 Data Context & Templates
 
@@ -45,7 +49,9 @@ Whether you are building complex game mechanics, payment workflows, or IoT autom
 - **Directory Navigation**: Browse your project structure directly from import directives.
 - **Quote Handling**: Intelligent quote insertion and handling.
 
-## Getting Started
+![Smart Path Autocomplete](./assets_import.png)
+
+## 🚀 Getting Started
 
 1. Install the extension from the VS Code Marketplace or by installing the `.vsix` file.
 2. Open any `.yaml` or `.yml` file containing Trigger Rules.
@@ -53,18 +59,18 @@ Whether you are building complex game mechanics, payment workflows, or IoT autom
    - The file contains a Trigger Rule structure (e.g., `id`, `on`, `do`).
    - You use a directive like `# @import` or `# @enable-lint`.
 
-## Extension Settings
+## ⚙️ Extension Settings
 
 This extension contributes the following settings:
 
 - `triggerSystem.lsp.trace.server`: Traces the communication between VS Code and the language server.
 
-## Requirements
+## 📋 Requirements
 
 - VS Code version 1.75.0 or higher.
 - (Recommended) The Agnostic Trigger System core library installed in your workspace.
 
-## Development
+## 👨‍💻 Development
 
 If you want to build the extension from source:
 
