@@ -124,7 +124,8 @@ export function getValueCompletionsByKey(
         case 'value': {
             const operatorCompletions = getValueSpecificToOperator(path);
             const fieldBasedCompletions = getValueCompletionsBasedOnField(path);
-            return [...operatorCompletions, ...fieldBasedCompletions];
+            const dataPathCompletions = getDataPathCompletions(valuePrefix, line, position);
+            return [...operatorCompletions, ...fieldBasedCompletions, ...dataPathCompletions];
         }
     }
     return [];
@@ -188,4 +189,160 @@ function getValueSpecificToOperator(path: (Node | Pair)[]): CompletionItem[] {
     }
 
     return [];
+}
+
+/**
+ * Gets value completions based on the 'field' key in the same map,
+ * finding possible values from imported arrays (e.g., list.username)
+ */
+function getValueCompletionsBasedOnField(path: (Node | Pair)[]): CompletionItem[] {
+    const map = path.slice().reverse().find(n => isMap(n)) as YAMLMap;
+    if (!map) return [];
+
+    const fieldPair = map.items.find(item => isPair(item) && String((item.key as Scalar).value) === 'field');
+    if (!fieldPair || !isScalar(fieldPair.value)) return [];
+
+    const fieldPath = String(fieldPair.value.value); // e.g. "data.username"
+    const propertyName = fieldPath.includes('.') ? fieldPath.split('.').pop() : fieldPath;
+    
+    if (!propertyName) return [];
+
+    const completions: CompletionItem[] = [];
+    const addedValues = new Set<string>(); // to avoid duplicates
+    
+    // Get all imported data
+    const allData = globalDataContext.getValue('');
+    if (!allData || typeof allData !== 'object') return completions;
+
+    // Search for arrays matching the property name in any imported dataset
+    for (const [alias, data] of Object.entries(allData)) {
+        if (!data || typeof data !== 'object') continue;
+        
+        // Helper to find matching property names recursively
+        const findValues = (obj: any, currentPath: string = '') => {
+            if (!obj || typeof obj !== 'object') return;
+            
+            for (const [key, val] of Object.entries(obj)) {
+                if (key === propertyName && Array.isArray(val)) {
+                    // Found an array of possible values!
+                    for (const item of val) {
+                        const strVal = String(item);
+                        if (!addedValues.has(strVal)) {
+                            addedValues.add(strVal);
+                            
+                            // Format insert string properly (quote strings)
+                            const isString = typeof item === 'string';
+                            const insertText = isString ? `"${item}"` : strVal;
+                            
+                            const fullPath = currentPath ? `${currentPath}.${key}` : key;
+                            completions.push({
+                                label: strVal,
+                                kind: CompletionItemKind.Value,
+                                detail: `Suggested value (${fullPath})`,
+                                insertText: insertText
+                            });
+                        }
+                    }
+                } else if (typeof val === 'object' && !Array.isArray(val)) {
+                    findValues(val, currentPath ? `${currentPath}.${key}` : key);
+                }
+            }
+        };
+        
+        findValues(data, alias);
+    }
+
+    return completions;
+}
+
+/**
+ * Gets completions for absolute data paths (e.g. "alias.data.names[0]")
+ * and inserts their actual value into the document.
+ */
+function getDataPathCompletions(valuePrefix: string, line: string, position: Position | null): CompletionItem[] {
+    const completions: CompletionItem[] = [];
+    const allData = globalDataContext.getValue('');
+    
+    if (!allData || typeof allData !== 'object') return completions;
+
+    // Retrieve the base value prefix typing
+    let searchPrefix = valuePrefix;
+    // If inside quotes, strip quotes for searching
+    if (searchPrefix.startsWith('"') || searchPrefix.startsWith("'")) {
+        searchPrefix = searchPrefix.substring(1);
+    }
+    const prefixLower = searchPrefix.toLowerCase();
+
+    const traverse = (obj: any, currentPath: string) => {
+        if (!obj || typeof obj !== 'object') return;
+        
+        for (const [key, val] of Object.entries(obj)) {
+            const newPath = currentPath ? `${currentPath}.${key}` : key;
+            
+            if (Array.isArray(val)) {
+                val.forEach((item, index) => {
+                    const itemPath = `${newPath}[${index}]`;
+                    
+                    if (typeof item === 'object' && item !== null) {
+                        traverse(item, itemPath);
+                        return;
+                    }
+                    
+                    // Skip if looking for a specific prefix and it doesn't match
+                    if (prefixLower && !itemPath.toLowerCase().includes(prefixLower)) return;
+
+                    const isString = typeof item === 'string';
+                    const insertText = isString ? `"${item}"` : String(item);
+                    
+                    completions.push({
+                        label: itemPath,
+                        kind: CompletionItemKind.Value,
+                        detail: `Value: ${insertText}`,
+                        insertText: insertText,
+                        filterText: itemPath
+                    });
+                });
+            } else if (typeof val === 'object' && val !== null) {
+                traverse(val, newPath);
+            } else {
+                // Scalar value handling
+                if (prefixLower && !newPath.toLowerCase().includes(prefixLower)) continue;
+
+                const isString = typeof val === 'string';
+                const insertText = isString ? `"${val}"` : String(val);
+                
+                completions.push({
+                    label: newPath,
+                    kind: CompletionItemKind.Value,
+                    detail: `Value: ${insertText}`,
+                    insertText: insertText,
+                    filterText: newPath
+                });
+            }
+        }
+    };
+
+    traverse(allData, '');
+
+    if (position && line && valuePrefix) {
+        // Compute textEdit range to replace the typed value prefix completely
+        const colonIndex = line.indexOf(':');
+        if (colonIndex !== -1) {
+            const valueStartAfterColon = colonIndex + 1;
+            const valueStart = valueStartAfterColon + line.substring(valueStartAfterColon).indexOf(valuePrefix);
+            const replaceEnd = valueStart + valuePrefix.length;
+
+            completions.forEach(comp => {
+                comp.textEdit = {
+                    range: {
+                        start: { line: position.line, character: valueStart },
+                        end: { line: position.line, character: replaceEnd }
+                    },
+                    newText: comp.insertText || comp.label
+                };
+            });
+        }
+    }
+
+    return completions;
 }
