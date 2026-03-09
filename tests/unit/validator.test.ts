@@ -160,4 +160,159 @@ describe("ArkType Validator Tests", () => {
         const result = TriggerValidator.validate(ruleData);
         expect(result.valid).toBe(false);
     });
+
+    // --- Semantic Validation Tests ---
+
+    test("Should fail if RANGE operator value is not array", () => {
+        const ruleData = {
+            id: "range-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "RANGE",
+                value: "not-array"
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.issues.some(i => i.message.includes("List"))).toBe(true);
+        }
+    });
+
+    test("Should fail if RANGE operator has wrong number of elements", () => {
+        const ruleData = {
+            id: "range-elements",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "RANGE",
+                value: [1, 2, 3] // Should be exactly 2
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.issues.some(i => i.message.includes("exactly 2 values"))).toBe(true);
+        }
+    });
+
+    test("Should fail if CONTAINS operator value is not string or array", () => {
+        const ruleData = {
+            id: "contains-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "CONTAINS",
+                value: 123 // Should be string or array
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+    });
+
+    test("Should fail if MATCHES operator has invalid regex", () => {
+        const ruleData = {
+            id: "regex-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "MATCHES",
+                value: "[invalid("
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.issues.some(i => i.message.includes("Regex"))).toBe(true);
+        }
+    });
+
+    test("Should fail if STARTS_WITH operator value is not string", () => {
+        const ruleData = {
+            id: "startswith-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "STARTS_WITH",
+                value: 123
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+    });
+
+    test("Should fail if HAS_KEY operator value is not string", () => {
+        const ruleData = {
+            id: "haskey-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "HAS_KEY",
+                value: 123
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+    });
+
+    test("Should fail if numeric operator has non-numeric value", () => {
+        const ruleData = {
+            id: "numeric-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "GT",
+                value: { not: "a number" }
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+    });
+
+    test("Should validate rule with nested condition groups", () => {
+        const ruleData = {
+            id: "nested-groups",
+            on: "EVENT",
+            if: {
+                operator: "AND",
+                conditions: [
+                    { field: "a", operator: "EQ", value: 1 },
+                    {
+                        operator: "OR",
+                        conditions: [
+                            { field: "b", operator: "GT", value: 5 },
+                            { field: "c", operator: "LT", value: 10 }
+                        ]
+                    }
+                ]
+            },
+            do: { type: "LOG" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(true);
+    });
+
+    test("Should validate rule with all action control flow properties", () => {
+        const ruleData = {
+            id: "control-flow",
+            on: "EVENT",
+            do: {
+                if: { field: "x", operator: "EQ", value: 1 },
+                then: { type: "A" },
+                else: { type: "B" },
+                break: false,
+                continue: false
+            }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(true);
+    });
 });

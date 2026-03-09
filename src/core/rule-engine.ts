@@ -81,4 +81,8 @@ export class RuleEngine extends TriggerEngine {
   protected override getStateContext(): Record<string, any> {
     return StateManager.getInstance().getLiveProxy();
   }
+
+  get ActionRegistry(): ActionRegistry {
+    return this.actionRegistry;
+  }
 }
