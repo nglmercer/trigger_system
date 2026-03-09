@@ -5,7 +5,7 @@ import { ActionRegistry } from '../../src/core/action-registry';
 describe('Conditional action bug', () => {
     it('reproduces the error with conditional action', async () => {
         const registry = ActionRegistry.getInstance();
-        registry.register('log', async (action, context) => {
+        registry.register('test_log', async (action, context) => {
             console.log("LOG ACTION EXECUTED:", action.params?.message);
             return { printed: true };
         });
@@ -19,7 +19,7 @@ describe('Conditional action bug', () => {
                         mode: 'SEQUENCE',
                         actions: [
                             {
-                                type: 'log',
+                                type: 'test_log',
                                 params: { message: 'Setting last message: ${data.content}' }
                             },
                             {
@@ -31,11 +31,11 @@ describe('Conditional action bug', () => {
                                     }
                                 ],
                                 then: {
-                                    type: 'log',
+                                    type: 'test_log',
                                     params: { message: 'then' }
                                 },
                                 else: {
-                                    type: 'log',
+                                    type: 'test_log',
                                     params: { message: 'else' }
                                 }
                             }
