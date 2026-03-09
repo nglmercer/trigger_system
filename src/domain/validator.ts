@@ -46,13 +46,13 @@ const types = scope({
     NullCondition: {
         field: "string > 0",
         operator: "'IS_NULL' | 'IS_NONE'",
-        value: "null" // No value needed
+        "value?": "boolean | null" // Optional boolean for inversion
     },
     
     EmptyCondition: {
         field: "string > 0",
         operator: "'IS_EMPTY'",
-        value: "null" // No value needed
+        "value?": "boolean | null" // Optional boolean for inversion
     },
     
     NumericCondition: {

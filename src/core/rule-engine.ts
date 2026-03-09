@@ -277,16 +277,20 @@ export class RuleEngine {
           }
           return String(fieldValue).endsWith(String(targetValue));
         
-        case "IS_EMPTY":
-          if (typeof fieldValue === 'string') return fieldValue === '';
-          if (Array.isArray(fieldValue)) return fieldValue.length === 0;
-          if (fieldValue === null || fieldValue === undefined) return true;
-          if (typeof fieldValue === 'object') return Object.keys(fieldValue).length === 0;
-          return false;
+        case "IS_EMPTY": {
+          let isEmpty = false;
+          if (typeof fieldValue === 'string') isEmpty = fieldValue === '';
+          else if (Array.isArray(fieldValue)) isEmpty = fieldValue.length === 0;
+          else if (fieldValue === null || fieldValue === undefined) isEmpty = true;
+          else if (typeof fieldValue === 'object') isEmpty = Object.keys(fieldValue).length === 0;
+          return targetValue === false ? !isEmpty : isEmpty;
+        }
         
         case "IS_NULL":
-        case "IS_NONE":
-          return fieldValue === null || fieldValue === undefined;
+        case "IS_NONE": {
+          const isNull = fieldValue === null || fieldValue === undefined;
+          return targetValue === false ? !isNull : isNull;
+        }
         
         case "HAS_KEY":
           if (typeof fieldValue === 'object' && fieldValue !== null) {
