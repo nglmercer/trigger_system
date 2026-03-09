@@ -193,7 +193,7 @@ function visitPair(pair: Pair, builder: SemanticTokensBuilder, lineCounter: Line
         // Custom coloring logic 
         if (['if', 'when', 'conditions', 'match'].includes(keyText)) {
             type = TOKEN_TYPES.keyword; 
-        } else if (['do', 'actions', 'then', 'execute'].includes(keyText)) {
+        } else if (['do', 'actions', 'then', 'else', 'execute'].includes(keyText)) {
             type = TOKEN_TYPES.function; 
         } else if (['id', 'rule', 'name'].includes(keyText)) {
             type = TOKEN_TYPES.variable; 

@@ -267,6 +267,14 @@ export const ACTION_FIELD_DOCS: Record<string, { description: string; values?: s
     actions: {
         description: 'Array of sub-actions for action groups',
         values: 'Array of action objects'
+    },
+    then: {
+        description: 'Actions to execute when condition is true',
+        values: 'Action object or array of actions'
+    },
+    else: {
+        description: 'Actions to execute when condition is false',
+        values: 'Action object or array of actions'
     }
 };
 

@@ -254,15 +254,27 @@ export class RuleEngine {
         }
 
         case "CONTAINS":
+          if (Array.isArray(targetValue)) {
+            return targetValue.some(item => String(fieldValue).includes(String(item)));
+          }
           return String(fieldValue).includes(String(targetValue));
         
         case "NOT_CONTAINS":
+          if (Array.isArray(targetValue)) {
+            return !targetValue.some(item => String(fieldValue).includes(String(item)));
+          }
           return !String(fieldValue).includes(String(targetValue));
         
         case "STARTS_WITH":
+          if (Array.isArray(targetValue)) {
+            return targetValue.some(item => String(fieldValue).startsWith(String(item)));
+          }
           return String(fieldValue).startsWith(String(targetValue));
         
         case "ENDS_WITH":
+          if (Array.isArray(targetValue)) {
+            return targetValue.some(item => String(fieldValue).endsWith(String(item)));
+          }
           return String(fieldValue).endsWith(String(targetValue));
         
         case "IS_EMPTY":

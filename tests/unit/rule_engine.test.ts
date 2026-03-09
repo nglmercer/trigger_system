@@ -174,6 +174,118 @@ describe("Rule Engine Unit Tests", () => {
         expect(resNoMatch).toHaveLength(0);
     });
 
+    test("STARTS_WITH: should match when string starts with any of the array values", async () => {
+        const rule: TriggerRule = {
+            id: "starts-with-array",
+            on: "TEST",
+            if: { field: "data.content", operator: "STARTS_WITH", value: ["!ia", "!ai"] },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Should match - starts with !ia
+        const resMatch1 = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { content: "!ia generate a story" }
+        });
+        expect(resMatch1).toHaveLength(1);
+
+        // Should match - starts with !ai
+        const resMatch2 = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { content: "!ai create image" }
+        });
+        expect(resMatch2).toHaveLength(1);
+
+        // Should not match
+        const resNoMatch = await engine.evaluateContext({
+            event: "TEST", id: "3", timestamp: Date.now(), data: { content: "hello world" }
+        });
+        expect(resNoMatch).toHaveLength(0);
+    });
+
+    test("ENDS_WITH: should match when string ends with any of the array values", async () => {
+        const rule: TriggerRule = {
+            id: "ends-with-array",
+            on: "TEST",
+            if: { field: "data.filename", operator: "ENDS_WITH", value: [".pdf", ".doc"] },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Should match - ends with .pdf
+        const resMatch1 = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { filename: "document.pdf" }
+        });
+        expect(resMatch1).toHaveLength(1);
+
+        // Should match - ends with .doc
+        const resMatch2 = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { filename: "report.doc" }
+        });
+        expect(resMatch2).toHaveLength(1);
+
+        // Should not match
+        const resNoMatch = await engine.evaluateContext({
+            event: "TEST", id: "3", timestamp: Date.now(), data: { filename: "image.png" }
+        });
+        expect(resNoMatch).toHaveLength(0);
+    });
+
+    test("CONTAINS: should match when string contains any of the array values", async () => {
+        const rule: TriggerRule = {
+            id: "contains-array",
+            on: "TEST",
+            if: { field: "data.message", operator: "CONTAINS", value: ["hello", "hi"] },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Should match - contains hello
+        const resMatch1 = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { message: "say hello to everyone" }
+        });
+        expect(resMatch1).toHaveLength(1);
+
+        // Should match - contains hi
+        const resMatch2 = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { message: "hi there!" }
+        });
+        expect(resMatch2).toHaveLength(1);
+
+        // Should not match
+        const resNoMatch = await engine.evaluateContext({
+            event: "TEST", id: "3", timestamp: Date.now(), data: { message: "goodbye" }
+        });
+        expect(resNoMatch).toHaveLength(0);
+    });
+
+    test("NOT_CONTAINS: should match when string does not contain any of the array values", async () => {
+        const rule: TriggerRule = {
+            id: "not-contains-array",
+            on: "TEST",
+            if: { field: "data.email", operator: "NOT_CONTAINS", value: ["@spam.com", "@ads.com"] },
+            do: { type: "LOG" }
+        };
+        const engine = new RuleEngine({ rules: [rule], globalSettings: { evaluateAll: true } });
+
+        // Should match - doesn't contain any spam domains
+        const resMatch = await engine.evaluateContext({
+            event: "TEST", id: "1", timestamp: Date.now(), data: { email: "user@example.com" }
+        });
+        expect(resMatch).toHaveLength(1);
+
+        // Should not match - contains spam domain
+        const resNoMatch1 = await engine.evaluateContext({
+            event: "TEST", id: "2", timestamp: Date.now(), data: { email: "user@spam.com" }
+        });
+        expect(resNoMatch1).toHaveLength(0);
+
+        // Should not match - contains ads domain
+        const resNoMatch2 = await engine.evaluateContext({
+            event: "TEST", id: "3", timestamp: Date.now(), data: { email: "user@ads.com" }
+        });
+        expect(resNoMatch2).toHaveLength(0);
+    });
+
     test("IS_EMPTY: should match empty values", async () => {
         const rule: TriggerRule = {
             id: "is-empty",
