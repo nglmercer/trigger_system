@@ -45,7 +45,7 @@ export class ExpressionEngine {
         }
         return String(result);
       } catch (error) {
-        console.error(`Error en interpolación: ${match}`, error);
+        console.error(`Error in interpolation: ${match}`, error);
         return match; // Returns the original expression on error
       }
     });

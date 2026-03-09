@@ -27,6 +27,7 @@ import { TriggerUtils } from "../utils/utils";
 import { ExpressionEngine } from "./expression-engine";
 import { triggerEmitter, ruleEvents, EngineEvent } from "../utils/emitter";
 import { EngineUtils } from "./engine-utils";
+import { ErrorMessages } from "./constants";
 
 export class TriggerEngine {
   protected _rules: TriggerRule[] = [];
@@ -305,7 +306,7 @@ export class TriggerEngine {
       }
 
       // 3. No handler found
-      const msg = `Tipo de acción genérica o desconocida: ${normalizedAction.type}`;
+      const msg = `${ErrorMessages.UNKNOWN_ACTION}: ${normalizedAction.type}`;
       if (this._config?.globalSettings?.strictActions) throw new Error(msg);
       
       console.warn(msg);

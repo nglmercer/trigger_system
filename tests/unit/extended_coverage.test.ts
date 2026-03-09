@@ -5,6 +5,7 @@ import { RuleEngine as LegacyRuleEngine } from '../../src/core/rule-engine';
 import { RuleEngine as NewRuleEngine } from '../../src/core/rule-engine-new';
 import type { PersistenceAdapter } from '../../src/core/persistence';
 import { triggerEmitter, EngineEvent, ruleEvents } from '../../src/utils/emitter';
+import { ErrorMessages } from '../../src/core/constants';
 import type { TriggerContext } from '../../src/types';
 
 describe('Extended Coverage - StateManager', () => {
@@ -192,7 +193,7 @@ describe('Extended Coverage - TriggerEngine', () => {
         engine.registerAction('act', () => 'ok');
 
         const results = await engine.processEvent({ event: 'e', data: {}, vars: {}, timestamp: Date.now(), state: {} });
-        expect(results[0]!.executedActions[0]!.result).toEqual({ skipped: "probability check failed" });
+        expect(results[0]!.executedActions[0]!.result).toEqual({ skipped: ErrorMessages.PROBABILITY_FAILED });
         vi.useRealTimers();
     });
 });

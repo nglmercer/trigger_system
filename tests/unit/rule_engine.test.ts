@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { RuleEngine } from "../../src/core/rule-engine";
 import { ActionRegistry } from "../../src/core/action-registry";
 import type { TriggerRule, TriggerContext } from "../../src/types";
+import { ErrorMessages } from "../../src/core/constants";
 
 describe("Rule Engine Unit Tests", () => {
 
@@ -48,8 +49,7 @@ describe("Rule Engine Unit Tests", () => {
         const resStrict = await engineStrict.evaluateContext({
             event: "TEST", id: "1", timestamp: Date.now(), data: {}
         });
-        expect(resStrict[0]!.executedActions[0]).toHaveProperty('error');
-        expect(resStrict[0]!.executedActions[0]!.error).toContain("Tipo de acción genérica o desconocida");
+        expect(resStrict[0]!.executedActions[0]!.error).toContain(ErrorMessages.UNKNOWN_ACTION);
 
         // Strict Mode OFF (Default)
         const engineLoose = new RuleEngine({

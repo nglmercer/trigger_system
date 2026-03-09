@@ -27,11 +27,20 @@ export const ControlFlow = {
     ON: "on",
 } as const;
 
+export const ErrorMessages = {
+    UNKNOWN_ACTION: "Unknown or generic action type",
+    MISSING_ACTION_TYPE: "Action has no type and no control flow properties",
+    PROBABILITY_FAILED: "probability check failed",
+    BUN_REQUIRED: "Bun is required for 'execute' action",
+    MISSING_KEY: "Missing key for state operation",
+} as const;
+
 export const TriggerSystem = {
     Actions,
     Events,
     RuleEvents,
-    ControlFlow
+    ControlFlow,
+    ErrorMessages
 };
 
 export default TriggerSystem;
