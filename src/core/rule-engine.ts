@@ -21,6 +21,7 @@ import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
 import { TriggerUtils } from "../utils/utils";
+import { ControlFlow } from "./constants";
 
 
 export class RuleEngine {
@@ -33,7 +34,8 @@ export class RuleEngine {
     this.config = config;
     this.rules = [...config.rules];
     this.rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-    this.actionRegistry = ActionRegistry.getInstance();
+    // Explicitly initialize registry with defaults
+    this.actionRegistry = ActionRegistry.getInstance(true);
   }
 
   /**
@@ -341,7 +343,8 @@ export class RuleEngine {
     // 1. Handle shorthand syntax (e.g. notify: "...", log: "...")
     // If no type is specified, look for registered action types as keys
     if (!action.type && !action.run && !action.break && !action.continue) {
-        const actionKeys = Object.keys(action);
+        const reserved = Object.values(ControlFlow) as string[];
+        const actionKeys = Object.keys(action).filter(k => !reserved.includes(k));
         for (const key of actionKeys) {
             if (this.actionRegistry.get(key)) {
                 action.type = key;

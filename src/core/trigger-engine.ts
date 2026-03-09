@@ -45,6 +45,15 @@ export class TriggerEngine {
       this._config = rulesOrConfig;
       this._rules = [...rulesOrConfig.rules];
     }
+    
+    // Asegurar que el registro de acciones esté inicializado con los valores por defecto
+    try {
+        const { ActionRegistry } = require("./action-registry");
+        ActionRegistry.getInstance(true);
+    } catch {
+        // Ignorar si no se puede cargar (ej. entorno limitado)
+    }
+
     this.sortRules();
   }
 
@@ -362,7 +371,8 @@ export class TriggerEngine {
 
     // 1. Handle shorthand syntax
     if (!action.type && !action.run && !action.break && !action.continue) {
-        const reserved = ['params', 'run', 'delay', 'probability', 'if', 'then', 'else', 'break', 'continue', 'mode', 'actions'];
+        const { ControlFlow } = require("./constants");
+        const reserved = Object.values(ControlFlow) as string[];
         const actionKeys = Object.keys(action).filter(k => !reserved.includes(k));
 
         for (const key of actionKeys) {

@@ -18,6 +18,8 @@ import { TriggerEngine } from "./trigger-engine";
 import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
+import { ControlFlow } from "./constants";
+import { ExpressionEngine } from "./expression-engine";
 
 export class RuleEngine extends TriggerEngine {
   private actionRegistry: ActionRegistry;
@@ -26,9 +28,9 @@ export class RuleEngine extends TriggerEngine {
   constructor(config: RuleEngineConfig) {
     // Llamar al constructor padre con la configuración
     super(config);
-
-    // Inicializar componentes adicionales
-    this.actionRegistry = ActionRegistry.getInstance();
+ 
+    // Inicializar componentes adicionales y asegurar registros por defecto
+    this.actionRegistry = ActionRegistry.getInstance(true);
     this.stateManager = StateManager.getInstance();
   }
 
@@ -234,7 +236,8 @@ export class RuleEngine extends TriggerEngine {
 
     // 1. Handle shorthand syntax
     if (!action.type && !action.run && !action.break && !action.continue) {
-        const actionKeys = Object.keys(action);
+        const reserved = Object.values(ControlFlow) as string[];
+        const actionKeys = Object.keys(action).filter(k => !reserved.includes(k));
         for (const key of actionKeys) {
             if (this.actionRegistry.get(key)) {
                 action.type = key;
@@ -265,7 +268,6 @@ export class RuleEngine extends TriggerEngine {
     // Interpolate probability if it's a string expression
     let probability = action.probability;
     if (typeof (probability as any) === 'string') {
-      const { ExpressionEngine } = require("./expression-engine");
       const val = ExpressionEngine.evaluate(probability as any, context);
       probability = typeof val === 'number' ? val : Number(val);
     }
@@ -299,7 +301,6 @@ export class RuleEngine extends TriggerEngine {
     // Interpolate delay if it's a string expression
     let delay = action.delay;
     if (typeof (delay as any) === 'string') {
-      const { ExpressionEngine } = require("./expression-engine");
       const val = ExpressionEngine.evaluate(delay as any, context);
       delay = typeof val === 'number' ? val : Number(val);
     }

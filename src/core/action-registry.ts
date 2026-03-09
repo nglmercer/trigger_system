@@ -5,6 +5,24 @@ import { StateManager } from "./state-manager";
 
 export type ActionHandler = (action: TriggerAction, context: TriggerContext) => Promise<any> | any;
 
+/**
+ * Built-in action types to avoid magic strings
+ */
+export const BuiltInAction = {
+  LOG: "LOG",
+  MATH: "MATH",
+  RESPONSE: "RESPONSE",
+  EXECUTE: "EXECUTE",
+  FORWARD: "FORWARD",
+  STATE_SET: "STATE_SET",
+  STATE_INCREMENT: "STATE_INCREMENT",
+  STATE_GET: "STATE_GET",
+  STATE_DELETE: "STATE_DELETE",
+  EMIT_EVENT: "EMIT_EVENT",
+  NOTIFY: "NOTIFY",
+  STATE_OP: "STATE_OP",
+} as const;
+
 export interface ActionDefinition {
   handler: ActionHandler;
   description?: string;
@@ -16,13 +34,15 @@ export class ActionRegistry {
   private static instance: ActionRegistry;
   private actions = new Map<string, ActionDefinition>();
 
-  private constructor() {
-    this.registerDefaults();
+  private constructor(autoRegisterDefaults: boolean = true) {
+    if (autoRegisterDefaults) {
+      this.registerDefaults();
+    }
   }
 
-  static getInstance(): ActionRegistry {
+  static getInstance(autoRegisterDefaults: boolean = true): ActionRegistry {
     if (!this.instance) {
-      this.instance = new ActionRegistry();
+      this.instance = new ActionRegistry(autoRegisterDefaults);
     }
     return this.instance;
   }
@@ -62,7 +82,7 @@ export class ActionRegistry {
 
   private registerDefaults() {
     // Log Action
-    this.register("log", {
+    this.register(BuiltInAction.LOG, {
         description: "Logs a message to the console with string interpolation support",
         params: arkType({ "message?": "string", "content?": "string" }),
         returns: arkType({ message: "string" }),
@@ -75,7 +95,7 @@ export class ActionRegistry {
     });
 
     // Math Action
-    this.register("math", {
+    this.register(BuiltInAction.MATH, {
         description: "Evaluates a mathematical expression or performs string concatenation",
         params: arkType({ expression: "string" }),
         returns: arkType("number | string"),
@@ -86,7 +106,7 @@ export class ActionRegistry {
     });
 
     // Response Action
-    this.register("response", {
+    this.register(BuiltInAction.RESPONSE, {
         description: "Constructs a standardized response object (useful for webhooks/APIs)",
         params: arkType({ 
             "content?": "string", 
@@ -111,7 +131,7 @@ export class ActionRegistry {
     });
 
     // Execute Action
-    this.register("execute", {
+    this.register(BuiltInAction.EXECUTE, {
         description: "Spawns a shell command and returns the output (Bun only)",
         params: arkType({ 
             "command?": "string", 
@@ -157,7 +177,7 @@ export class ActionRegistry {
     });
 
     // Forward Action
-    this.register("forward", {
+    this.register(BuiltInAction.FORWARD, {
         description: "Forwards the current event data to a remote URL via HTTP",
         params: arkType({
             url: "string",
@@ -209,7 +229,7 @@ export class ActionRegistry {
 
     // --- State Actions ---
 
-    this.register("STATE_SET", {
+    this.register(BuiltInAction.STATE_SET, {
         description: "Sets a value in the persistent state",
         params: arkType({ key: "string", value: "unknown" }),
         returns: arkType({ key: "string", value: "unknown" }),
@@ -229,7 +249,7 @@ export class ActionRegistry {
         }
     });
 
-    this.register("STATE_INCREMENT", {
+    this.register(BuiltInAction.STATE_INCREMENT, {
         description: "Increments a numeric value in the persistent state",
         params: arkType({ key: "string", "amount?": "number" }),
         returns: arkType({ key: "string", newValue: "number" }),
@@ -243,7 +263,7 @@ export class ActionRegistry {
         }
     });
 
-    this.register("STATE_GET", {
+    this.register(BuiltInAction.STATE_GET, {
         description: "Reads a value from state and optionally stores it in context.env",
         params: arkType({ key: "string", "as?": "string" }),
         returns: arkType({ key: "string", value: "unknown", "storedAs?": "string" }),
@@ -262,7 +282,7 @@ export class ActionRegistry {
         }
     });
 
-    this.register("STATE_DELETE", {
+    this.register(BuiltInAction.STATE_DELETE, {
         description: "Deletes a key from the persistent state",
         params: arkType({ key: "string" }),
         returns: arkType({ key: "string", deleted: "boolean" }),
@@ -275,7 +295,7 @@ export class ActionRegistry {
         }
     });
 
-    this.register("EMIT_EVENT", {
+    this.register(BuiltInAction.EMIT_EVENT, {
         description: "Emits a new event back into the system",
         params: arkType({ event: "string", "data?": "object" }),
         returns: arkType({ event: "string", payload: "object" }),
@@ -287,7 +307,7 @@ export class ActionRegistry {
         }
     });
 
-    this.register("notify", {
+    this.register(BuiltInAction.NOTIFY, {
         description: "Sends a notification to a specific target",
         params: arkType({ 
             "message?": "string", 
@@ -303,7 +323,7 @@ export class ActionRegistry {
         }
     });
 
-    this.register("STATE_OP", {
+    this.register(BuiltInAction.STATE_OP, {
         description: "Executes a custom JavaScript block with access to context and state",
         params: arkType({ run: "string" }),
         returns: arkType("unknown"),
