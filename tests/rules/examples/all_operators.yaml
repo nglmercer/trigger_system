@@ -246,3 +246,105 @@
           key: seq_step_2
           value: done
 # --- End of file ---
+
+# --- Additional String Operators ---
+
+- id: check-not-contains
+  on: TEST_EVENT
+  if:
+    field: data.text
+    operator: NOT_CONTAINS
+    value: ["nonexistent"]
+  do:
+    type: STATE_SET
+    params:
+      key: not_contains_result
+      value: true
+
+- id: check-starts-with
+  on: TEST_EVENT
+  if:
+    field: data.text
+    operator: STARTS_WITH
+    value: "The"
+  do:
+    type: STATE_SET
+    params:
+      key: starts_with_result
+      value: true
+
+- id: check-ends-with
+  on: TEST_EVENT
+  if:
+    field: data.email
+    operator: ENDS_WITH
+    value: ".com"
+  do:
+    type: STATE_SET
+    params:
+      key: ends_with_result
+      value: true
+
+# --- Null/Empty Checks ---
+
+- id: check-is-empty
+  on: TEST_EVENT
+  if:
+    field: data.empty_string
+    operator: IS_EMPTY
+    value: true
+  do:
+    type: STATE_SET
+    params:
+      key: is_empty_result
+      value: true
+
+- id: check-is-null
+  on: TEST_EVENT
+  if:
+    field: data.null_field
+    operator: IS_NULL
+    value: true
+  do:
+    type: STATE_SET
+    params:
+      key: is_null_result
+      value: true
+
+- id: check-has-key
+  on: TEST_EVENT
+  if:
+    field: data.user
+    operator: HAS_KEY
+    value: "name"
+  do:
+    type: STATE_SET
+    params:
+      key: has_key_result
+      value: true
+
+# --- Additional Date Operators ---
+
+- id: check-since
+  on: TEST_EVENT
+  if:
+    field: data.timestamp
+    operator: SINCE
+    value: "2023-01-01T00:00:00Z"
+  do:
+    type: STATE_SET
+    params:
+      key: since_result
+      value: true
+
+- id: check-until
+  on: TEST_EVENT
+  if:
+    field: data.timestamp
+    operator: UNTIL
+    value: "2025-01-01T00:00:00Z"
+  do:
+    type: STATE_SET
+    params:
+      key: until_result
+      value: true
