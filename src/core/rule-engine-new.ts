@@ -164,7 +164,55 @@ export class RuleEngine extends TriggerEngine {
     }
 
     // Execute actions
+    let shouldBreak = false;
+
     for (const action of actionList) {
+      if (shouldBreak) break;
+
+      // Handle conditional actions
+      if ('if' in action && action.if && (action.then || action.else)) {
+        const conditionMet = this.evaluateConditions(action.if, context);
+        
+        if (conditionMet && action.then) {
+          // Execute 'then' actions
+          const thenLogs = await this.executeRuleActionsWithRegistry(action.then, context);
+          enactedActions.push(...thenLogs);
+        } else if (!conditionMet && action.else) {
+          // Execute 'else' actions
+          const elseLogs = await this.executeRuleActionsWithRegistry(action.else, context);
+          enactedActions.push(...elseLogs);
+        }
+        continue;
+      }
+
+      // Handle inline conditional shorthand (if: ..., notify: ...)
+      if ('if' in action && action.if) {
+          const conditionMet = this.evaluateConditions(action.if, context);
+          if (!conditionMet) continue;
+          // If condition met, proceed to execute the rest of the action as a single action
+      }
+
+      // Handle break
+      if (action.break) {
+        shouldBreak = true;
+        enactedActions.push({
+          type: 'BREAK',
+          result: 'Breaking action execution',
+          timestamp: Date.now()
+        });
+        break;
+      }
+
+      // Handle continue
+      if (action.continue) {
+        enactedActions.push({
+          type: 'CONTINUE',
+          result: 'Skipping remaining actions',
+          timestamp: Date.now()
+        });
+        continue;
+      }
+
       const result = await this.executeSingleActionWithRegistry(action, context);
       enactedActions.push(result);
     }

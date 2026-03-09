@@ -1,0 +1,20 @@
+- id: ChatMessageEvent-id
+  on: ChatMessageEvent
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: log
+        params:
+          message: "Setting last message: ${data.content}"
+      - if:
+          - field: data.content
+            operator: NOT_CONTAINS
+            value: ["!ia", "!ai"]
+        then:
+          type: log
+          params:
+            message: "then"
+        else:
+          type: log
+          params:
+            message: "else"
