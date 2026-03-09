@@ -27,6 +27,9 @@ export class ActionRegistry {
     return this.handlers.get(type.toUpperCase());
   }
 
+  get Handlers(): Map<string, ActionHandler> {
+    return this.handlers;
+  }
 
   private registerDefaults() {
     // Log Action

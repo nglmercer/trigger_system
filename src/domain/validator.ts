@@ -11,7 +11,7 @@ const types = scope({
     Operator: "'EQ' | '==' | 'NEQ' | '!=' | 'GT' | '>' | 'GTE' | '>=' | 'LT' | '<' | 'LTE' | '<=' | 'IN' | 'NOT_IN' | 'CONTAINS' | 'MATCHES' | 'RANGE' | 'SINCE' | 'AFTER' | 'BEFORE' | 'UNTIL'",
     
     // Discriminated union for better value validation based on operator
-    Condition: "RangeCondition | ListCondition | ContainsCondition | NumericCondition | RegexCondition | BasicCondition",
+    Condition: "RangeCondition | ListCondition | ContainsCondition | NumericCondition | RegexCondition | StringOperatorCondition | HasKeyCondition | NullCondition | EmptyCondition | BasicCondition",
     
     RangeCondition: {
         field: "string > 0",

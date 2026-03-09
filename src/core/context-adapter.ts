@@ -79,8 +79,20 @@ export class ContextAdapter {
         return {
             now: () => Date.now(),
             uuid: () => crypto.randomUUID(),
-            jsonParse: (str: unknown) => typeof str === 'string' ? JSON.parse(str) : null,
-            jsonStringify: (obj: unknown) => JSON.stringify(obj)
+            jsonParse: (str: unknown) => {
+                try {
+                    return typeof str === 'string' ? JSON.parse(str) : null;
+                } catch {
+                    return null;
+                }
+            },
+            jsonStringify: (obj: unknown) => {
+                try {
+                    return JSON.stringify(obj);
+                } catch {
+                    return null;
+                }
+            }
         };
     }
 }
