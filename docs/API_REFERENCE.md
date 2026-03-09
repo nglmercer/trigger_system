@@ -18,11 +18,11 @@ class RuleEngine {
   processEventSimple(
     eventType: string,
     data?: Record<string, unknown>,
-    vars?: Record<string, unknown>
+    vars?: Record<string, unknown>,
   ): Promise<TriggerResult[]>;
   processEvent(
     event: TriggerEvent,
-    vars?: Record<string, unknown>
+    vars?: Record<string, unknown>,
   ): Promise<TriggerResult[]>;
   evaluateContext(context: TriggerContext): Promise<TriggerResult[]>;
 
@@ -64,7 +64,7 @@ class TriggerLoader {
   // Watch a directory for changes and reload rules
   static watchRules(
     dirPath: string,
-    onUpdate: (rules: TriggerRule[]) => void
+    onUpdate: (rules: TriggerRule[]) => void,
   ): FSWatcher;
 }
 ```
@@ -111,28 +111,35 @@ interface ConditionGroup {
   conditions: (Condition | ConditionGroup)[];
 }
 
-type ComparisonOperator =
+export type ComparisonOperator =
   | "EQ"
-  | "=="
+  | "==" // Equal
   | "NEQ"
-  | "!="
+  | "!=" // Not Equal
   | "GT"
-  | ">"
+  | ">" // Greater Than
   | "GTE"
-  | ">="
+  | ">=" // Greater Than or Equal
   | "LT"
-  | "<"
+  | "<" // Less Than
   | "LTE"
-  | "<="
-  | "IN"
-  | "NOT_IN"
-  | "CONTAINS"
-  | "MATCHES"
+  | "<=" // Less Than or Equal
+  | "IN" // Value in Array
+  | "NOT_IN" // Value not in Array
+  | "CONTAINS" // String/Array contains
+  | "NOT_CONTAINS" // String/Array does not contain
+  | "STARTS_WITH" // String starts with prefix
+  | "ENDS_WITH" // String ends with suffix
+  | "IS_EMPTY" // Value is empty (string/array/object)
+  | "IS_NULL"
+  | "IS_NONE" // Value is null or undefined
+  | "HAS_KEY" // Object has the specified key
+  | "MATCHES" // Regex match
   | "SINCE"
-  | "AFTER"
+  | "AFTER" // Date >= Value
   | "BEFORE"
-  | "UNTIL"
-  | "RANGE";
+  | "UNTIL" // Date < Value
+  | "RANGE"; // Number in range [min, max]
 ```
 
 ### Action
@@ -224,7 +231,7 @@ class RuleBuilder {
   do(
     type: string,
     params?: ActionParams,
-    options?: { delay?: number; probability?: number }
+    options?: { delay?: number; probability?: number },
   ): this;
 
   // Complex Actions (Groups/Sequences)
@@ -248,7 +255,7 @@ class RuleExporter {
   // Node.js only
   static saveToFile(
     rules: TriggerRule | TriggerRule[],
-    path: string
+    path: string,
   ): Promise<void>;
 }
 ```
