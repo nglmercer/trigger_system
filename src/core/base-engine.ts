@@ -1,6 +1,6 @@
 /**
- * Base Engine Interface - Define la interfaz común para todos los motores
- * Platform-agnostic y extensible
+ * Base Engine Interface - Defines the common interface for all engines
+ * Platform-agnostic and extensible
  */
 import type {
   TriggerRule,
@@ -16,23 +16,23 @@ import type {
 export type EngineActionHandler = (params: ActionParams, context: TriggerContext) => Promise<unknown> | unknown;
 
 /**
- * Interfaz base que deben implementar todos los motores
+ * Base interface that all engines must implement
  */
 export interface ITriggerEngine {
-  // Propiedades
+  // Properties
   readonly rules: TriggerRule[];
   
-  // Métodos principales
+  // Main methods
   processEvent(context: TriggerContext): Promise<TriggerResult[]>;
   processEvent(eventType: string, data?: Record<string, unknown>, vars?: Record<string, unknown>): Promise<TriggerResult[]>;
   
-  // Gestión de acciones
+  // Action management
   registerAction(type: string, handler: EngineActionHandler): void;
   
-  // Gestión de reglas
+  // Rule management
   updateRules(newRules: TriggerRule[]): void;
   getRules(): TriggerRule[];
   
-  // Utilidades
+  // Utilities
   readonly config?: RuleEngineConfig;
 }

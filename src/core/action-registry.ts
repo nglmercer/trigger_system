@@ -149,7 +149,7 @@ export class ActionRegistry {
             const command = typeof commandTemplate === 'string' ? ExpressionEngine.interpolate(commandTemplate, context) : String(commandTemplate);
 
             if (!action.params?.safe) {
-                console.warn(`[Trigger] Ejecutando comando no seguro: ${command}`);
+                console.warn(`[Trigger] Executing unsafe command: ${command}`);
             }
 
             try {
