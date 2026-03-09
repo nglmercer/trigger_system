@@ -19,6 +19,7 @@ import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
 import { EngineUtils } from "./engine-utils";
+import { DebugMessages } from "./constants";
 
 export class RuleEngine extends TriggerEngine {
   private actionRegistry: ActionRegistry;
@@ -28,14 +29,14 @@ export class RuleEngine extends TriggerEngine {
     // Call parent constructor with configuration
     super(config);
  
-    // Inicializar componentes adicionales y asegurar registros por defecto
+    // Initialize additional components and ensure default registrations
     this.actionRegistry = ActionRegistry.getInstance(true);
     this.stateManager = StateManager.getInstance();
   }
 
   /**
-   * Procesa un evento con contexto completo (sobrescribe el método padre)
-   * Agrega observabilidad y manejo de estado
+   * Processes an event with full context (overrides parent method)
+   * Adds observability and state management
    */
   override async processEvent(context: TriggerContext): Promise<TriggerResult[]> {
     // Inject state from manager
@@ -46,14 +47,14 @@ export class RuleEngine extends TriggerEngine {
         await this.stateManager.applyConfig(this._config.stateConfig);
     }
 
-    // Emitir evento de inicio
+    // Emit init event
     triggerEmitter.emit(EngineEvent.ENGINE_START, {
       context,
       rulesCount: this._rules.length
     });
 
     if (this._config?.globalSettings?.debugMode) {
-      console.log(`[RuleEngine] Evaluating context with ${this._rules.length} rules for event: ${context.event}`);
+      console.log(DebugMessages.RULE_ENGINE_EVALUATING(this._rules.length, context.event));
     }
 
     // Use parent processEvent logic
@@ -66,12 +67,12 @@ export class RuleEngine extends TriggerEngine {
   }
 
   /**
-   * Sobrescribe getStateContext para usar StateManager
+   * Overrides getStateContext to use StateManager
    */
   protected override getStateContext(): Record<string, any> {
     return this.stateManager.getLiveProxy();
   }
 }
 
-// Alias para compatibilidad
+// Alias for compatibility
 export { RuleEngine as AdvancedEngine };

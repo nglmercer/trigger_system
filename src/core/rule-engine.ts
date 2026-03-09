@@ -14,6 +14,7 @@ import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
 import { EngineUtils } from "./engine-utils";
+import { DebugMessages } from "./constants";
 
 export class RuleEngine extends TriggerEngine {
   private actionRegistry: ActionRegistry;
@@ -25,7 +26,7 @@ export class RuleEngine extends TriggerEngine {
   }
 
   /**
-   * Evalúa todas las reglas contra el contexto proporcionado
+   * Evaluates all rules against the provided context
    */
   async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
     // Inject current state proxy into context for direct manipulation
@@ -44,7 +45,7 @@ export class RuleEngine extends TriggerEngine {
     }
 
     if (this._config?.globalSettings?.debugMode) {
-      console.log(`[RuleEngine] Evaluando contexto con ${this._rules.length} reglas para evento: ${context.event}`);
+      console.log(DebugMessages.RULE_ENGINE_EVALUATING(this._rules.length, context.event));
     }
 
     triggerEmitter.emit(EngineEvent.ENGINE_START, { context, rulesCount: this._rules.length });
@@ -75,7 +76,7 @@ export class RuleEngine extends TriggerEngine {
   }
 
   /**
-   * Sobrescribe getStateContext para usar StateManager
+   * Overrides getStateContext to use StateManager
    */
   protected override getStateContext(): Record<string, any> {
     return StateManager.getInstance().getLiveProxy();

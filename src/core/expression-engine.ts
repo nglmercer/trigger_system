@@ -4,6 +4,44 @@
 
 import type { TriggerContext } from "../types";
 
+/**
+ * Built-in Math functions that can be used in expressions
+ * Avoids magic strings and provides type safety
+ */
+export const MathFunctions = {
+  RANDOM: "random",
+  FLOOR: "floor",
+  CEIL: "ceil",
+  ROUND: "round",
+  SQRT: "sqrt",
+  ABS: "abs",
+  POW: "pow",
+  MIN: "min",
+  MAX: "max",
+  SIN: "sin",
+  COS: "cos",
+  TAN: "tan",
+} as const;
+
+/**
+ * Set of allowed Math functions for safe expression evaluation
+ * Values from MathFunctions object
+ */
+const ALLOWED_MATH_FUNCTIONS: string[] = [
+  MathFunctions.RANDOM,
+  MathFunctions.FLOOR,
+  MathFunctions.CEIL,
+  MathFunctions.ROUND,
+  MathFunctions.SQRT,
+  MathFunctions.ABS,
+  MathFunctions.POW,
+  MathFunctions.MIN,
+  MathFunctions.MAX,
+  MathFunctions.SIN,
+  MathFunctions.COS,
+  MathFunctions.TAN,
+];
+
 export class ExpressionEngine {
   /**
    * Evaluates a simple mathematical expression or variable interpolation
@@ -129,23 +167,7 @@ export class ExpressionEngine {
       /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g,
       (match) => {
         // Check if it's a JavaScript reserved word or Math function
-        if (
-          [
-            "Math",
-            "random",
-            "floor",
-            "ceil",
-            "round",
-            "sqrt",
-            "abs",
-            "pow",
-            "min",
-            "max",
-            "sin",
-            "cos",
-            "tan",
-          ].includes(match)
-        ) {
+        if (ALLOWED_MATH_FUNCTIONS.includes(match)) {
           return match;
         }
 

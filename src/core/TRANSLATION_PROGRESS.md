@@ -6,9 +6,10 @@
 | ---------------------- | -------------- | -------- |
 | action-registry.ts     | [x] Translated | 100%     |
 | base-engine.ts         | [x] Translated | 100%     |
-| constants.ts           | [x] N/A        | 100%     |
+| constants.ts           | [x] Translated | 100%     |
 | context-adapter.ts     | [x] N/A        | 100%     |
 | dependency-graph.ts    | [x] N/A        | 100%     |
+| engine-utils.ts        | [x] N/A        | 100%     |
 | engine.ts              | [x] N/A        | 100%     |
 | event-queue.ts         | [x] N/A        | 100%     |
 | expression-engine.ts   | [x] Translated | 100%     |
@@ -23,9 +24,9 @@
 
 ## Summary
 
-- **Total Files**: 16
-- **Files to Translate**: 9
-- **Files Already English**: 7 (constants.ts, dependency-graph.ts, event-queue.ts, persistence-browser.ts, persistence.node.ts, persistence.ts, state-manager.ts)
+- **Total Files**: 17
+- **Files Translated**: 9 (action-registry.ts, base-engine.ts, constants.ts, expression-engine.ts, index.ts, rule-engine-new.ts, rule-engine.ts, trigger-engine.ts)
+- **Files N/A (No comments to translate)**: 8 (context-adapter.ts, dependency-graph.ts, engine-utils.ts, engine.ts, event-queue.ts, persistence-browser.ts, persistence.node.ts, persistence.ts, state-manager.ts)
 
 ---
 

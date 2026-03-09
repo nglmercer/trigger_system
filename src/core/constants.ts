@@ -35,12 +35,18 @@ export const ErrorMessages = {
     MISSING_KEY: "Missing key for state operation",
 } as const;
 
+export const DebugMessages = {
+    RULE_ENGINE_EVALUATING: (count: number, event: string) => `[RuleEngine] Evaluating context with ${count} rules for event: ${event}`,
+    TRIGGER_ENGINE_EVALUATING: (count: number, event: string) => `[TriggerEngine] Evaluating context with ${count} rules for event: ${event}`,
+} as const;
+
 export const TriggerSystem = {
     Actions,
     Events,
     RuleEvents,
     ControlFlow,
-    ErrorMessages
+    ErrorMessages,
+    DebugMessages,
 };
 
 export default TriggerSystem;

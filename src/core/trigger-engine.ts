@@ -27,7 +27,7 @@ import { TriggerUtils } from "../utils/utils";
 import { ExpressionEngine } from "./expression-engine";
 import { triggerEmitter, ruleEvents, EngineEvent } from "../utils/emitter";
 import { EngineUtils } from "./engine-utils";
-import { ErrorMessages } from "./constants";
+import { ErrorMessages, DebugMessages } from "./constants";
 
 export class TriggerEngine {
   protected _rules: TriggerRule[] = [];
@@ -50,28 +50,28 @@ export class TriggerEngine {
         const { ActionRegistry } = require("./action-registry");
         ActionRegistry.getInstance(true);
     } catch {
-        // Ignorar si no se puede cargar (ej. entorno limitado)
+        // Ignore if it cannot be loaded (e.g., limited environment)
     }
 
     this.sortRules();
   }
 
   /**
-   * Ordena reglas por prioridad (mayor primero)
+   * Sorts rules by priority (highest first)
    */
   protected sortRules(): void {
     this._rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
   }
 
   /**
-   * Registra un handler para un tipo de acción específico
+   * Registers a handler for a specific action type
    */
   registerAction(type: string, handler: EngineActionHandler): void {
     this.actionHandlers.set(type, handler);
   }
 
   /**
-   * Procesa un evento con contexto completo
+   * Processes an event with full context
    */
   async processEvent(context: TriggerContext): Promise<TriggerResult[]> {
     const results: TriggerResult[] = [];
@@ -81,24 +81,24 @@ export class TriggerEngine {
         context.state = this.getStateContext ? this.getStateContext() : {};
     }
 
-    // Filtrar reglas por evento y estado habilitado
+    // Filter rules by event and enabled state
     const candidates = this._rules.filter(r => r.enabled !== false && r.on === context.event);
 
     for (const rule of candidates) {
-      // Verificar cooldown
+      // Check cooldown
       if (rule.cooldown && this.checkCooldown(rule.id, rule.cooldown)) {
         continue;
       }
 
-      // Evaluar condiciones usando utilidades centralizadas
+      // Evaluate conditions using centralized utilities
       if (EngineUtils.evaluateConditions(rule.if, context)) {
-        // Emitir evento de coincidencia
+        // Emit match event
         triggerEmitter.emit(EngineEvent.RULE_MATCH, { rule, context });
 
-        // Ejecutar acciones usando utilidades centralizadas
+        // Execute actions using centralized utilities
         const execResult = await this.executeRuleActions(rule.do, context);
 
-        // Actualizar cooldown
+        // Update cooldown
         this.lastExecution.set(rule.id, Date.now());
 
         results.push({
@@ -118,7 +118,7 @@ export class TriggerEngine {
   }
 
   /**
-   * Método convenience para procesar eventos simples
+   * Convenience method to process simple events
    */
   async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
     const context: TriggerContext = {
@@ -132,7 +132,7 @@ export class TriggerEngine {
   }
 
   /**
-   * Actualiza las reglas del motor
+   * Updates the engine's rules
    */
   updateRules(newRules: TriggerRule[]): void {
     const oldRules = this.getRules();
@@ -185,14 +185,14 @@ export class TriggerEngine {
   }
 
   /**
-   * Obtiene todas las reglas actuales
+   * Gets all current rules
    */
   getRules(): TriggerRule[] {
     return [...this._rules];
   }
 
   /**
-   * Verifica si una regla está en cooldown
+   * Checks if a rule is in cooldown
    */
   protected checkCooldown(ruleId: string, cooldown: number): boolean {
     const last = this.lastExecution.get(ruleId);
@@ -201,21 +201,21 @@ export class TriggerEngine {
   }
 
   /**
-   * Determina si se deben evaluar todas las reglas o solo la primera coincidente
+   * Determines whether to evaluate all rules or just the first match
    */
   protected shouldEvaluateAll(): boolean {
     return this._config?.globalSettings?.evaluateAll ?? true;
   }
 
   /**
-   * Obtiene el contexto de estado (puede ser sobrescrito por subclases)
+   * Gets the state context (can be overridden by subclasses)
    */
   protected getStateContext?(): Record<string, any> {
     return {};
   }
 
   /**
-   * Evalúa condiciones de una regla (sobrescribible)
+   * Evaluates rule conditions (overridable)
    */
   protected evaluateConditions(
     condition: RuleCondition | RuleCondition[] | undefined,
@@ -225,7 +225,7 @@ export class TriggerEngine {
   }
 
   /**
-   * Evalúa una condición individual (sobrescribible)
+   * Evaluates a single condition (overridable)
    */
   protected evaluateSingleCondition(cond: RuleCondition, context: TriggerContext): boolean {
       // Wraps around EngineUtils implementation for backward compatibility if anyone overrides it
@@ -233,7 +233,7 @@ export class TriggerEngine {
   }
 
   /**
-   * Ejecuta las acciones de una regla
+   * Executes the actions of a rule
    */
   protected async executeRuleActions(
     actionConfig: Action | Action[] | ActionGroup,
@@ -270,7 +270,7 @@ export class TriggerEngine {
   }
 
   /**
-   * Ejecuta una acción individual
+   * Executes a single action
    */
   protected async executeSingleAction(
     action: Action,
@@ -325,7 +325,7 @@ export class TriggerEngine {
   }
 
   /**
-   * Interpola parámetros (legacy compatibility)
+   * Interpolates parameters (legacy compatibility)
    */
   protected interpolateParams(params: ActionParams, context: TriggerContext): ActionParams {
     return EngineUtils.interpolateParams(params, context);
