@@ -17,7 +17,7 @@ describe("Browser Persistence", () => {
     
     // Inject mock window global
     beforeAll(() => {
-        // @ts-ignore
+        // @ts-expect-error
         global.window = mockWindow;
     });
 
