@@ -1,6 +1,6 @@
 /**
- * RuleEngine - Extensión de TriggerEngine con características avanzadas
- * Agrega observabilidad, estado persistente, y ActionRegistry integrado
+ * RuleEngine - Extension of TriggerEngine with advanced features
+ * Adds observability, persistent state, and integrated ActionRegistry
  */
 
 import type {
@@ -18,15 +18,14 @@ import { TriggerEngine } from "./trigger-engine";
 import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
-import { ControlFlow } from "./constants";
-import { ExpressionEngine } from "./expression-engine";
+import { EngineUtils } from "./engine-utils";
 
 export class RuleEngine extends TriggerEngine {
   private actionRegistry: ActionRegistry;
   private stateManager: StateManager;
 
   constructor(config: RuleEngineConfig) {
-    // Llamar al constructor padre con la configuración
+    // Call parent constructor with configuration
     super(config);
  
     // Inicializar componentes adicionales y asegurar registros por defecto
@@ -39,321 +38,31 @@ export class RuleEngine extends TriggerEngine {
    * Agrega observabilidad y manejo de estado
    */
   override async processEvent(context: TriggerContext): Promise<TriggerResult[]> {
-    const results: TriggerResult[] = [];
-
-    // Inyectar proxy de estado en el contexto
+    // Inject state from manager
     context.state = this.stateManager.getLiveProxy();
 
-    // Aplicar configuración de estado si existe
-    if (this.config?.stateConfig) {
-        await this.stateManager.applyConfig(this.config.stateConfig);
+    // Apply state configuration if it exists
+    if (this._config?.stateConfig) {
+        await this.stateManager.applyConfig(this._config.stateConfig);
     }
 
     // Emitir evento de inicio
     triggerEmitter.emit(EngineEvent.ENGINE_START, {
       context,
-      rulesCount: this.rules.length
+      rulesCount: this._rules.length
     });
 
-    // Si hay modo debug, loggear
-    if (this.config?.globalSettings?.debugMode) {
-      console.log(
-        `[RuleEngine] Evaluating context with ${this.rules.length} rules for event: ${context.event}`,
-      );
+    if (this._config?.globalSettings?.debugMode) {
+      console.log(`[RuleEngine] Evaluating context with ${this._rules.length} rules for event: ${context.event}`);
     }
 
-    // Procesar reglas usando la lógica del padre
-    const candidates = this.rules.filter(r => r.enabled !== false && r.on === context.event);
+    // Use parent processEvent logic
+    const results = await super.processEvent(context);
 
-    for (const rule of candidates) {
-      // Verificar cooldown
-      if (rule.cooldown && this.checkCooldown(rule.id, rule.cooldown)) {
-        if (this.config?.globalSettings?.debugMode) {
-          console.log(`[RuleEngine] Rule ${rule.id} in cooldown`);
-        }
-        continue;
-      }
-
-      // Evaluar condiciones
-      const conditionMet = this.evaluateConditions(rule.if, context);
-
-      if (conditionMet) {
-        if (this.config?.globalSettings?.debugMode) {
-          console.log(`[RuleEngine] Executing rule: ${rule.name || rule.id}`);
-        }
-
-        // Emitir evento de coincidencia
-        triggerEmitter.emit(EngineEvent.RULE_MATCH, { rule, context });
-
-        // Ejecutar acciones usando el ActionRegistry
-        const executedActions = await this.executeRuleActionsWithRegistry(rule.do, context);
-
-        results.push({
-          ruleId: rule.id,
-          executedActions: executedActions,
-          success: true,
-        });
-
-        // Actualizar tiempo de última ejecución
-        this.updateLastExecution(rule.id);
-
-        // Si no se deben evaluar todas las reglas, salir después de la primera coincidencia
-        if (!this.shouldEvaluateAll()) {
-          break;
-        }
-      }
-    }
-
-    // Emitir evento de finalización
+    // Emit completion event
     triggerEmitter.emit(EngineEvent.ENGINE_DONE, { results, context });
 
     return results;
-  }
-
-  /**
-   * Método convenience para procesar eventos simples
-   */
-  override async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
-    const context: TriggerContext = {
-      event: eventType,
-      data: data,
-      vars: vars,
-      timestamp: Date.now(),
-      state: this.stateManager.getLiveProxy()
-    };
-    return this.processEvent(context);
-  }
-
-  /**
-   * Ejecuta acciones usando el ActionRegistry
-   */
-  private async executeRuleActionsWithRegistry(
-    actions: Action | Action[] | ActionGroup,
-    context: TriggerContext
-  ): Promise<TriggerResult['executedActions']> {
-    const enactedActions: TriggerResult['executedActions'] = [];
-
-    let actionList: Action[] = [];
-    let mode: 'ALL' | 'SEQUENCE' | 'EITHER' = 'ALL';
-
-    if (Array.isArray(actions)) {
-      actionList = actions;
-    } else if (this.isActionGroup(actions)) {
-      const group = actions as ActionGroup;
-      mode = group.mode;
-      actionList = group.actions;
-    } else {
-      actionList = [actions as Action];
-    }
-
-    if (mode === 'EITHER' && actionList.length > 0) {
-      const totalWeight = actionList.reduce((sum, a) => sum + (a.probability || 1), 0);
-      let random = Math.random() * totalWeight;
-
-      let selected: Action | undefined;
-      for (const action of actionList) {
-        const weight = action.probability || 1;
-        random -= weight;
-        if (random <= 0) {
-          selected = action;
-          break;
-        }
-      }
-
-      if (selected) {
-        actionList = [selected];
-      }
-    }
-
-    // Execute actions
-    let shouldBreak = false;
-
-    for (const action of actionList) {
-      if (shouldBreak) break;
-
-      // Handle conditional actions
-      if ('if' in action && action.if && (action.then || action.else)) {
-        const conditionMet = this.evaluateConditions(action.if, context);
-        
-        if (conditionMet && action.then) {
-          // Execute 'then' actions
-          const thenLogs = await this.executeRuleActionsWithRegistry(action.then, context);
-          enactedActions.push(...thenLogs);
-        } else if (!conditionMet && action.else) {
-          // Execute 'else' actions
-          const elseLogs = await this.executeRuleActionsWithRegistry(action.else, context);
-          enactedActions.push(...elseLogs);
-        }
-        continue;
-      }
-
-      // Handle inline conditional shorthand (if: ..., notify: ...)
-      if ('if' in action && action.if) {
-          const conditionMet = this.evaluateConditions(action.if, context);
-          if (!conditionMet) continue;
-          // If condition met, proceed to execute the rest of the action as a single action
-      }
-
-      // Handle break
-      if (action.break) {
-        shouldBreak = true;
-        enactedActions.push({
-          type: 'BREAK',
-          result: 'Breaking action execution',
-          timestamp: Date.now()
-        });
-        break;
-      }
-
-      // Handle continue
-      if (action.continue) {
-        enactedActions.push({
-          type: 'CONTINUE',
-          result: 'Skipping remaining actions',
-          timestamp: Date.now()
-        });
-        continue;
-      }
-
-      const result = await this.executeSingleActionWithRegistry(action, context);
-      enactedActions.push(result);
-    }
-
-    return enactedActions;
-  }
-
-  private isActionGroup(action: Action | ActionGroup): action is ActionGroup {
-    return typeof action === 'object' && action !== null && 'mode' in action && 'actions' in action;
-  }
-
-  /**
-   * Ejecuta una acción individual usando el ActionRegistry
-   */
-  private async executeSingleActionWithRegistry(
-    action: Action,
-    context: TriggerContext
-  ): Promise<TriggerResult['executedActions'][0]> {
-
-    // 1. Handle shorthand syntax
-    if (!action.type && !action.run && !action.break && !action.continue) {
-        const reserved = Object.values(ControlFlow) as string[];
-        const actionKeys = Object.keys(action).filter(k => !reserved.includes(k));
-        for (const key of actionKeys) {
-            if (this.actionRegistry.get(key)) {
-                action.type = key;
-                if (typeof action[key] === 'string') {
-                    action.params = { ...action.params, message: action[key] as string, content: action[key] as string };
-                } else if (typeof action[key] === 'object' && action[key] !== null) {
-                    action.params = { ...action.params, ...(action[key] as any) };
-                }
-                break;
-            }
-        }
-    }
-
-    // 2. Handle 'run' block
-    if (action.run) {
-        try {
-            const runResult = new Function(
-                "context", "state", "data", "vars", "env", "helpers",
-                `with(context) { ${action.run} }`
-            )(context, context.state, context.data, context.vars, context.env, context.helpers);
-
-            return { type: 'RUN', result: runResult, timestamp: Date.now() };
-        } catch (error) {
-            return { type: 'RUN', error: String(error), timestamp: Date.now() };
-        }
-    }
-
-    // Interpolate probability if it's a string expression
-    let probability = action.probability;
-    if (typeof (probability as any) === 'string') {
-      const val = ExpressionEngine.evaluate(probability as any, context);
-      probability = typeof val === 'number' ? val : Number(val);
-    }
-
-    // Check probability
-    if (probability !== undefined && Math.random() > probability) {
-       return {
-         type: action.type || 'unknown',
-         timestamp: Date.now(),
-         result: { skipped: "probability check failed" }
-       };
-    }
-
-    // Handle break/continue without executing handler
-    if (action.break) {
-      return {
-        type: 'BREAK',
-        result: 'Break action',
-        timestamp: Date.now()
-      };
-    }
-
-    if (action.continue) {
-      return {
-        type: 'CONTINUE',
-        result: 'Continue action',
-        timestamp: Date.now()
-      };
-    }
-
-    // Interpolate delay if it's a string expression
-    let delay = action.delay;
-    if (typeof (delay as any) === 'string') {
-      const val = ExpressionEngine.evaluate(delay as any, context);
-      delay = typeof val === 'number' ? val : Number(val);
-    }
-
-    // Check delay
-    if (delay && delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-
-    // Interpolate parameters
-    const params = this.interpolateParams(action.params || {}, context);
-
-    try {
-      const handler = this.actionRegistry.get(action.type!);
-      let result;
-
-      if (handler) {
-        result = await handler({ ...action, params }, context);
-      } else {
-        const msg = `Generic or unknown action type: ${action.type}`;
-        if (this.config?.globalSettings?.strictActions) {
-          throw new Error(msg);
-        }
-        console.warn(msg);
-        result = { warning: `Generic action executed: ${action.type}` };
-      }
-
-      // Emitir evento de éxito
-      triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action: { ...action, params }, context, result });
-
-      return {
-        type: action.type!,
-        result,
-        timestamp: Date.now()
-      };
-    } catch (error) {
-      console.error(`Error executing action:`, action, error);
-      triggerEmitter.emit(EngineEvent.ACTION_ERROR, { action, context, error: String(error) });
-
-      return {
-        type: action.type!,
-        error: String(error),
-        timestamp: Date.now()
-      };
-    }
-  }
-
-  /**
-   * Actualiza el tiempo de última ejecución de una regla
-   */
-  private updateLastExecution(ruleId: string): void {
-    // Usar el mapa del padre
-    this.lastExecution.set(ruleId, Date.now());
   }
 
   /**
@@ -361,33 +70,6 @@ export class RuleEngine extends TriggerEngine {
    */
   protected override getStateContext(): Record<string, any> {
     return this.stateManager.getAll();
-  }
-
-  /**
-   * Sobrescribe shouldEvaluateAll para usar la configuración
-   */
-  protected override shouldEvaluateAll(): boolean {
-    return this.config?.globalSettings?.evaluateAll ?? true;
-  }
-
-  /**
-   * Sobrescribe executeRuleActions para usar el registry
-   */
-  protected override async executeRuleActions(
-    actionConfig: Action | Action[] | ActionGroup,
-    context: TriggerContext
-  ): Promise<TriggerResult['executedActions']> {
-    return this.executeRuleActionsWithRegistry(actionConfig, context);
-  }
-
-  /**
-   * Sobrescribe executeSingleAction para usar el registry
-   */
-  protected override async executeSingleAction(
-    action: Action,
-    context: TriggerContext
-  ): Promise<TriggerResult['executedActions'][0]> {
-    return this.executeSingleActionWithRegistry(action, context);
   }
 }
 

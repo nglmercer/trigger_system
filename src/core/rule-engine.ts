@@ -1,504 +1,76 @@
-// -----------------------------------------------------------------------------
-// MOTOR DE REGLAS PARA TRIGGERS
-// -----------------------------------------------------------------------------
-
 import type {
   TriggerRule,
   TriggerCondition,
   ConditionGroup,
   RuleCondition,
-  TriggerAction,
+  Action,
   ActionGroup,
   TriggerContext,
   TriggerResult,
   RuleEngineConfig,
-  ConditionValue,
 } from "../types";
-import { ExpressionEngine } from "../core/expression-engine";
-
-
+import { TriggerEngine } from "./trigger-engine";
 import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
-import { TriggerUtils } from "../utils/utils";
-import { ControlFlow } from "./constants";
+import { EngineUtils } from "./engine-utils";
 
-
-export class RuleEngine {
-  private rules: TriggerRule[] = [];
-  private config: RuleEngineConfig;
-  private lastExecutionTimes: Map<string, number> = new Map();
+export class RuleEngine extends TriggerEngine {
   private actionRegistry: ActionRegistry;
 
   constructor(config: RuleEngineConfig) {
-    this.config = config;
-    this.rules = [...config.rules];
-    this.rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    super(config);
     // Explicitly initialize registry with defaults
     this.actionRegistry = ActionRegistry.getInstance(true);
   }
 
   /**
-   * Convenience method to process an event with a simple payload
-   */
-  async processEvent(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
-    return this.processEventSimple(eventType, data, vars);
-  }
-
-  async processEventSimple(eventType: string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
-    const context: TriggerContext = {
-      event: eventType,
-      data: data,
-      vars: vars,
-      timestamp: Date.now(),
-      state: {} as any // State will be injected by evaluateContext
-    };
-    return this.evaluateContext(context);
-  }
-
-
-  /**
    * Evalúa todas las reglas contra el contexto proporcionado
    */
   async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
-    const results: TriggerResult[] = [];
-    
     // Inject current state proxy into context for direct manipulation
-    context.state = StateManager.getInstance().getLiveProxy();
-
-    // Apply state configuration if present
-    if (this.config.stateConfig) {
-        await StateManager.getInstance().applyConfig(this.config.stateConfig);
+    if (!context.state) {
+      context.state = StateManager.getInstance().getLiveProxy();
     }
 
-    // Initialize env if not present
+    // Apply state configuration if present
+    if (this._config?.stateConfig) {
+        await StateManager.getInstance().applyConfig(this._config.stateConfig);
+    }
+
+    // Initialize environment if not present
     if (!context.env) {
       context.env = {};
     }
 
-    if (this.config.globalSettings.debugMode) {
-      console.log(
-        `[RuleEngine] Evaluando contexto con ${this.rules.length} reglas para evento: ${context.event}`,
-      );
+    if (this._config?.globalSettings?.debugMode) {
+      console.log(`[RuleEngine] Evaluando contexto con ${this._rules.length} reglas para evento: ${context.event}`);
     }
 
-    triggerEmitter.emit(EngineEvent.ENGINE_START, { context, rulesCount: this.rules.length });
+    triggerEmitter.emit(EngineEvent.ENGINE_START, { context, rulesCount: this._rules.length });
 
-
-    for (const rule of this.rules) {
-      if (rule.enabled === false) continue;
-      
-      // Check event type match
-      if (rule.on !== context.event) continue;
-
-      // Verificar cooldown
-      if (rule.cooldown && !this.checkCooldown(rule.id, rule.cooldown)) {
-        if (this.config.globalSettings.debugMode) {
-          console.log(`[RuleEngine] Regla ${rule.id} en cooldown`);
-        }
-        continue;
-      }
-
-      // Evaluar condiciones
-      // rule.if can be undefined (always true), a single condition, or an array
-      const conditionMet = this.evaluateRuleConditions(rule.if, context);
-
-      if (conditionMet) {
-        if (this.config.globalSettings.debugMode) {
-          console.log(
-            `[RuleEngine] Ejecutando regla: ${rule.name || rule.id}`,
-          );
-        }
-
-        triggerEmitter.emit(EngineEvent.RULE_MATCH, { rule, context });
-
-
-        // Ejecutar acciones
-        const executedActions = await this.executeRuleActions(rule.do, context);
-
-        results.push({
-          ruleId: rule.id,
-          executedActions: executedActions,
-          success: true,
-        });
-
-        // Actualizar tiempo de última ejecución
-        this.lastExecutionTimes.set(rule.id, Date.now());
-
-        // Si no se deben evaluar todas las reglas, salir después de la primera coincidencia
-        if (!this.config.globalSettings.evaluateAll) {
-          break;
-        }
-      }
-    }
+    // Use parent processEvent logic
+    const results = await this.processEvent(context);
 
     triggerEmitter.emit(EngineEvent.ENGINE_DONE, { results, context });
 
     return results;
   }
 
-  // --- Condition Evaluation ---
-
-  private evaluateRuleConditions(
-    conditions: RuleCondition | RuleCondition[] | undefined,
-    context: TriggerContext
-  ): boolean {
-    if (!conditions) return true; // No conditions = always trigger if event matches
-
-    if (Array.isArray(conditions)) {
-      // Implicit AND for array of conditions at root
-      return conditions.every(c => this.evaluateRecursiveCondition(c, context));
-    } else {
-      return this.evaluateRecursiveCondition(conditions, context);
-    }
-  }
-
-  private evaluateRecursiveCondition(
-    condition: RuleCondition,
-    context: TriggerContext
-  ): boolean {
-    // Check if it's a group
-    if ('conditions' in condition && 'operator' in condition) {
-      return this.evaluateConditionGroup(condition as ConditionGroup, context);
-    } else {
-      return this.evaluateSingleCondition(condition as TriggerCondition, context);
-    }
-  }
-
-  private evaluateConditionGroup(group: ConditionGroup, context: TriggerContext): boolean {
-    if (group.operator === 'OR') {
-      return group.conditions.some(c => this.evaluateRecursiveCondition(c, context));
-    } else {
-      // AND
-      return group.conditions.every(c => this.evaluateRecursiveCondition(c, context));
-    }
-  }
-
-
   /**
-   * Evalúa una condición individual
+   * Override processEvent to match evaluateContext semantics if called directly
    */
-  private evaluateSingleCondition(
-    condition: TriggerCondition,
-    context: TriggerContext,
-  ): boolean {
-    try {
-      // 1. Obtener el valor del campo especificado
-      const fieldValue = ExpressionEngine.evaluate(
-        condition.field,
-        context,
-      );
-
-      // 2. Procesar condition.value (interpolación)
-      let targetValue = condition.value;
-      if (typeof targetValue === 'string' && targetValue.includes('${')) {
-          targetValue = ExpressionEngine.interpolate(targetValue, context);
-      }
-
-      // 3. Evaluar usando utilitario común
-      return TriggerUtils.compare(fieldValue, condition.operator, targetValue);
-
-    } catch (error) {
-      console.error(`Error evaluando condición:`, condition, error);
-      return false;
-    }
-  }
-
-  // --- Action Execution ---
-
-  private async executeRuleActions(
-    actions: TriggerAction | TriggerAction[] | ActionGroup,
-    context: TriggerContext
-  ): Promise<TriggerResult['executedActions']> {
-    const enactedActions: TriggerResult['executedActions'] = [];
-
-    let actionList: TriggerAction[] = [];
-    let mode: 'ALL' | 'SEQUENCE' | 'EITHER' = 'ALL';
-
-    if (this.isActionGroup(actions)) {
-      actionList = actions.actions;
-      mode = actions.mode;
-    } else if (Array.isArray(actions)) {
-      actionList = actions;
-    } else {
-      actionList = [actions];
-    }
-
-    if (mode === 'EITHER' && actionList.length > 0) {
-      // Pick one randomly
-      // Support probability later, for now uniform
-      const randomIndex = Math.floor(Math.random() * actionList.length);
-      const selectedAction = actionList[randomIndex];
-      if (selectedAction) {
-          actionList = [selectedAction];
-      }
-    }
-
-    // Execute actions with control flow support
-    let shouldBreak = false;
-
-    for (const action of actionList) {
-      if (shouldBreak) break;
-
-      // Handle conditional actions
-      if ('if' in action && action.if && (action.then || action.else)) {
-        const conditionMet = this.evaluateActionCondition(action.if, context);
-        
-        if (conditionMet && action.then) {
-          // Execute 'then' actions
-          const thenLogs = await this.executeNestedActions(action.then, context);
-          enactedActions.push(...thenLogs);
-        } else if (!conditionMet && action.else) {
-          // Execute 'else' actions
-          const elseLogs = await this.executeNestedActions(action.else, context);
-          enactedActions.push(...elseLogs);
-        }
-        continue;
-      }
-
-      // Handle inline conditional shorthand (if: ..., notify: ...)
-      if ('if' in action && action.if) {
-          const conditionMet = this.evaluateActionCondition(action.if, context);
-          if (!conditionMet) continue;
-          // If condition met, proceed to execute the rest of the action as a single action
-      }
-
-      // Handle break
-      if (action.break) {
-        shouldBreak = true;
-        enactedActions.push({
-          type: 'BREAK',
-          result: 'Breaking action execution',
-          timestamp: Date.now()
-        });
-        break;
-      }
-
-      // Handle continue (skip remaining actions in this group)
-      if (action.continue) {
-        enactedActions.push({
-          type: 'CONTINUE',
-          result: 'Skipping remaining actions',
-          timestamp: Date.now()
-        });
-        continue;
-      }
-
-      // Regular action execution
-      const result = await this.executeSingleAction(action, context);
-      enactedActions.push(result);
-    }
-
-    return enactedActions;
-  }
-
-  /**
-   * Evaluate action-level condition (for if/then/else)
-   */
-  private evaluateActionCondition(
-    condition: RuleCondition | RuleCondition[],
-    context: TriggerContext
-  ): boolean {
-    if (Array.isArray(condition)) {
-      // Implicit AND for array of conditions
-      return condition.every(c => this.evaluateRecursiveCondition(c, context));
-    }
-    
-    // Use recursive evaluator for RuleCondition (handles both Condition and ConditionGroup)
-    return this.evaluateRecursiveCondition(condition, context);
-  }
-
-  /**
-   * Execute nested actions (then/else branches)
-   */
-  private async executeNestedActions(
-    actions: TriggerAction | TriggerAction[] | ActionGroup,
-    context: TriggerContext
-  ): Promise<TriggerResult['executedActions']> {
-    if (Array.isArray(actions)) {
-      const logs: TriggerResult['executedActions'] = [];
-      for (const action of actions) {
-        const log = await this.executeSingleAction(action, context);
-        logs.push(log);
-      }
-      return logs;
-    } else if (this.isActionGroup(actions)) {
-      return this.executeRuleActions(actions, context);
-    } else {
-      const log = await this.executeSingleAction(actions, context);
-      return [log];
-    }
-  }
-
-  private isActionGroup(action: unknown): action is ActionGroup {
-    return typeof action === 'object' && action !== null && 'mode' in action && 'actions' in action;
-  }
-
-
-  private async executeSingleAction(
-    action: TriggerAction,
-    context: TriggerContext,
-  ): Promise<TriggerResult['executedActions'][0]> {
-
-    // 1. Handle shorthand syntax (e.g. notify: "...", log: "...")
-    // If no type is specified, look for registered action types as keys
-    if (!action.type && !action.run && !action.break && !action.continue) {
-        const reserved = Object.values(ControlFlow) as string[];
-        const actionKeys = Object.keys(action).filter(k => !reserved.includes(k));
-        for (const key of actionKeys) {
-            if (this.actionRegistry.get(key)) {
-                action.type = key;
-                // If it's a string, treat it as the main parameter (message or content)
-                if (typeof action[key] === 'string') {
-                    action.params = { ...action.params, message: action[key] as string, content: action[key] as string };
-                } else if (typeof action[key] === 'object') {
-                    action.params = { ...action.params, ...(action[key] as any) };
-                }
-                break;
-            }
-        }
-    }
-    
-    // 2. Handle 'run' block (Direct script execution)
-    if (action.run) {
-        try {
-            const runResult = new Function(
-                "context",
-                "state",
-                "data",
-                "vars",
-                "env",
-                "helpers",
-                `with(context) { ${action.run} }`
-            )(context, context.state, context.data, context.vars, context.env, context.helpers);
-
-            return {
-                type: 'RUN',
-                result: runResult,
-                timestamp: Date.now()
-            };
-        } catch (error) {
-            console.error(`Error in run block:`, action.run, error);
-            return {
-                type: 'RUN',
-                error: String(error),
-                timestamp: Date.now()
-            };
-        }
-    }
-
-    // Skip execution if no type and not a control flow action
-    if (!action.type && !action.break && !action.continue) {
-      return {
-        type: 'unknown',
-        error: 'Action has no type and no control flow properties',
-        timestamp: Date.now()
-      };
-    }
-
-    // Handle break/continue without executing handler
-    if (action.break) {
-      return {
-        type: 'BREAK',
-        result: 'Break action',
-        timestamp: Date.now()
-      };
-    }
-
-    if (action.continue) {
-      return {
-        type: 'CONTINUE',
-        result: 'Continue action',
-        timestamp: Date.now()
-      };
-    }
-    
-    // Interpolate probability if it's a string expression
-    let probability = action.probability;
-    if (typeof (probability as any) === 'string') {
-      const val = ExpressionEngine.evaluate(probability as any, context);
-      probability = typeof val === 'number' ? val : Number(val);
-    }
-
-    // Check probability
-    if (probability !== undefined && Math.random() > probability) {
-       return {
-         type: action.type || 'unknown',
-         timestamp: Date.now(),
-         result: { skipped: "probability check failed" }
-       };
-    }
-
-    // Interpolate delay if it's a string expression
-    let delay = action.delay;
-    if (typeof (delay as any) === 'string') {
-      const val = ExpressionEngine.evaluate(delay as any, context);
-      delay = typeof val === 'number' ? val : Number(val);
-    }
-
-    // Check delay
-    if (delay && delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-
-    try {
-        const handler = this.actionRegistry.get(action.type!);
-        let result;
-
-        if (handler) {
-            result = await handler(action, context);
-        } else {
-             const msg = `Tipo de acción genérica o desconocida: ${action.type}`;
-             if (this.config.globalSettings.strictActions) {
-                 throw new Error(msg);
-             }
-             console.warn(msg);
-             result = { warning: `Generic action executed: ${action.type}` };
-        }
-
-        triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action, context, result });
-
-        return {
-          type: action.type!,
-          result,
-          timestamp: Date.now()
+  override async processEvent(contextOrType: TriggerContext | string, data: Record<string, unknown> = {}, vars: Record<string, unknown> = {}): Promise<TriggerResult[]> {
+    if (typeof contextOrType === 'string') {
+        const context: TriggerContext = {
+            event: contextOrType,
+            data: data,
+            vars: vars,
+            timestamp: Date.now(),
+            state: StateManager.getInstance().getLiveProxy()
         };
-      } catch (error) {
-        console.error(`Error ejecutando acción:`, action, error);
-        triggerEmitter.emit(EngineEvent.ACTION_ERROR, { action, context, error: String(error) });
-
-        return {
-          type: action.type!,
-          error: String(error),
-          timestamp: Date.now()
-        };
-      }
-  }
-
-
-  /**
-   * Verifica si una regla está en cooldown
-   */
-  private checkCooldown(ruleId: string, cooldownMs: number): boolean {
-    const lastExecution = this.lastExecutionTimes.get(ruleId);
-
-    if (!lastExecution) return true;
-
-    return Date.now() - lastExecution > cooldownMs;
-  }
-
-  /**
-   * Actualiza las reglas del motor
-   */
-  updateRules(newRules: TriggerRule[]): void {
-    this.rules = [...newRules];
-    this.rules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-  }
-
-  /**
-   * Obtiene todas las reglas
-   */
-  getRules(): TriggerRule[] {
-    return [...this.rules];
+        return this.processEvent(context);
+    }
+    return super.processEvent(contextOrType);
   }
 }

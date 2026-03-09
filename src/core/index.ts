@@ -5,20 +5,20 @@ export * from "./persistence";
 // export * from "./persistence.node"; // Node Only - moved to node.ts entry point
 export * from "./persistence-browser";
 
-// Nueva arquitectura: Base Engine + Extensions
+// New architecture: Base Engine + Extensions
 export type { ITriggerEngine, EngineActionHandler } from "./base-engine";
 export { TriggerEngine } from "./trigger-engine"; // Motor base platform-agnostic
 export { RuleEngine } from "./rule-engine-new"; // Motor extendido con observabilidad y estado
 
-// Legacy exports para compatibilidad hacia atrás
+// Legacy exports for backward compatibility
 export * from "./action-registry";
 export * from "./context-adapter";
 export * from "./state-manager";
 
-// Exportar con alias para migración gradual
+// Export with alias for gradual migration
 export { TriggerEngine as Engine } from "./trigger-engine";
 export { RuleEngine as AdvancedRuleEngine } from "./rule-engine-new";
 
-// Exportar motores antiguos para compatibilidad temporal
+// Export legacy engines for temporary compatibility
 export * from "./rule-engine";
 export * from "./engine";

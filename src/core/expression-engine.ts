@@ -1,13 +1,13 @@
 // -----------------------------------------------------------------------------
-// MOTOR DE EXPRESIONES MATEMÁTICAS Y VARIABLES
+// MATHEMATICAL EXPRESSIONS AND VARIABLES ENGINE
 // -----------------------------------------------------------------------------
 
 import type { TriggerContext } from "../types";
 
 export class ExpressionEngine {
   /**
-   * Evalúa una expresión matemática simple o una interpolación de variables
-   * Soporta operadores: +, -, *, /, %, **, y funciones matemáticas básicas
+   * Evaluates a simple mathematical expression or variable interpolation
+   * Supports operators: +, -, *, /, %, **, and basic math functions
    */
 
   static evaluate(expression: string, context: TriggerContext): unknown {
@@ -31,8 +31,8 @@ export class ExpressionEngine {
   }
 
   /**
-   * Realiza interpolación de variables en una plantilla de texto
-   * Ejemplo: "Hola ${data.username}, hoy es ${new Date().toLocaleDateString()}"
+   * Performs variable interpolation in a text template
+   * Example: "Hello ${data.username}, today is ${new Date().toLocaleDateString()}"
    */
   static interpolate(template: string, context: TriggerContext): string {
     return template.replace(/\$\{([^}]+)\}/g, (match, expression) => {
@@ -46,31 +46,31 @@ export class ExpressionEngine {
         return String(result);
       } catch (error) {
         console.error(`Error en interpolación: ${match}`, error);
-        return match; // Devuelve la expresión original si hay error
+        return match; // Returns the original expression on error
       }
     });
   }
   /**
-   * Evalúa una expresión matemática segura usando Function constructor
+   * Evaluates a safe mathematical expression using Function constructor
    */
   private static evaluateMathExpression(expression: string): number {
     try {
-      // Crear una función segura que solo permita operaciones matemáticas básicas
+      // Create a safe function that only allows basic math operations
       const mathFunction = new Function("Math", `return ${expression}`);
       return mathFunction(Math);
     } catch (error) {
-      throw new Error(`Error evaluando expresión matemática: ${expression}`);
+      throw new Error(`Error evaluating mathematical expression: ${expression}`);
     }
   }
 
   /**
-   * Evalúa una expresión individual en el contexto
+   * Evaluates an individual expression in context
    */
   private static evaluateExpression(
     expression: string,
     context: TriggerContext,
   ) {
-    // Intentar obtener un valor del contexto SI es una ruta simple (sin espacios, operadores, etc.)
+    // Try to get a value from context IF it's a simple path (no spaces, operators, etc.)
     // Regex: Start with reserved root, followed by dots and words. No spaces.
     if (/^(data|vars|request|computed|env|state)(\.[a-zA-Z0-9_]+)+$/.test(expression)) {
       const val = this.getNestedValue(expression, context);
@@ -86,7 +86,7 @@ export class ExpressionEngine {
       return val;
     }
 
-    // Intentar evaluar como expresión de JavaScript
+    // Try to evaluate as JavaScript expression
     try {
       return new Function(
         "context",
@@ -94,14 +94,14 @@ export class ExpressionEngine {
       )(context);
     } catch (error) {
       console.error(`ERROR evaluating expression '${expression}':`, error);
-      // Si falla, devolver la expresión original
+      // If it fails, return the original expression
       return expression;
     }
   }
 
   /**
-   * Obtiene un valor anidado de un objeto usando notación de puntos
-   * Ejemplo: getNestedValue("data.user.profile.name", context)
+   * Gets a nested value from an object using dot notation
+   * Example: getNestedValue("data.user.profile.name", context)
    */
   static getNestedValue(path: string, context: TriggerContext): unknown {
     const parts = path.split(".");
@@ -118,17 +118,17 @@ export class ExpressionEngine {
   }
 
   /**
-   * Ejecuta una expresión matemática específica (como "1 + 2")
+   * Executes a specific mathematical expression (like "1 + 2")
    */
   static evaluateMath(expression: string, context: TriggerContext): number {
-    // Extraer variables de la expresión
+    // Extract variables from expression
     let processedExpression = expression;
 
-    // Reemplazar variables de contexto en la expresión
+    // Replace context variables in the expression
     processedExpression = processedExpression.replace(
       /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g,
       (match) => {
-        // Verificar si es una palabra reservada de JavaScript o función Math
+        // Check if it's a JavaScript reserved word or Math function
         if (
           [
             "Math",
@@ -149,7 +149,7 @@ export class ExpressionEngine {
           return match;
         }
 
-        // Intentar obtener valor del contexto
+        // Try to get value from context
         const value = this.getNestedValue(match, context);
         if (value !== undefined) {
           return typeof value === "string" ? `"${value}"` : String(value);
@@ -160,10 +160,10 @@ export class ExpressionEngine {
     );
 
     try {
-      // Evaluar la expresión matemática
+      // Evaluate the mathematical expression
       return this.evaluateMathExpression(processedExpression);
     } catch (error) {
-      console.error(`Error en evaluación matemática: ${expression}`, error);
+      console.error(`Error in mathematical evaluation: ${expression}`, error);
       return NaN;
     }
   }

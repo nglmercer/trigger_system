@@ -1,7 +1,7 @@
 /**
- * TriggerEngine - Motor base platform-agnostic
- * Proporciona funcionalidad básica de procesamiento de reglas
- * Puede ser extendido para agregar características adicionales
+ * TriggerEngine - Base platform-agnostic engine
+ * Provides basic rule processing functionality
+ * Can be extended to add additional features
  */
 
 import type {
@@ -26,6 +26,7 @@ import type {
 import { TriggerUtils } from "../utils/utils";
 import { ExpressionEngine } from "./expression-engine";
 import { triggerEmitter, ruleEvents, EngineEvent } from "../utils/emitter";
+import { EngineUtils } from "./engine-utils";
 
 export class TriggerEngine {
   protected _rules: TriggerRule[] = [];
@@ -33,20 +34,17 @@ export class TriggerEngine {
   protected lastExecution: Map<string, number> = new Map();
   protected _config?: RuleEngineConfig;
 
-  /**
-   * Constructor base - puede recibir reglas directamente o config
-   */
+
   constructor(rulesOrConfig: TriggerRule[] | RuleEngineConfig = []) {
     if (Array.isArray(rulesOrConfig)) {
-      // Constructor simple con array de reglas
       this._rules = rulesOrConfig;
     } else {
-      // Constructor con configuración completa
+      // Constructor with full configuration
       this._config = rulesOrConfig;
       this._rules = [...rulesOrConfig.rules];
     }
     
-    // Asegurar que el registro de acciones esté inicializado con los valores por defecto
+    // Ensure action registry is initialized with default values
     try {
         const { ActionRegistry } = require("./action-registry");
         ActionRegistry.getInstance(true);
@@ -79,7 +77,7 @@ export class TriggerEngine {
 
     // Ensure state is at least an object
     if (!context.state) {
-        context.state = {};
+        context.state = this.getStateContext ? this.getStateContext() : {};
     }
 
     // Filtrar reglas por evento y estado habilitado
@@ -91,9 +89,12 @@ export class TriggerEngine {
         continue;
       }
 
-      // Evaluar condiciones
-      if (this.evaluateConditions(rule.if, context)) {
-        // Ejecutar acciones
+      // Evaluar condiciones usando utilidades centralizadas
+      if (EngineUtils.evaluateConditions(rule.if, context)) {
+        // Emitir evento de coincidencia
+        triggerEmitter.emit(EngineEvent.RULE_MATCH, { rule, context });
+
+        // Ejecutar acciones usando utilidades centralizadas
         const execResult = await this.executeRuleActions(rule.do, context);
 
         // Actualizar cooldown
@@ -105,7 +106,7 @@ export class TriggerEngine {
           executedActions: execResult
         });
 
-        // Si no se deben evaluar todas las reglas, salir después de la primera coincidencia
+        // If not all rules should be evaluated, exit after first match
         if (!this.shouldEvaluateAll()) {
           break;
         }
@@ -142,7 +143,7 @@ export class TriggerEngine {
     const removed = oldRules.filter(r => !newRuleIds.has(r.id));
 
     // Update rules
-    this.rules = [...newRules];
+    this._rules = [...newRules];
     this.sortRules();
 
     // Emit events for added rules
@@ -186,7 +187,7 @@ export class TriggerEngine {
    * Obtiene todas las reglas actuales
    */
   getRules(): TriggerRule[] {
-    return [...this.rules];
+    return [...this._rules];
   }
 
   /**
@@ -202,7 +203,7 @@ export class TriggerEngine {
    * Determina si se deben evaluar todas las reglas o solo la primera coincidente
    */
   protected shouldEvaluateAll(): boolean {
-    return this.config?.globalSettings?.evaluateAll ?? true;
+    return this._config?.globalSettings?.evaluateAll ?? true;
   }
 
   /**
@@ -213,46 +214,21 @@ export class TriggerEngine {
   }
 
   /**
-   * Evalúa condiciones de una regla
+   * Evalúa condiciones de una regla (sobrescribible)
    */
   protected evaluateConditions(
     condition: RuleCondition | RuleCondition[] | undefined,
     context: TriggerContext
   ): boolean {
-    if (!condition) return true;
-
-    if (Array.isArray(condition)) {
-      return condition.every(c => this.evaluateSingleCondition(c, context));
-    }
-
-    return this.evaluateSingleCondition(condition, context);
+    return EngineUtils.evaluateConditions(condition, context);
   }
 
   /**
-   * Evalúa una condición individual
+   * Evalúa una condición individual (sobrescribible)
    */
   protected evaluateSingleCondition(cond: RuleCondition, context: TriggerContext): boolean {
-    // Check if it's a Group
-    if ('operator' in cond && 'conditions' in cond) {
-      const group = cond as ConditionGroup;
-      if (group.operator === 'OR') {
-        return group.conditions.some(c => this.evaluateSingleCondition(c, context));
-      } else { // AND
-        return group.conditions.every(c => this.evaluateSingleCondition(c, context));
-      }
-    }
-
-    // It's a simple Condition
-    const c = cond as Condition;
-    const actualValue = ExpressionEngine.evaluate(c.field, context);
-
-    // Interpolate the expected value if it's a string containing variables
-    let expectedValue = c.value;
-    if (typeof expectedValue === 'string' && expectedValue.includes('${')) {
-        expectedValue = ExpressionEngine.interpolate(expectedValue, context);
-    }
-
-    return TriggerUtils.compare(actualValue, c.operator, expectedValue);
+      // Wraps around EngineUtils implementation for backward compatibility if anyone overrides it
+      return EngineUtils.evaluateConditions(cond, context);
   }
 
   /**
@@ -262,100 +238,31 @@ export class TriggerEngine {
     actionConfig: Action | Action[] | ActionGroup,
     context: TriggerContext
   ): Promise<ExecutedAction[]> {
+    const { actionsToExecute } = EngineUtils.selectActions(actionConfig);
     const executionLogs: ExecutedAction[] = [];
 
-    // Normalizar a lista de acciones
-    let actionsToExecute: Action[] = [];
-    let mode: 'ALL' | 'EITHER' | 'SEQUENCE' = 'ALL';
-
-    if (Array.isArray(actionConfig)) {
-      actionsToExecute = actionConfig;
-    } else if (actionConfig && typeof actionConfig === 'object' && 'mode' in actionConfig && 'actions' in actionConfig) {
-      const group = actionConfig as ActionGroup;
-      mode = group.mode;
-      actionsToExecute = group.actions;
-    } else {
-      actionsToExecute = [actionConfig as Action];
-    }
-
-    // Handle ETHER mode
-    if (mode === 'EITHER' && actionsToExecute.length > 0) {
-      const totalWeight = actionsToExecute.reduce((sum, a) => sum + (a.probability || 1), 0);
-      let random = Math.random() * totalWeight;
-
-      let selected: Action | undefined;
-      for (const action of actionsToExecute) {
-        const weight = action.probability || 1;
-        random -= weight;
-        if (random <= 0) {
-          selected = action;
-          break;
-        }
-      }
-
-      if (!selected && actionsToExecute.length > 0) {
-        selected = actionsToExecute[actionsToExecute.length - 1];
-      }
-
-      if (selected) {
-        actionsToExecute = [selected];
-      } else {
-        actionsToExecute = [];
-      }
-    }
-
-    // Execute actions
-    let shouldBreak = false;
-
     for (const action of actionsToExecute) {
-      if (shouldBreak) break;
-
       // Handle conditional actions
       if ('if' in action && action.if && (action.then || action.else)) {
         const conditionMet = this.evaluateConditions(action.if, context);
         
         if (conditionMet && action.then) {
-          // Execute 'then' actions
-          const thenLogs = await this.executeRuleActions(action.then, context);
-          executionLogs.push(...thenLogs);
+          executionLogs.push(...(await this.executeRuleActions(action.then, context)));
         } else if (!conditionMet && action.else) {
-          // Execute 'else' actions
-          const elseLogs = await this.executeRuleActions(action.else, context);
-          executionLogs.push(...elseLogs);
+          executionLogs.push(...(await this.executeRuleActions(action.else, context)));
         }
         continue;
       }
 
-      // Handle inline conditional shorthand (if: ..., notify: ...)
+      // Handle direct if shorthand
       if ('if' in action && action.if) {
-          const conditionMet = this.evaluateConditions(action.if, context);
-          if (!conditionMet) continue;
-          // If condition met, proceed to execute the rest of the action as a single action
-      }
-
-      // Handle break
-      if (action.break) {
-        shouldBreak = true;
-        executionLogs.push({
-          type: 'BREAK',
-          result: 'Breaking action execution',
-          timestamp: Date.now()
-        });
-        break;
-      }
-
-      // Handle continue
-      if (action.continue) {
-        executionLogs.push({
-          type: 'CONTINUE',
-          result: 'Skipping remaining actions',
-          timestamp: Date.now()
-        });
-        continue;
+        if (!this.evaluateConditions(action.if, context)) continue;
       }
 
       const result = await this.executeSingleAction(action, context);
       executionLogs.push(result);
+      
+      if (result.type === 'BREAK') break;
     }
 
     return executionLogs;
@@ -368,104 +275,48 @@ export class TriggerEngine {
     action: Action,
     context: TriggerContext
   ): Promise<ExecutedAction> {
-
-    // 1. Handle shorthand syntax
-    if (!action.type && !action.run && !action.break && !action.continue) {
-        const { ControlFlow } = require("./constants");
-        const reserved = Object.values(ControlFlow) as string[];
-        const actionKeys = Object.keys(action).filter(k => !reserved.includes(k));
-
-        for (const key of actionKeys) {
-            action.type = key;
-            if (typeof action[key] === 'string') {
-                action.params = { ...action.params, message: action[key] as string, content: action[key] as string };
-            } else if (typeof action[key] === 'object' && action[key] !== null) {
-                action.params = { ...action.params, ...(action[key] as any) };
-            }
-            break;
-        }
+    // 1. Common processing (shorthand, run, probability, delay, params)
+    const { shouldExecute, executedAction, normalizedAction } = await EngineUtils.processSingleActionBase(action, context);
+    
+    if (!shouldExecute) {
+        return executedAction!;
     }
-
-    // 2. Handle 'run' block
-    if (action.run) {
-        try {
-            const runResult = new Function(
-                "context", "state", "data", "vars", "env", "helpers",
-                `with(context) { ${action.run} }`
-            )(context, context.state, context.data, context.vars, context.env, context.helpers);
-
-            return { type: 'RUN', result: runResult, timestamp: Date.now() };
-        } catch (error) {
-            return { type: 'RUN', error: String(error), timestamp: Date.now() };
-        }
-    }
-
-    // Interpolate probability if it's a string expression
-    let probability = action.probability;
-    if (typeof (probability as any) === 'string') {
-      const val = ExpressionEngine.evaluate(probability as any, context);
-      probability = typeof val === 'number' ? val : Number(val);
-    }
-
-    // Check probability
-    if (probability !== undefined && Math.random() > probability) {
-       return {
-         type: action.type || 'skipped',
-         timestamp: Date.now(),
-         result: { skipped: "probability check failed" }
-       };
-    }
-
-    // Interpolate delay if it's a string expression
-    let delay = action.delay;
-    if (typeof (delay as any) === 'string') {
-      const val = ExpressionEngine.evaluate(delay as any, context);
-      delay = typeof val === 'number' ? val : Number(val);
-    }
-
-    // Check delay
-    if (delay && delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-
-    // Interpolate parameters
-    const params = this.interpolateParams(action.params || {}, context);
 
     try {
-      // Try to get handler from registry first (if available)
-      let handler: EngineActionHandler | undefined;
+      // 1. Try local handlers first (Legacy/Explicitly registered via registerAction)
+      const localHandler = this.actionHandlers.get(normalizedAction.type!);
+      if (localHandler) {
+        const result = await localHandler(normalizedAction.params || {}, context);
+        triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action: normalizedAction, context, result });
+        return { type: normalizedAction.type!, result, timestamp: Date.now() };
+      }
 
-      // Check if ActionRegistry is available (Node.js environment)
+      // 2. Try global ActionRegistry
       try {
-        const { ActionRegistry } = await import('./action-registry');
-        const registryHandler = ActionRegistry.getInstance().get(action.type!);
+        const { ActionRegistry } = require('./action-registry');
+        const registryHandler = ActionRegistry.getInstance().get(normalizedAction.type!);
         if (registryHandler) {
-          handler = (p: ActionParams) => registryHandler({ ...action, params: p }, context);
+          const result = await registryHandler(normalizedAction, context);
+          triggerEmitter.emit(EngineEvent.ACTION_SUCCESS, { action: normalizedAction, context, result });
+          return { type: normalizedAction.type!, result, timestamp: Date.now() };
         }
       } catch {
-        // ActionRegistry not available, use local handlers
-        handler = this.actionHandlers.get(action.type!);
+        // Registry not available
       }
 
-      let result: unknown;
-      if (handler) {
-        result = await handler(params, context);
-      } else {
-        // No handler registered
-        const msg = `No handler registered for action type: ${action.type}`;
-        console.warn(msg);
-        result = { warning: msg };
-      }
+      // 3. No handler found
+      const msg = `No handler registered for action type: ${normalizedAction.type}`;
+      if (this._config?.globalSettings?.strictActions) throw new Error(msg);
+      
+      console.warn(msg);
+      return { type: normalizedAction.type!, result: { warning: msg }, timestamp: Date.now() };
 
-      return {
-        type: action.type!,
-        result,
-        timestamp: Date.now()
-      };
     } catch (error) {
-      console.error(`Error executing action ${action.type}:`, error);
+      console.error(`Error executing action ${normalizedAction.type}:`, error);
+      triggerEmitter.emit(EngineEvent.ACTION_ERROR, { action: normalizedAction, context, error: String(error) });
+      
       return {
-        type: action.type!,
+        type: normalizedAction.type!,
         error: String(error),
         timestamp: Date.now()
       };
@@ -473,36 +324,10 @@ export class TriggerEngine {
   }
 
   /**
-   * Interpola parámetros con variables del contexto
+   * Interpola parámetros (legacy compatibility)
    */
   protected interpolateParams(params: ActionParams, context: TriggerContext): ActionParams {
-    const result: ActionParams = {};
-    for (const [key, val] of Object.entries(params)) {
-      if (typeof val === 'string') {
-        result[key] = ExpressionEngine.interpolate(val, context);
-      } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-        result[key] = this.interpolateDeep(val, context) as ActionParams[string];
-      } else {
-        result[key] = val;
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Interpolación recursiva para objetos anidados
-   */
-  protected interpolateDeep(obj: unknown, context: TriggerContext): unknown {
-    if (typeof obj === 'string') return ExpressionEngine.interpolate(obj, context);
-    if (Array.isArray(obj)) return obj.map(v => this.interpolateDeep(v, context));
-    if (typeof obj === 'object' && obj !== null) {
-        const res: Record<string, unknown> = {};
-        for(const k in obj) {
-          res[k] = this.interpolateDeep((obj as Record<string, unknown>)[k], context);
-        }
-        return res;
-    }
-    return obj;
+    return EngineUtils.interpolateParams(params, context);
   }
 
   // Getters para acceso a propiedades protegidas
@@ -521,5 +346,5 @@ export class TriggerEngine {
   }
 }
 
-// Exportar también el tipo para compatibilidad
+// Also export type for compatibility
 export type { TriggerEngine as BaseEngine };
