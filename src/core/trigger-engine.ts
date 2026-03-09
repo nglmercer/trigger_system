@@ -305,7 +305,7 @@ export class TriggerEngine {
       }
 
       // 3. No handler found
-      const msg = `No handler registered for action type: ${normalizedAction.type}`;
+      const msg = `Tipo de acción genérica o desconocida: ${normalizedAction.type}`;
       if (this._config?.globalSettings?.strictActions) throw new Error(msg);
       
       console.warn(msg);

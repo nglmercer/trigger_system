@@ -69,7 +69,7 @@ export class RuleEngine extends TriggerEngine {
    * Sobrescribe getStateContext para usar StateManager
    */
   protected override getStateContext(): Record<string, any> {
-    return this.stateManager.getAll();
+    return this.stateManager.getLiveProxy();
   }
 }
 

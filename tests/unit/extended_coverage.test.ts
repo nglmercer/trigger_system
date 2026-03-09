@@ -134,6 +134,8 @@ describe('Extended Coverage - StateManager', () => {
     });
 });
 
+import { EngineUtils } from '../../src/core/engine-utils';
+
 describe('Extended Coverage - TriggerEngine', () => {
     it('should hit base TriggerEngine convenience methods', async () => {
         const engine = new TriggerEngine([]);
@@ -144,9 +146,9 @@ describe('Extended Coverage - TriggerEngine', () => {
         const anyEngine = engine as any;
         anyEngine.getStateContext();
 
-        // Hit interpolateDeep with various types
-        anyEngine.interpolateDeep(['a', '${data.x}'], { data: { x: 'b' } } as any);
-        anyEngine.interpolateDeep({ key: '${vars.y}' }, { vars: { y: 'val' } } as any);
+        // Hit interpolateDeep with various types (via Utils)
+        EngineUtils.interpolateDeep(['a', '${data.x}'], { data: { x: 'b' } } as any);
+        EngineUtils.interpolateDeep({ key: '${vars.y}' }, { vars: { y: 'val' } } as any);
     });
     it('should emit events on updateRules including removed rules', () => {
         const engine = new TriggerEngine([{ id: 'old', on: 'e', do: [] }]);
