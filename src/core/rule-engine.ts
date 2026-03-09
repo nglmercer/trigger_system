@@ -20,6 +20,7 @@ import { ExpressionEngine } from "../core/expression-engine";
 import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
+import { TriggerUtils } from "../utils/utils";
 
 
 export class RuleEngine {
@@ -180,153 +181,21 @@ export class RuleEngine {
     context: TriggerContext,
   ): boolean {
     try {
-      // Obtener el valor del campo especificado (permite expresiones y llamadas a funciones)
+      // 1. Obtener el valor del campo especificado
       const fieldValue = ExpressionEngine.evaluate(
         condition.field,
         context,
       );
 
-      // Process condition.value - if it's a string, try to interpolate it
-      // This allows comparing field: "data.amount" with value: "${vars.threshold}"
+      // 2. Procesar condition.value (interpolación)
       let targetValue = condition.value;
-      if (typeof targetValue === 'string' && (targetValue.includes('${') || targetValue.startsWith('data.') || targetValue.startsWith('vars.'))) {
-          // If it looks like an expression or variable reference, evaluate it
-          const evaluated = ExpressionEngine.evaluate(targetValue, context);
-          targetValue = evaluated as ConditionValue;
+      if (typeof targetValue === 'string' && targetValue.includes('${')) {
+          targetValue = ExpressionEngine.interpolate(targetValue, context);
       }
 
-      // Helper for Date comparisons
-      const getDate = (val: unknown) => {
-          if (val instanceof Date) return val.getTime();
-          if (typeof val === 'number') return val;
-          if (typeof val === 'string') {
-            const d = new Date(val);
-            return isNaN(d.getTime()) ? 0 : d.getTime();
-          }
-          return 0;
-      };
+      // 3. Evaluar usando utilitario común
+      return TriggerUtils.compare(fieldValue, condition.operator, targetValue);
 
-      // Helper for Safe Numeric comparisons
-      // Returns null if values are not strictly comparable as numbers (prevents null -> 0 coercion)
-      const getSafeNumber = (val: unknown): number | null => {
-          if (typeof val === 'number') return val;
-          if (val === null || val === undefined || val === '') return null;
-          const num = Number(val);
-          return isNaN(num) ? null : num;
-      };
-
-      // Evaluar según el operador
-      switch (condition.operator) {
-        case "EQ":
-        case "==":
-          return fieldValue == targetValue; // Loose equality for flexibility
-
-        case "NEQ":
-        case "!=":
-          return fieldValue != targetValue;
-
-        case "GT":
-        case ">": {
-          const nField = getSafeNumber(fieldValue);
-          const nTarget = getSafeNumber(targetValue);
-          return (nField !== null && nTarget !== null) && nField > nTarget;
-        }
-
-        case "GTE":
-        case ">=": {
-          const nField = getSafeNumber(fieldValue);
-          const nTarget = getSafeNumber(targetValue);
-          return (nField !== null && nTarget !== null) && nField >= nTarget;
-        }
-
-        case "LT":
-        case "<": {
-          const nField = getSafeNumber(fieldValue);
-          const nTarget = getSafeNumber(targetValue);
-          return (nField !== null && nTarget !== null) && nField < nTarget;
-        }
-
-        case "LTE":
-        case "<=": {
-          const nField = getSafeNumber(fieldValue);
-          const nTarget = getSafeNumber(targetValue);
-          return (nField !== null && nTarget !== null) && nField <= nTarget;
-        }
-
-        case "CONTAINS":
-          if (Array.isArray(targetValue)) {
-            return targetValue.some(item => String(fieldValue).includes(String(item)));
-          }
-          return String(fieldValue).includes(String(targetValue));
-        
-        case "NOT_CONTAINS":
-          if (Array.isArray(targetValue)) {
-            return !targetValue.some(item => String(fieldValue).includes(String(item)));
-          }
-          return !String(fieldValue).includes(String(targetValue));
-        
-        case "STARTS_WITH":
-          if (Array.isArray(targetValue)) {
-            return targetValue.some(item => String(fieldValue).startsWith(String(item)));
-          }
-          return String(fieldValue).startsWith(String(targetValue));
-        
-        case "ENDS_WITH":
-          if (Array.isArray(targetValue)) {
-            return targetValue.some(item => String(fieldValue).endsWith(String(item)));
-          }
-          return String(fieldValue).endsWith(String(targetValue));
-        
-        case "IS_EMPTY": {
-          let isEmpty = false;
-          if (typeof fieldValue === 'string') isEmpty = fieldValue === '';
-          else if (Array.isArray(fieldValue)) isEmpty = fieldValue.length === 0;
-          else if (fieldValue === null || fieldValue === undefined) isEmpty = true;
-          else if (typeof fieldValue === 'object') isEmpty = Object.keys(fieldValue).length === 0;
-          return targetValue === false ? !isEmpty : isEmpty;
-        }
-        
-        case "IS_NULL":
-        case "IS_NONE": {
-          const isNull = fieldValue === null || fieldValue === undefined;
-          return targetValue === false ? !isNull : isNull;
-        }
-        
-        case "HAS_KEY":
-          if (typeof fieldValue === 'object' && fieldValue !== null) {
-            return String(targetValue) in (fieldValue as Record<string, unknown>);
-          }
-          return false;
-        
-        case "MATCHES":
-          return new RegExp(String(targetValue)).test(String(fieldValue));
-        
-        case "IN":
-          return Array.isArray(targetValue) && targetValue.some(item => item === fieldValue);
-
-        case "NOT_IN":
-          return Array.isArray(targetValue) && !targetValue.some(item => item === fieldValue);
-        
-        // Date operators
-        case "SINCE": // field >= value (Chronologically after or same)
-        case "AFTER":
-           return getDate(fieldValue) >= getDate(targetValue);
-        
-        case "BEFORE": // field < value
-        case "UNTIL":
-           return getDate(fieldValue) < getDate(targetValue);
-
-        case "RANGE": // Special Case: Value should be [min, max]
-             if (Array.isArray(targetValue) && targetValue.length === 2) {
-                 const nField = getSafeNumber(fieldValue);
-                 return nField !== null && nField >= Number(targetValue[0]) && nField <= Number(targetValue[1]);
-             }
-             return false;
-
-        default:
-          console.error(`Operador desconocido: ${condition.operator}`);
-          return false;
-      }
     } catch (error) {
       console.error(`Error evaluando condición:`, condition, error);
       return false;

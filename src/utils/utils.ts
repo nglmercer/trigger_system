@@ -48,6 +48,25 @@ export class TriggerUtils {
    * Checks if a value satisfies a comparison operator against a criteria.
    */
   static compare(actual: unknown, operator: ComparisonOperator, criteria: ConditionValue | undefined): boolean {
+    // Helper for Date comparisons
+    const getDate = (val: unknown) => {
+        if (val instanceof Date) return val.getTime();
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+          const d = new Date(val);
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+        }
+        return 0;
+    };
+
+    // Helper for Safe Numeric comparisons
+    const getSafeNumber = (val: unknown): number | null => {
+        if (typeof val === 'number') return val;
+        if (val === null || val === undefined || val === '') return null;
+        const num = Number(val);
+        return isNaN(num) ? null : num;
+    };
+
     switch (operator) {
       case 'EQ':
       case '==':
@@ -56,50 +75,79 @@ export class TriggerUtils {
       case '!=':
         return actual != criteria;
       case 'GT':
-      case '>':
-        return Number(actual) > Number(criteria);
+      case '>': {
+        const nActual = getSafeNumber(actual);
+        const nCriteria = getSafeNumber(criteria);
+        return (nActual !== null && nCriteria !== null) && nActual > nCriteria;
+      }
       case 'GTE':
-      case '>=':
-        return Number(actual) >= Number(criteria);
+      case '>=': {
+        const nActual = getSafeNumber(actual);
+        const nCriteria = getSafeNumber(criteria);
+        return (nActual !== null && nCriteria !== null) && nActual >= nCriteria;
+      }
       case 'LT':
-      case '<':
-        return Number(actual) < Number(criteria);
+      case '<': {
+        const nActual = getSafeNumber(actual);
+        const nCriteria = getSafeNumber(criteria);
+        return (nActual !== null && nCriteria !== null) && nActual < nCriteria;
+      }
       case 'LTE':
-      case '<=':
-        return Number(actual) <= Number(criteria);
+      case '<=': {
+        const nActual = getSafeNumber(actual);
+        const nCriteria = getSafeNumber(criteria);
+        return (nActual !== null && nCriteria !== null) && nActual <= nCriteria;
+      }
       case 'IN':
         return Array.isArray(criteria) && criteria.some(item => item === actual);
       case 'NOT_IN':
         return Array.isArray(criteria) && !criteria.some(item => item === actual);
       case 'CONTAINS':
+        if (Array.isArray(criteria)) {
+           return criteria.some(item => String(actual).includes(String(item)));
+        }
         if (Array.isArray(actual) || typeof actual === 'string') {
-          return actual.includes(criteria as string);
+          return (actual as any).includes(criteria as any);
         }
         return false;
       case 'NOT_CONTAINS':
+        if (Array.isArray(criteria)) {
+           return !criteria.some(item => String(actual).includes(String(item)));
+        }
         if (Array.isArray(actual) || typeof actual === 'string') {
-          return !actual.includes(criteria as string);
+          return !(actual as any).includes(criteria as any);
         }
         return false;
       case 'STARTS_WITH':
+        if (Array.isArray(criteria)) {
+           return criteria.some(item => String(actual).startsWith(String(item)));
+        }
         if (typeof actual === 'string' && typeof criteria === 'string') {
           return actual.startsWith(criteria);
         }
         return false;
       case 'ENDS_WITH':
+        if (Array.isArray(criteria)) {
+           return criteria.some(item => String(actual).endsWith(String(item)));
+        }
         if (typeof actual === 'string' && typeof criteria === 'string') {
           return actual.endsWith(criteria);
         }
         return false;
-      case 'IS_EMPTY':
-        if (typeof actual === 'string') return actual === '';
-        if (Array.isArray(actual)) return actual.length === 0;
-        if (actual === null || actual === undefined) return true;
-        if (typeof actual === 'object') return Object.keys(actual).length === 0;
-        return false;
+      case 'IS_EMPTY': {
+        let isEmpty = false;
+        if (typeof actual === 'string') isEmpty = actual === '';
+        else if (Array.isArray(actual)) isEmpty = actual.length === 0;
+        else if (actual === null || actual === undefined) isEmpty = true;
+        else if (typeof actual === 'object') isEmpty = Object.keys(actual as object).length === 0;
+        
+        return criteria === false ? !isEmpty : isEmpty;
+      }
       case 'IS_NULL':
-      case 'IS_NONE':
-        return actual === null || actual === undefined;
+      case 'IS_NONE': {
+        const isNull = actual === null || actual === undefined;
+        return criteria === false ? !isNull : isNull;
+      }
       case 'HAS_KEY':
         if (typeof actual === 'object' && actual !== null && typeof criteria === 'string') {
           return criteria in (actual as Record<string, unknown>);
@@ -113,12 +161,22 @@ export class TriggerUtils {
       case 'RANGE':
         // criteria should be [min, max]
         if (Array.isArray(criteria) && criteria.length === 2) {
-            const val = Number(actual);
-            const min = Number(criteria[0]);
-            const max = Number(criteria[1]);
-            return !isNaN(val) && !isNaN(min) && !isNaN(max) && val >= min && val <= max;
+            const val = getSafeNumber(actual);
+            const min = getSafeNumber(criteria[0]);
+            const max = getSafeNumber(criteria[1]);
+            return val !== null && min !== null && max !== null && val >= min && val <= max;
         }
         return false;
+      
+      // Date operators
+      case "SINCE":
+      case "AFTER":
+         return getDate(actual) >= getDate(criteria);
+      
+      case "BEFORE":
+      case "UNTIL":
+         return getDate(actual) < getDate(criteria);
+
       default:
         console.warn(`Unknown operator: ${operator}`);
         return false;

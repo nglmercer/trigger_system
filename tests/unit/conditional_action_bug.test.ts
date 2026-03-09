@@ -7,7 +7,7 @@ describe('Conditional action bug', () => {
         const registry = ActionRegistry.getInstance();
         registry.register('test_log', async (action, context) => {
             console.log("LOG ACTION EXECUTED:", action.params?.message);
-            return { printed: true };
+            return { printed: true, message: action.params?.message };
         });
 
         const engine = new RuleEngine({
@@ -51,6 +51,11 @@ describe('Conditional action bug', () => {
         });
 
         const results = await engine.processEventSimple('ChatMessageEvent', { content: 'holaaaaaaaaaa' });
-        console.log("RESULTS", JSON.stringify(results, null, 2));
+        expect((results[0]!.executedActions[1]!.result as any).message).toBe('then');
+
+        const resultsFailing = await engine.processEventSimple('ChatMessageEvent', { content: 'hola !ai world' });
+        console.log("RESULTS FAILING", JSON.stringify(resultsFailing, null, 2));
+        // It SHOULD be 'else' (because it contains !ai), but current BUG might make it 'then'
+        expect((resultsFailing[0]!.executedActions[1]!.result as any).message).toBe('else');
     });
 });
