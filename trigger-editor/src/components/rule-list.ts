@@ -9,122 +9,34 @@ import { map } from 'lit/directives/map.js';
 
 import type { TriggerRule } from '../types.js';
 
+// Import constants
+import {
+  LABELS,
+  CLASS_NAMES,
+  EVENTS,
+} from '../constants.js';
+
+// Import styles
+import {
+  baseComponentStyles,
+  iconButtonStyles,
+  listStyles,
+  emptyStateStyles,
+  combineStyles,
+} from '../styles.js';
+
+// Import icons
+import { iconEdit, iconTrash } from '../icons.js';
+
 @customElement('rule-list')
 export class RuleList extends LitElement {
-  static override styles = css`
-    :host {
-      display: block;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      --primary-color: #2563eb;
-      --success-color: #16a34a;
-      --text: #1e293b;
-      --text-secondary: #64748b;
-      --border: #e2e8f0;
-      --surface: #f8fafc;
-      --radius: 6px;
-    }
-
-    :host([darkmode]) {
-      --text: #f1f5f9;
-      --text-secondary: #94a3b8;
-      --border: #475569;
-      --surface: #334155;
-    }
-
-    .rule-list {
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .rule-item {
-      display: flex;
-      align-items: center;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      gap: 12px;
-    }
-
-    .rule-item:last-child {
-      border-bottom: none;
-    }
-
-    .rule-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .rule-id {
-      font-weight: 600;
-      color: var(--text);
-      font-size: 14px;
-    }
-
-    .rule-meta {
-      display: flex;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-
-    .rule-event {
-      background: var(--primary-color);
-      color: white;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .rule-enabled {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--success-color);
-    }
-
-    .rule-disabled {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--text-secondary);
-    }
-
-    .rule-actions {
-      display: flex;
-      gap: 4px;
-    }
-
-    .icon-btn {
-      width: 28px;
-      height: 28px;
-      border: none;
-      background: transparent;
-      border-radius: var(--radius);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-secondary);
-    }
-
-    .icon-btn:hover {
-      background: var(--surface);
-      color: var(--text);
-    }
-
-    .empty-state {
-      padding: 48px 24px;
-      text-align: center;
-      color: var(--text-secondary);
-    }
-
-    .empty-state-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-  `;
+  // Combine styles
+  static override styles = combineStyles(
+    baseComponentStyles,
+    iconButtonStyles,
+    listStyles,
+    emptyStateStyles
+  );
 
   @property({ type: Array })
   rules: TriggerRule[] = [];
@@ -132,7 +44,7 @@ export class RuleList extends LitElement {
   // --- Event Handlers ---
 
   private _emitEdit(rule: TriggerRule): void {
-    this.dispatchEvent(new CustomEvent('rule-edit', {
+    this.dispatchEvent(new CustomEvent(EVENTS.RULE_EDIT, {
       detail: rule,
       bubbles: true,
       composed: true
@@ -140,7 +52,7 @@ export class RuleList extends LitElement {
   }
 
   private _emitDelete(rule: TriggerRule): void {
-    this.dispatchEvent(new CustomEvent('rule-delete', {
+    this.dispatchEvent(new CustomEvent(EVENTS.RULE_DELETE, {
       detail: rule,
       bubbles: true,
       composed: true
@@ -154,7 +66,7 @@ export class RuleList extends LitElement {
       return html`
         <div class="empty-state">
           <div class="empty-state-icon">📋</div>
-          <p>No rules defined yet</p>
+          <p>${LABELS.NO_RULES}</p>
         </div>
       `;
     }
@@ -175,17 +87,11 @@ export class RuleList extends LitElement {
             </div>
             
             <div class="rule-actions">
-              <button class="icon-btn" title="Edit" @click=${() => this._emitEdit(rule)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
+              <button class="icon-btn" title=${LABELS.TOOLTIP_EDIT} @click=${() => this._emitEdit(rule)}>
+                ${iconEdit('md')}
               </button>
-              <button class="icon-btn" title="Delete" @click=${() => this._emitDelete(rule)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
+              <button class="icon-btn" title=${LABELS.TOOLTIP_DELETE} @click=${() => this._emitDelete(rule)}>
+                ${iconTrash('md')}
               </button>
             </div>
           </div>

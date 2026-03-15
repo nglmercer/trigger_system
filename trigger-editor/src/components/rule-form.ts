@@ -18,234 +18,71 @@ import type {
 
 import { RuleBuilder } from '../builder.js';
 import { RuleExporter } from '../exporter.js';
-import { COMPARISON_OPERATORS } from '../types.js';
+
+// Import constants
+import {
+  LABELS,
+  CLASS_NAMES,
+  EVENTS,
+  SIZES,
+  COLORS,
+  TYPOGRAPHY,
+} from '../constants.js';
+
+// Import enums
+import { 
+  OPERATORS, 
+  ACTION_TYPES,
+  ValidationSeverity 
+} from '../enums.js';
+
+// Import styles
+import {
+  baseComponentStyles,
+  buttonStyles,
+  iconButtonStyles,
+  formInputStyles,
+  formLabelStyles,
+  formSectionStyles,
+  conditionListStyles,
+  tagsInputStyles,
+  validationErrorStyles,
+  previewStyles,
+  combineStyles,
+} from '../styles.js';
+
+// Import icons
+import { iconPlus, iconX } from '../icons.js';
 
 @customElement('rule-form')
 export class RuleForm extends LitElement {
-  static override styles = css`
-    :host {
-      display: block;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      --primary-color: #2563eb;
-      --primary-hover: #1d4ed8;
-      --danger-color: #dc2626;
-      --success-color: #16a34a;
-      --background: #ffffff;
-      --surface: #f8fafc;
-      --border: #e2e8f0;
-      --text: #1e293b;
-      --text-secondary: #64748b;
-      --radius: 6px;
-    }
+  // Combine styles
+  static override styles = combineStyles(
+    baseComponentStyles,
+    buttonStyles,
+    iconButtonStyles,
+    formInputStyles,
+    formLabelStyles,
+    formSectionStyles,
+    conditionListStyles,
+    tagsInputStyles,
+    validationErrorStyles,
+    previewStyles,
+    css`
+      .condition-item .form-input,
+      .condition-item .form-select,
+      .action-item .form-input,
+      .action-item .form-select {
+        flex: 1;
+        min-width: 100px;
+      }
 
-    :host([darkmode]) {
-      --background: #1e293b;
-      --surface: #334155;
-      --border: #475569;
-      --text: #f1f5f9;
-      --text-secondary: #94a3b8;
-    }
-
-    .form-section {
-      margin-bottom: 20px;
-    }
-
-    .form-section-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .form-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
-    }
-
-    .form-input, .form-select, .form-textarea {
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 14px;
-      background: var(--background);
-      color: var(--text);
-    }
-
-    .form-input:focus, .form-select:focus, .form-textarea:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    }
-
-    .form-textarea {
-      resize: vertical;
-      min-height: 60px;
-    }
-
-    .form-checkbox {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .form-checkbox input {
-      width: 16px;
-      height: 16px;
-    }
-
-    .condition-list, .action-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .condition-item, .action-item {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      padding: 10px;
-      background: var(--surface);
-      border-radius: var(--radius);
-      flex-wrap: wrap;
-    }
-
-    .condition-item .form-input,
-    .condition-item .form-select,
-    .action-item .form-input,
-    .action-item .form-select {
-      flex: 1;
-      min-width: 100px;
-    }
-
-    .condition-value {
-      flex: 2;
-      min-width: 150px;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 12px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .btn-sm {
-      padding: 4px 8px;
-      font-size: 12px;
-    }
-
-    .btn-secondary {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .btn-secondary:hover {
-      background: var(--border);
-    }
-
-    .icon-btn {
-      width: 28px;
-      height: 28px;
-      border: none;
-      background: transparent;
-      border-radius: var(--radius);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-secondary);
-    }
-
-    .icon-btn:hover {
-      background: var(--surface);
-      color: var(--text);
-    }
-
-    .validation-error {
-      color: var(--danger-color);
-      font-size: 12px;
-      margin-top: 4px;
-    }
-
-    .tags-input {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      padding: 6px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      min-height: 40px;
-    }
-
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      background: var(--primary-color);
-      color: white;
-      border-radius: 3px;
-      font-size: 12px;
-    }
-
-    .tag-remove {
-      cursor: pointer;
-      opacity: 0.7;
-    }
-
-    .tag-remove:hover {
-      opacity: 1;
-    }
-
-    .tag-input {
-      border: none;
-      outline: none;
-      flex: 1;
-      min-width: 80px;
-      font-size: 14px;
-      background: transparent;
-      color: var(--text);
-    }
-
-    .preview-section {
-      margin-top: 16px;
-      padding: 12px;
-      background: #1e1e1e;
-      border-radius: var(--radius);
-      overflow-x: auto;
-    }
-
-    .preview-code {
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 12px;
-      color: #d4d4d4;
-      white-space: pre;
-      margin: 0;
-    }
-  `;
+      .condition-value {
+        flex: 2;
+        min-width: 150px;
+      }
+    `
+  );
 
   @property({ type: Object })
   formData: RuleFormData = this._createEmpty();
@@ -359,7 +196,7 @@ export class RuleForm extends LitElement {
   }
 
   private _emitChange(): void {
-    this.dispatchEvent(new CustomEvent('form-change', {
+    this.dispatchEvent(new CustomEvent(EVENTS.FORM_CHANGE, {
       detail: this.formData,
       bubbles: true,
       composed: true
@@ -367,7 +204,7 @@ export class RuleForm extends LitElement {
   }
 
   private _emitSave(): void {
-    this.dispatchEvent(new CustomEvent('form-save', {
+    this.dispatchEvent(new CustomEvent(EVENTS.FORM_SAVE, {
       detail: this.formData,
       bubbles: true,
       composed: true
@@ -501,117 +338,105 @@ export class RuleForm extends LitElement {
       ${this._renderBasicSection()}
       ${this._renderConditionsSection()}
       ${this._renderActionsSection()}
-
-      ${when(this.showYamlPreview, () => html`
-        <div class="preview-section">
-          <pre class="preview-code">${this._yamlContent}</pre>
-        </div>
-      `)}
+      ${when(this.showYamlPreview, () => this._renderPreview())}
     `;
   }
 
   private _renderBasicSection() {
+    const idError = this._getFieldError('id');
+    const onError = this._getFieldError('on');
+    const doError = this._getFieldError('do');
+
     return html`
       <div class="form-section">
-        <div class="form-section-title">Basic Information</div>
+        <div class="form-section-title">${LABELS.SECTION_BASIC}</div>
         
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Rule ID *</label>
-            <input 
-              type="text" 
+            <label class="form-label">${LABELS.LABEL_ID} *</label>
+            <input
+              type="text"
               class="form-input"
               .value=${this.formData.id}
               @input=${(e: Event) => this._handleFieldChange('id', (e.target as HTMLInputElement).value)}
+              placeholder=${LABELS.PLACEHOLDER_ID}
             />
-            ${when(this._getFieldError('id'), (err: string) => html`<div class="validation-error">${err}</div>`)}
+            ${when(idError, () => html`<div class="validation-error">${idError}</div>`)}
           </div>
           
           <div class="form-group">
-            <label class="form-label">Name</label>
-            <input 
-              type="text" 
+            <label class="form-label">${LABELS.LABEL_NAME}</label>
+            <input
+              type="text"
               class="form-input"
               .value=${this.formData.name}
               @input=${(e: Event) => this._handleFieldChange('name', (e.target as HTMLInputElement).value)}
+              placeholder=${LABELS.PLACEHOLDER_NAME}
             />
           </div>
         </div>
-        
-        <div class="form-group" style="margin-bottom: 12px">
-          <label class="form-label">Description</label>
-          <textarea 
-            class="form-textarea"
-            .value=${this.formData.description}
-            @input=${(e: Event) => this._handleFieldChange('description', (e.target as HTMLTextAreaElement).value)}
-          ></textarea>
-        </div>
-        
+
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Event Trigger (on) *</label>
-            <input 
-              type="text" 
+            <label class="form-label">${LABELS.LABEL_EVENT} *</label>
+            <input
+              type="text"
               class="form-input"
-              placeholder="e.g., user.login, payment.received"
               .value=${this.formData.on}
               @input=${(e: Event) => this._handleFieldChange('on', (e.target as HTMLInputElement).value)}
+              placeholder="e.g., user.login"
             />
-            ${when(this._getFieldError('on'), (err: string) => html`<div class="validation-error">${err}</div>`)}
+            ${when(onError, () => html`<div class="validation-error">${onError}</div>`)}
           </div>
-          
+
           <div class="form-group">
-            <label class="form-label">Priority</label>
-            <input 
-              type="number" 
+            <label class="form-label">${LABELS.LABEL_DESCRIPTION}</label>
+            <textarea
+              class="form-textarea"
+              .value=${this.formData.description}
+              @input=${(e: Event) => this._handleFieldChange('description', (e.target as HTMLTextAreaElement).value)}
+              placeholder=${LABELS.PLACEHOLDER_DESCRIPTION}
+              rows="2"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">${LABELS.LABEL_PRIORITY}</label>
+            <input
+              type="number"
               class="form-input"
               .value=${String(this.formData.priority)}
               @input=${(e: Event) => this._handleFieldChange('priority', parseInt((e.target as HTMLInputElement).value) || 0)}
             />
           </div>
-        </div>
-        
-        <div class="form-row">
+
           <div class="form-group">
-            <label class="form-label">Cooldown (ms)</label>
-            <input 
-              type="number" 
+            <label class="form-label">${LABELS.LABEL_COOLDOWN}</label>
+            <input
+              type="number"
               class="form-input"
               .value=${String(this.formData.cooldown)}
               @input=${(e: Event) => this._handleFieldChange('cooldown', parseInt((e.target as HTMLInputElement).value) || 0)}
             />
           </div>
-          
+
           <div class="form-group">
-            <label class="form-checkbox">
-              <input 
+            <div class="form-checkbox">
+              <input
                 type="checkbox"
+                id="enabled"
                 .checked=${this.formData.enabled}
                 @change=${(e: Event) => this._handleFieldChange('enabled', (e.target as HTMLInputElement).checked)}
               />
-              <span>Enabled</span>
-            </label>
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label">Tags</label>
-          <div class="tags-input">
-            ${this.formData.tags.map(tag => html`
-              <span class="tag">
-                ${tag}
-                <span class="tag-remove" @click=${() => this._removeTag(tag)}>×</span>
-              </span>
-            `)}
-            <input 
-              type="text" 
-              class="tag-input"
-              placeholder="Add tag..."
-              @keydown=${this._handleTagInput}
-            />
+              <label for="enabled">${LABELS.LABEL_ENABLED}</label>
+            </div>
           </div>
         </div>
       </div>
+
+      ${when(doError, () => html`<div class="validation-error" style="margin-bottom: 16px;">${doError}</div>`)}
     `;
   }
 
@@ -621,126 +446,138 @@ export class RuleForm extends LitElement {
     return html`
       <div class="form-section">
         <div class="form-section-title">
-          Conditions
-          <button class="btn btn-sm btn-secondary" @click=${this._addCondition}>+ Add</button>
+          ${LABELS.SECTION_CONDITIONS}
+          <button class="btn btn-sm btn-secondary" @click=${this._addCondition}>
+            ${iconPlus('sm')} ${LABELS.ADD_CONDITION}
+          </button>
         </div>
-        
-        <div class="condition-list">
-          ${conditions.map((cond, i) => html`
-            <div class="condition-item">
-              <input 
-                type="text" 
-                class="form-input"
-                placeholder="Field (e.g., data.amount)"
-                .value=${cond.field}
-                @input=${(e: Event) => this._updateCondition(i, 'field', (e.target as HTMLInputElement).value)}
-              />
-              
-              <select 
-                class="form-select"
-                .value=${cond.operator}
-                @change=${(e: Event) => this._updateCondition(i, 'operator', (e.target as HTMLSelectElement).value)}
-              >
-                ${COMPARISON_OPERATORS.map(op => html`
-                  <option value=${op.value}>${op.label}</option>
-                `)}
-              </select>
-              
-              <input 
-                type="text" 
-                class="form-input condition-value"
-                placeholder="Value"
-                .value=${String(cond.value ?? '')}
-                @input=${(e: Event) => this._updateCondition(i, 'value', (e.target as HTMLInputElement).value)}
-              />
-              
-              <button class="icon-btn" @click=${() => this._removeCondition(i)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
-          `)}
-        </div>
+
+        ${when(conditions.length > 0, () => html`
+          <div class="condition-list">
+            ${map(conditions, (condition, index) => html`
+              <div class="condition-item">
+                <input
+                  type="text"
+                  class="form-input"
+                  .value=${condition.field}
+                  @input=${(e: Event) => this._updateCondition(index, 'field', (e.target as HTMLInputElement).value)}
+                  placeholder="Field"
+                />
+                <select
+                  class="form-select"
+                  .value=${condition.operator || 'EQ'}
+                  @change=${(e: Event) => this._updateCondition(index, 'operator', (e.target as HTMLSelectElement).value)}
+                >
+                  ${map(OPERATORS, (op) => html`
+                    <option value=${op.value}>${op.label}</option>
+                  `)}
+                </select>
+                <input
+                  type="text"
+                  class="form-input condition-value"
+                  .value=${condition.value ?? ''}
+                  @input=${(e: Event) => this._updateCondition(index, 'value', (e.target as HTMLInputElement).value)}
+                  placeholder="Value"
+                />
+                <button class="icon-btn" @click=${() => this._removeCondition(index)}>
+                  ${iconX('sm', 'danger')}
+                </button>
+              </div>
+            `)}
+          </div>
+        `)}
       </div>
     `;
   }
 
   private _renderActionsSection() {
     const actions = this._getActionsList();
-    const actionTypes = this.availableActions.split(',').map(s => s.trim());
 
     return html`
       <div class="form-section">
         <div class="form-section-title">
-          Actions
-          <button class="btn btn-sm btn-secondary" @click=${this._addAction}>+ Add</button>
+          ${LABELS.SECTION_ACTIONS}
+          <button class="btn btn-sm btn-secondary" @click=${this._addAction}>
+            ${iconPlus('sm')} ${LABELS.ADD_ACTION}
+          </button>
         </div>
+
+        ${when(actions.length > 0, () => html`
+          <div class="action-list">
+            ${map(actions, (action, index) => html`
+              <div class="action-item">
+                <select
+                  class="form-select"
+                  .value=${action.type || ''}
+                  @change=${(e: Event) => this._updateAction(index, 'type', (e.target as HTMLSelectElement).value)}
+                >
+                  <option value="">Select action...</option>
+                  ${map(ACTION_TYPES, (act) => html`
+                    <option value=${act.value}>${act.label}</option>
+                  `)}
+                </select>
+                <textarea
+                  class="form-textarea"
+                  style="flex: 2"
+                  .value=${JSON.stringify(action.params || {}, null, 2)}
+                  @input=${(e: Event) => {
+                    try {
+                      const value = JSON.parse((e.target as HTMLTextAreaElement).value);
+                      this._updateAction(index, 'params', value);
+                    } catch {}
+                  }}
+                  placeholder='{"key": "value"}'
+                  rows="2"
+                ></textarea>
+                <input
+                  type="number"
+                  class="form-input"
+                  style="width: 80px"
+                  .value=${String(action.delay || 0)}
+                  @input=${(e: Event) => this._updateAction(index, 'delay', parseInt((e.target as HTMLInputElement).value) || 0)}
+                  placeholder="Delay"
+                  title="Delay (ms)"
+                />
+                <button class="icon-btn" @click=${() => this._removeAction(index)}>
+                  ${iconX('sm', 'danger')}
+                </button>
+              </div>
+            `)}
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
+  private _renderTagsSection() {
+    return html`
+      <div class="form-section">
+        <div class="form-section-title">${LABELS.SECTION_TAGS}</div>
         
-        ${when(this._getFieldError('do'), (err: string) => html`<div class="validation-error">${err}</div>`)}
-        
-        <div class="action-list">
-          ${actions.map((action, i) => html`
-            <div class="action-item">
-              <select 
-                class="form-select"
-                .value=${action.type ?? ''}
-                @change=${(e: Event) => this._updateAction(i, 'type', (e.target as HTMLSelectElement).value)}
-              >
-                <option value="">Select action type...</option>
-                ${actionTypes.map((type: string) => html`
-                  <option value=${type}>${type}</option>
-                `)}
-              </select>
-              
-              <input 
-                type="text" 
-                class="form-input"
-                placeholder="Params (JSON)"
-                .value=${action.params ? JSON.stringify(action.params) : ''}
-                @input=${(e: Event) => {
-                  try {
-                    const params = JSON.parse((e.target as HTMLInputElement).value);
-                    this._updateAction(i, 'params', params);
-                  } catch {}
-                }}
-              />
-              
-              <input 
-                type="number" 
-                class="form-input"
-                style="max-width: 80px"
-                placeholder="Delay"
-                .value=${String(action.delay ?? '')}
-                @input=${(e: Event) => this._updateAction(i, 'delay', parseInt((e.target as HTMLInputElement).value) || undefined)}
-              />
-              
-              <input 
-                type="number" 
-                class="form-input"
-                style="max-width: 80px"
-                placeholder="%"
-                min="0"
-                max="100"
-                .value=${String(action.probability ?? '')}
-                @input=${(e: Event) => this._updateAction(i, 'probability', parseInt((e.target as HTMLInputElement).value) || undefined)}
-              />
-              
-              <button class="icon-btn" @click=${() => this._removeAction(i)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
+        <div class="tags-input">
+          ${map(this.formData.tags, (tag) => html`
+            <span class="tag">
+              ${tag}
+              <span class="tag-remove" @click=${() => this._removeTag(tag)}>×</span>
+            </span>
           `)}
-          
-          ${when(actions.length === 0, () => html`
-            <div style="color: var(--text-secondary); font-size: 14px; padding: 12px;">
-              No actions defined. Add at least one action.
-            </div>
-          `)}
+          <input
+            type="text"
+            class="tag-input"
+            @keydown=${this._handleTagInput}
+            placeholder=${LABELS.PLACEHOLDER_TAG_INPUT}
+          />
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderPreview() {
+    return html`
+      <div class="form-section">
+        <div class="form-section-title">${LABELS.SECTION_PREVIEW}</div>
+        <div class="preview-section">
+          <pre class="preview-code">${this._yamlContent}</pre>
         </div>
       </div>
     `;

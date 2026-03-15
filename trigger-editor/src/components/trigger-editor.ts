@@ -18,6 +18,34 @@ import type {
 import { RuleBuilder } from '../builder.js';
 import { RuleExporter } from '../exporter.js';
 
+// Import constants for magic strings
+import {
+  COLORS,
+  SIZES,
+  TYPOGRAPHY,
+  ANIMATION,
+  LABELS,
+  CLASS_NAMES,
+  EVENTS,
+  VALIDATION_MESSAGES,
+} from '../constants.js';
+
+// Import enums
+import { ValidationSeverity } from '../enums.js';
+
+// Import styles
+import {
+  baseComponentStyles,
+  buttonStyles,
+  iconButtonStyles,
+  toolbarStyles,
+  editorStyles,
+  combineStyles,
+} from '../styles.js';
+
+// Import icons
+import { iconPlus, iconFile, iconCopy, iconDownload, iconCheck, iconX, iconEye, iconEyeOff } from '../icons.js';
+
 // Import sub-components
 import './rule-list.js';
 import './rule-form.js';
@@ -46,83 +74,53 @@ import type { RuleForm } from './rule-form.js';
  */
 @customElement('trigger-editor')
 export class TriggerEditor extends LitElement {
-  static override styles = css`
-    :host {
-      display: block;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      --primary-color: #2563eb;
-      --primary-hover: #1d4ed8;
-      --background: #ffffff;
-      --surface: #f8fafc;
-      --border: #e2e8f0;
-      --text: #1e293b;
-      --text-secondary: #64748b;
-      --radius: 6px;
-    }
+  // Combine all styles using the styles utility
+  static override styles = combineStyles(
+    baseComponentStyles,
+    buttonStyles,
+    iconButtonStyles,
+    toolbarStyles,
+    editorStyles,
+    css`
+      .btn {
+        transition: all 0.15s ease;
+      }
 
-    :host([darkmode]) {
-      --background: #1e293b;
-      --surface: #334155;
-      --border: #475569;
-      --text: #f1f5f9;
-      --text-secondary: #94a3b8;
-    }
+      .preview-section {
+        margin-top: 16px;
+        padding: 12px;
+        background: #1e1e1e;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
 
-    .editor {
-      background: var(--background);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
+      .preview-code {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 12px;
+        color: #d4d4d4;
+        white-space: pre;
+        margin: 0;
+      }
 
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      padding: 12px 16px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      align-items: center;
-      flex-wrap: wrap;
-    }
+      .copied-toast {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        background: #16a34a;
+        color: #ffffff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        z-index: 2000;
+        animation: fadeIn 0.2s ease;
+      }
 
-    .toolbar-title {
-      font-weight: 600;
-      color: var(--text);
-      margin-right: auto;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 12px;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .btn-primary {
-      background: var(--primary-color);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-hover);
-    }
-
-    .btn-secondary {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .btn-secondary:hover {
-      background: var(--border);
-    }
-  `;
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    `
+  );
 
   // --- Properties ---
 
@@ -151,6 +149,9 @@ export class TriggerEditor extends LitElement {
 
   @state()
   private _showYamlPreview = false;
+
+  @state()
+  private _showCopiedToast = false;
 
   // --- Query ---
 
@@ -189,7 +190,7 @@ export class TriggerEditor extends LitElement {
    */
   addRule(rule: TriggerRule): void {
     this._rules = [...this._rules, rule];
-    this.dispatchEvent(new CustomEvent('rule-added', { 
+    this.dispatchEvent(new CustomEvent(EVENTS.RULE_ADDED, { 
       detail: rule,
       bubbles: true,
       composed: true
@@ -205,7 +206,7 @@ export class TriggerEditor extends LitElement {
     if (!oldRule) return;
 
     this._rules = this._rules.map(r => r.id === oldId ? newRule : r);
-    this.dispatchEvent(new CustomEvent('rule-updated', { 
+    this.dispatchEvent(new CustomEvent(EVENTS.RULE_UPDATED, { 
       detail: { old: oldRule, new: newRule },
       bubbles: true,
       composed: true
@@ -221,7 +222,7 @@ export class TriggerEditor extends LitElement {
     if (!rule) return;
 
     this._rules = this._rules.filter(r => r.id !== id);
-    this.dispatchEvent(new CustomEvent('rule-deleted', { 
+    this.dispatchEvent(new CustomEvent(EVENTS.RULE_DELETED, { 
       detail: rule,
       bubbles: true,
       composed: true
@@ -262,7 +263,7 @@ export class TriggerEditor extends LitElement {
    */
   exportYaml(): string {
     const yaml = RuleExporter.toCleanYaml(this._rules);
-    this.dispatchEvent(new CustomEvent('rules-exported', { 
+    this.dispatchEvent(new CustomEvent(EVENTS.RULES_EXPORTED, { 
       detail: { rules: this._rules, format: 'yaml' },
       bubbles: true,
       composed: true
@@ -275,7 +276,7 @@ export class TriggerEditor extends LitElement {
    */
   exportJson(): string {
     const json = RuleExporter.toCleanJson(this._rules);
-    this.dispatchEvent(new CustomEvent('rules-exported', { 
+    this.dispatchEvent(new CustomEvent(EVENTS.RULES_EXPORTED, { 
       detail: { rules: this._rules, format: 'json' },
       bubbles: true,
       composed: true
@@ -293,7 +294,7 @@ export class TriggerEditor extends LitElement {
       allErrors.push(...errors);
     }
     if (allErrors.length > 0) {
-      this.dispatchEvent(new CustomEvent('validation-error', { 
+      this.dispatchEvent(new CustomEvent(EVENTS.VALIDATION_ERROR, { 
         detail: allErrors,
         bubbles: true,
         composed: true
@@ -346,21 +347,37 @@ export class TriggerEditor extends LitElement {
     const errors: EditorValidationError[] = [];
 
     if (!rule.id?.trim()) {
-      errors.push({ field: 'id', message: 'Rule ID is required', severity: 'error' });
+      errors.push({ 
+        field: 'id', 
+        message: VALIDATION_MESSAGES.RULE_ID_REQUIRED, 
+        severity: ValidationSeverity.ERROR 
+      });
     }
 
     if (!rule.on?.trim()) {
-      errors.push({ field: 'on', message: 'Event trigger is required', severity: 'error' });
+      errors.push({ 
+        field: 'on', 
+        message: VALIDATION_MESSAGES.EVENT_REQUIRED, 
+        severity: ValidationSeverity.ERROR 
+      });
     }
 
     if (!rule.do) {
-      errors.push({ field: 'do', message: 'At least one action is required', severity: 'error' });
+      errors.push({ 
+        field: 'do', 
+        message: VALIDATION_MESSAGES.ACTION_REQUIRED, 
+        severity: ValidationSeverity.ERROR 
+      });
     }
 
     // Check for duplicate IDs
     const duplicates = this._rules.filter(r => r.id === rule.id && r !== rule);
     if (duplicates.length > 0) {
-      errors.push({ field: 'id', message: 'Rule ID already exists', severity: 'error' });
+      errors.push({ 
+        field: 'id', 
+        message: VALIDATION_MESSAGES.DUPLICATE_ID, 
+        severity: ValidationSeverity.ERROR 
+      });
     }
 
     // Custom validation
@@ -372,7 +389,7 @@ export class TriggerEditor extends LitElement {
   }
 
   private _dispatchChange(): void {
-    this.dispatchEvent(new CustomEvent('rules-changed', { 
+    this.dispatchEvent(new CustomEvent(EVENTS.RULES_CHANGED, { 
       detail: this._rules,
       bubbles: true,
       composed: true
@@ -393,8 +410,8 @@ export class TriggerEditor extends LitElement {
       errors = this._validateRule(rule);
     } catch (e) {
       // Catch builder validation errors (like "Rule 'do' action is required")
-      const message = e instanceof Error ? e.message : 'Invalid rule configuration';
-      errors = [{ field: 'do', message, severity: 'error' }];
+      const message = e instanceof Error ? e.message : VALIDATION_MESSAGES.INVALID_CONFIG;
+      errors = [{ field: 'do', message, severity: ValidationSeverity.ERROR }];
     }
     
     this._validationErrors = errors;
@@ -457,6 +474,39 @@ export class TriggerEditor extends LitElement {
     return builder.build();
   }
 
+  private _toggleYamlPreview(): void {
+    this._showYamlPreview = !this._showYamlPreview;
+  }
+
+  private async _copyYaml(): Promise<void> {
+    const yaml = this.exportYaml();
+    try {
+      await navigator.clipboard.writeText(yaml);
+      this._showCopiedToast = true;
+      setTimeout(() => {
+        this._showCopiedToast = false;
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }
+
+  private _handleRuleEdit(e: CustomEvent<TriggerRule>): void {
+    this.openEditRuleModal(e.detail);
+  }
+
+  private _handleRuleDelete(e: CustomEvent<TriggerRule>): void {
+    this.deleteRule(e.detail.id);
+  }
+
+  private _getYamlPreview(): string {
+    try {
+      return RuleExporter.toCleanYaml(this._rules);
+    } catch {
+      return '';
+    }
+  }
+
   // --- Render ---
 
   override render() {
@@ -472,38 +522,46 @@ export class TriggerEditor extends LitElement {
         ></rule-list>
       </div>
       
+      ${when(this._showYamlPreview, () => this._renderYamlPreview())}
       ${when(this._showModal, () => this._renderModal())}
+      ${when(this._showCopiedToast, () => html`
+        <div class="copied-toast">
+          ${iconCheck('sm')} Copied to clipboard!
+        </div>
+      `)}
     `;
   }
 
   private _renderToolbar() {
     return html`
       <div class="toolbar" part="toolbar">
-        <span class="toolbar-title">Trigger Rules (${this._rules.length})</span>
+        <span class="toolbar-title">${LABELS.SECTION_BASIC} (${this._rules.length})</span>
         
         <button class="btn btn-primary" @click=${this.openNewRuleModal}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          New Rule
+          ${iconPlus('md')} ${LABELS.NEW_RULE}
         </button>
         
         <button class="btn btn-secondary" @click=${this._toggleYamlPreview}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-          ${this._showYamlPreview ? 'Hide' : 'Preview'} YAML
+          ${this._showYamlPreview ? iconEyeOff('md') : iconEye('md')} 
+          ${this._showYamlPreview ? LABELS.HIDE : LABELS.PREVIEW} YAML
         </button>
         
         <button class="btn btn-secondary" @click=${this._copyYaml}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          Copy YAML
+          ${iconCopy('md')} ${LABELS.COPY}
         </button>
+        
+        <button class="btn btn-secondary" @click=${this._downloadYaml}>
+          ${iconDownload('md')} Download
+        </button>
+      </div>
+    `;
+  }
+
+  private _renderYamlPreview() {
+    const yaml = this._getYamlPreview();
+    return html`
+      <div class="preview-section">
+        <pre class="preview-code">${yaml}</pre>
       </div>
     `;
   }
@@ -511,43 +569,36 @@ export class TriggerEditor extends LitElement {
   private _renderModal() {
     return html`
       <editor-modal
-        part="modal"
         .open=${true}
+        .modalTitle=${this._editingRule ? LABELS.EDIT_RULE_TITLE : LABELS.NEW_RULE_TITLE}
+        .confirmText=${LABELS.SAVE}
         .isEdit=${!!this._editingRule}
-        ?darkmode=${this.darkmode}
         @modal-close=${this.closeModal}
         @modal-confirm=${this._handleSave}
       >
         <rule-form
-          part="form"
           .formData=${this._formData}
           .validationErrors=${this._validationErrors}
           .showYamlPreview=${this._showYamlPreview}
-          .availableActions=${this.config?.availableActions ?? 'log,http,notify,transform,delay,set_state'}
-          .availableEvents=${this.config?.availableEvents ?? ''}
+          .availableActions=${this.config?.availableActions}
+          .availableEvents=${this.config?.availableEvents}
           @form-change=${this._handleFormChange}
         ></rule-form>
       </editor-modal>
     `;
   }
 
-  // --- Event Handlers ---
-
-  private _handleRuleEdit(e: CustomEvent<TriggerRule>): void {
-    this.openEditRuleModal(e.detail);
-  }
-
-  private _handleRuleDelete(e: CustomEvent<TriggerRule>): void {
-    this.deleteRule(e.detail.id);
-  }
-
-  private _toggleYamlPreview(): void {
-    this._showYamlPreview = !this._showYamlPreview;
-  }
-
-  private _copyYaml(): void {
+  private _downloadYaml(): void {
     const yaml = this.exportYaml();
-    navigator.clipboard.writeText(yaml);
+    const blob = new Blob([yaml], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'trigger-rules.yaml';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 
