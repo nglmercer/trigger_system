@@ -18,8 +18,8 @@ import { TriggerEngine } from "./trigger-engine";
 import { ActionRegistry } from "./action-registry";
 import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
-import { EngineUtils } from "./engine-utils";
 import { DebugMessages } from "./constants";
+//import { EngineUtils } from "./engine-utils";
 
 export class RuleEngine extends TriggerEngine {
   private actionRegistry: ActionRegistry;
@@ -71,6 +71,10 @@ export class RuleEngine extends TriggerEngine {
    */
   protected override getStateContext(): Record<string, any> {
     return this.stateManager.getLiveProxy();
+  }
+  
+  get ActionRegistry(): ActionRegistry {
+    return this.actionRegistry;
   }
 }
 
