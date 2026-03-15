@@ -9,9 +9,14 @@ import { customElement, property } from 'lit/decorators.js';
 import type { IconName, IconSize, IconColor } from '../icons.js';
 import { ICONS, ICON_SIZES, ICON_COLORS } from '../icons.js';
 
+// Import shared styles
+import { baseComponentStyles } from '../styles.js';
+
 @customElement('editor-icon')
 export class IconComponent extends LitElement {
   static override styles = css`
+    ${baseComponentStyles}
+
     :host {
       display: inline-flex;
       align-items: center;
