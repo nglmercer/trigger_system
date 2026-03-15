@@ -4,7 +4,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "allowJs": true,
 
     // Bundler mode
@@ -25,14 +25,12 @@
     "declarationMap": true,
     "sourceMap": true,
 
-    // Lit
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
 
-    // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["./**/*.ts", "./**/*.tsx"]
 }

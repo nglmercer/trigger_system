@@ -7,7 +7,7 @@
  */
 
 import { serve } from "bun";
-import homepage from "./public/index.html";
+import homepage from "./index.html";
 
 const server = serve({
   // HTML routes - Bun automatically bundles <script> and <link> tags
