@@ -45,6 +45,9 @@ export class EditorModal extends LitElement {
   @property({ type: Boolean, reflect: true })
   open = false;
 
+  @property({ type: Boolean, reflect: true })
+  darkmode = false;
+
   @property({ type: String })
   modalTitle = '';
 

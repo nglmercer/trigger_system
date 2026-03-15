@@ -1,6 +1,7 @@
 /**
  * CSS Builder Utility
  * A fluent API for building LitElement CSS in a more maintainable way
+ * Uses CSS custom properties for theming with prefers-color-scheme support
  */
 
 import { css, type CSSResultGroup } from 'lit';
@@ -9,8 +10,34 @@ import { css, type CSSResultGroup } from 'lit';
 export * from './constants.js';
 
 // ======================
+// CSS Custom Properties (Theme Variables)
+// ======================
+
+/**
+ * CSS Variables for theming:
+ * 
+ * Light theme:
+ *   --color-primary: #2563eb
+ *   --color-primary-hover: #1d4ed8
+ *   --color-success: #16a34a
+ *   --color-danger: #dc2626
+ *   --color-text: #1e293b
+ *   --color-text-secondary: #64748b
+ *   --color-border: #e2e8f0
+ *   --color-background: #ffffff
+ *   --color-surface: #f8fafc
+ * 
+ * Dark theme (prefers-color-scheme: dark or [darkmode]):
+ *   --color-text: #f1f5f9
+ *   --color-text-secondary: #94a3b8
+ *   --color-border: #475569
+ *   --color-background: #1e293b
+ *   --color-surface: #334155
+ */
+
+// ======================
 // Pre-built Style Mixins
-// These use inline values to avoid TypeScript issues with Lit's css tag
+// These use CSS variables for proper light/dark theme support
 // ======================
 
 /**
@@ -31,22 +58,22 @@ export const buttonStyles: CSSResultGroup = css`
   }
 
   .btn-primary {
-    background: #2563eb;
+    background: var(--color-primary, #2563eb);
     color: #ffffff;
   }
 
   .btn-primary:hover {
-    background: #1d4ed8;
+    background: var(--color-primary-hover, #1d4ed8);
   }
 
   .btn-secondary {
-    background: var(--surface, #f8fafc);
-    color: var(--text, #1e293b);
-    border: 1px solid var(--border, #e2e8f0);
+    background: var(--color-surface, #f8fafc);
+    color: var(--color-text, #1e293b);
+    border: 1px solid var(--color-border, #e2e8f0);
   }
 
   .btn-secondary:hover {
-    background: var(--border, #e2e8f0);
+    background: var(--color-border, #e2e8f0);
   }
 
   .btn-sm {
@@ -55,7 +82,7 @@ export const buttonStyles: CSSResultGroup = css`
   }
 
   .btn-danger {
-    background: #dc2626;
+    background: var(--color-danger, #dc2626);
     color: #ffffff;
   }
 
@@ -78,13 +105,13 @@ export const iconButtonStyles: CSSResultGroup = css`
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-secondary, #64748b);
+    color: var(--color-text-secondary, #64748b);
     transition: all 0.15s ease;
   }
 
   .icon-btn:hover {
-    background: var(--surface, #f8fafc);
-    color: var(--text, #1e293b);
+    background: var(--color-surface, #f8fafc);
+    color: var(--color-text, #1e293b);
   }
 `;
 
@@ -96,11 +123,11 @@ export const formInputStyles: CSSResultGroup = css`
   .form-select,
   .form-textarea {
     padding: 8px 12px;
-    border: 1px solid var(--border, #e2e8f0);
+    border: 1px solid var(--color-border, #e2e8f0);
     border-radius: 6px;
     font-size: 14px;
-    background: var(--background, #ffffff);
-    color: var(--text, #1e293b);
+    background: var(--color-background, #ffffff);
+    color: var(--color-text, #1e293b);
     transition: all 0.15s ease;
   }
 
@@ -108,7 +135,7 @@ export const formInputStyles: CSSResultGroup = css`
   .form-select:focus,
   .form-textarea:focus {
     outline: none;
-    border-color: #2563eb;
+    border-color: var(--color-primary, #2563eb);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 
@@ -125,7 +152,7 @@ export const formLabelStyles: CSSResultGroup = css`
   .form-label {
     font-size: 12px;
     font-weight: 500;
-    color: var(--text, #1e293b);
+    color: var(--color-text, #1e293b);
   }
 
   .form-group {
@@ -150,7 +177,7 @@ export const modalStyles: CSSResultGroup = css`
   }
 
   .modal {
-    background: var(--background, #ffffff);
+    background: var(--color-background, #ffffff);
     border-radius: 8px;
     box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     width: 90%;
@@ -166,13 +193,13 @@ export const modalStyles: CSSResultGroup = css`
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border, #e2e8f0);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
   }
 
   .modal-title {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text, #1e293b);
+    color: var(--color-text, #1e293b);
   }
 
   .modal-body {
@@ -186,37 +213,62 @@ export const modalStyles: CSSResultGroup = css`
     gap: 8px;
     justify-content: flex-end;
     padding: 16px 20px;
-    border-top: 1px solid var(--border, #e2e8f0);
+    border-top: 1px solid var(--color-border, #e2e8f0);
   }
 `;
 
 /**
  * Base component styles (font family, colors)
+ * This defines the CSS custom properties for theming
+ * Supports: light theme, dark theme via [darkmode] attribute or prefers-color-scheme
  */
 export const baseComponentStyles: CSSResultGroup = css`
   :host {
     display: block;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    --text: #1e293b;
-    --border: #e2e8f0;
-    --background: #ffffff;
-    --surface: #f8fafc;
-    --text-secondary: #64748b;
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --success-color: #16a34a;
-    --danger-color: #dc2626;
+    
+    /* Light theme (default) */
+    --color-text: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-border: #e2e8f0;
+    --color-background: #ffffff;
+    --color-surface: #f8fafc;
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-success: #16a34a;
+    --color-danger: #dc2626;
     --radius: 6px;
   }
 
+  /* Dark theme via attribute on host */
   :host([darkmode]) {
-    --text: #f1f5f9;
-    --border: #475569;
-    --background: #1e293b;
-    --surface: #334155;
-    --text-secondary: #94a3b8;
+    --color-text: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-border: #475569;
+    --color-background: #1e293b;
+    --color-surface: #334155;
   }
-`;
+
+  /* Dark theme via attribute on any ancestor (for nested components) */
+  :host-context([darkmode]) {
+    --color-text: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-border: #475569;
+    --color-background: #1e293b;
+    --color-surface: #334155;
+  }
+
+  /* Auto dark mode based on system preference */
+  @media (prefers-color-scheme: dark) {
+    :host {
+      --color-text: #f1f5f9;
+      --color-text-secondary: #94a3b8;
+      --color-border: #475569;
+      --color-background: #1e293b;
+      --color-surface: #334155;
+    }
+  }
+`; // End of baseComponentStyles
 
 /**
  * List styles
@@ -231,7 +283,7 @@ export const listStyles: CSSResultGroup = css`
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border, #e2e8f0);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
     gap: 12px;
   }
 
@@ -246,7 +298,7 @@ export const listStyles: CSSResultGroup = css`
 
   .rule-id {
     font-weight: 600;
-    color: var(--text, #1e293b);
+    color: var(--color-text, #1e293b);
     font-size: 14px;
   }
 
@@ -254,12 +306,12 @@ export const listStyles: CSSResultGroup = css`
     display: flex;
     gap: 8px;
     font-size: 12px;
-    color: var(--text-secondary, #64748b);
+    color: var(--color-text-secondary, #64748b);
     margin-top: 4px;
   }
 
   .rule-event {
-    background: var(--primary-color, #2563eb);
+    background: var(--color-primary, #2563eb);
     color: #ffffff;
     padding: 2px 6px;
     border-radius: 3px;
@@ -271,14 +323,14 @@ export const listStyles: CSSResultGroup = css`
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--success-color, #16a34a);
+    background: var(--color-success, #16a34a);
   }
 
   .rule-disabled {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--text-secondary, #64748b);
+    background: var(--color-text-secondary, #64748b);
   }
 
   .rule-actions {
@@ -294,7 +346,7 @@ export const emptyStateStyles: CSSResultGroup = css`
   .empty-state {
     padding: 48px 20px;
     text-align: center;
-    color: var(--text-secondary, #64748b);
+    color: var(--color-text-secondary, #64748b);
   }
 
   .empty-state-icon {
@@ -315,7 +367,7 @@ export const formSectionStyles: CSSResultGroup = css`
   .form-section-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text, #1e293b);
+    color: var(--color-text, #1e293b);
     margin-bottom: 12px;
     display: flex;
     align-items: center;
@@ -358,7 +410,7 @@ export const conditionListStyles: CSSResultGroup = css`
     gap: 8px;
     align-items: flex-start;
     padding: 12px;
-    background: var(--surface, #f8fafc);
+    background: var(--color-surface, #f8fafc);
     border-radius: 6px;
     flex-wrap: wrap;
   }
@@ -386,7 +438,7 @@ export const tagsInputStyles: CSSResultGroup = css`
     flex-wrap: wrap;
     gap: 4px;
     padding: 4px;
-    border: 1px solid var(--border, #e2e8f0);
+    border: 1px solid var(--color-border, #e2e8f0);
     border-radius: 6px;
     min-height: 40px;
   }
@@ -396,7 +448,7 @@ export const tagsInputStyles: CSSResultGroup = css`
     align-items: center;
     gap: 4px;
     padding: 2px 8px;
-    background: var(--primary-color, #2563eb);
+    background: var(--color-primary, #2563eb);
     color: #ffffff;
     border-radius: 3px;
     font-size: 12px;
@@ -418,7 +470,7 @@ export const tagsInputStyles: CSSResultGroup = css`
     min-width: 80px;
     font-size: 14px;
     background: transparent;
-    color: var(--text, #1e293b);
+    color: var(--color-text, #1e293b);
   }
 `;
 
@@ -427,7 +479,7 @@ export const tagsInputStyles: CSSResultGroup = css`
  */
 export const validationErrorStyles: CSSResultGroup = css`
   .validation-error {
-    color: var(--danger-color, #dc2626);
+    color: var(--color-danger, #dc2626);
     font-size: 12px;
     margin-top: 4px;
   }
@@ -440,7 +492,7 @@ export const previewStyles: CSSResultGroup = css`
   .preview-section {
     margin-top: 16px;
     padding: 12px;
-    background: #1e1e1e;
+    background: var(--color-surface, #1e1e1e);
     border-radius: 6px;
     overflow-x: auto;
   }
@@ -448,7 +500,7 @@ export const previewStyles: CSSResultGroup = css`
   .preview-code {
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 12px;
-    color: #d4d4d4;
+    color: var(--color-text, #d4d4d4);
     white-space: pre;
     margin: 0;
   }
@@ -462,15 +514,15 @@ export const toolbarStyles: CSSResultGroup = css`
     display: flex;
     gap: 8px;
     padding: 12px 16px;
-    background: var(--surface, #f8fafc);
-    border-bottom: 1px solid var(--border, #e2e8f0);
+    background: var(--color-surface, #f8fafc);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
     align-items: center;
     flex-wrap: wrap;
   }
 
   .toolbar-title {
     font-weight: 600;
-    color: var(--text, #1e293b);
+    color: var(--color-text, #1e293b);
     margin-right: auto;
   }
 `;
@@ -480,8 +532,8 @@ export const toolbarStyles: CSSResultGroup = css`
  */
 export const editorStyles: CSSResultGroup = css`
   .editor {
-    background: var(--background, #ffffff);
-    border: 1px solid var(--border, #e2e8f0);
+    background: var(--color-background, #ffffff);
+    border: 1px solid var(--color-border, #e2e8f0);
     border-radius: 6px;
     overflow: hidden;
   }
@@ -495,5 +547,5 @@ export const editorStyles: CSSResultGroup = css`
  * Combine multiple CSSResultGroup into one
  */
 export function combineStyles(...styles: CSSResultGroup[]): CSSResultGroup {
-  return css`${styles}`;
+  return styles.flat();
 }

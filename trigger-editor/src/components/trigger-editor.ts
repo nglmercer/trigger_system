@@ -89,7 +89,7 @@ export class TriggerEditor extends LitElement {
       .preview-section {
         margin-top: 16px;
         padding: 12px;
-        background: #1e1e1e;
+        background: var(--color-surface, #1e1e1e);
         border-radius: 6px;
         overflow-x: auto;
       }
@@ -97,7 +97,7 @@ export class TriggerEditor extends LitElement {
       .preview-code {
         font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
         font-size: 12px;
-        color: #d4d4d4;
+        color: var(--color-text, #d4d4d4);
         white-space: pre;
         margin: 0;
       }
@@ -106,7 +106,7 @@ export class TriggerEditor extends LitElement {
         position: fixed;
         bottom: 16px;
         right: 16px;
-        background: #16a34a;
+        background: var(--color-success, #16a34a);
         color: #ffffff;
         padding: 8px 12px;
         border-radius: 6px;
@@ -573,6 +573,7 @@ export class TriggerEditor extends LitElement {
         .modalTitle=${this._editingRule ? LABELS.EDIT_RULE_TITLE : LABELS.NEW_RULE_TITLE}
         .confirmText=${LABELS.SAVE}
         .isEdit=${!!this._editingRule}
+        ?darkmode=${this.darkmode}
         @modal-close=${this.closeModal}
         @modal-confirm=${this._handleSave}
       >
@@ -582,6 +583,7 @@ export class TriggerEditor extends LitElement {
           .showYamlPreview=${this._showYamlPreview}
           .availableActions=${this.config?.availableActions}
           .availableEvents=${this.config?.availableEvents}
+          ?darkmode=${this.darkmode}
           @form-change=${this._handleFormChange}
         ></rule-form>
       </editor-modal>

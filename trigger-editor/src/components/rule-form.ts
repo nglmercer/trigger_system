@@ -84,6 +84,9 @@ export class RuleForm extends LitElement {
     `
   );
 
+  @property({ type: Boolean, reflect: true })
+  darkmode = false;
+
   @property({ type: Object })
   formData: RuleFormData = this._createEmpty();
 
@@ -102,6 +105,22 @@ export class RuleForm extends LitElement {
   @state()
   private _yamlContent = '';
 
+  @state()
+  public commonsFields: string[] = ['data'];
+  // --- Computed Properties ---
+
+  private get _availableEventsList(): string[] {
+    if (!this.availableEvents) return [];
+    return this.availableEvents.split(',').map(e => e.trim()).filter(e => e);
+  }
+
+  // Common fields for condition dropdown
+  public get _commonFields(): string[] {
+    return this.commonsFields;
+  }
+  public set _commonFields(value: string[]) {
+    this.commonsFields = value;
+  }
   // --- Lifecycle ---
 
   override willUpdate(changedProps: Map<string, unknown>): void {
@@ -331,6 +350,169 @@ export class RuleForm extends LitElement {
     return this.validationErrors.find(e => e.field === field)?.message;
   }
 
+  // Render action params based on action type
+  private _renderActionParams(action: Action, index: number): unknown {
+    const type = action.type;
+    const params = action.params || {};
+    
+    const updateParam = (key: string, value: any) => {
+      this._updateAction(index, 'params', { ...params, [key]: value });
+    };
+
+    switch (type) {
+      case 'log':
+        return html`
+          <input
+            type="text"
+            class="form-input"
+            style="flex: 2"
+            .value=${params.message || ''}
+            @input=${(e: Event) => updateParam('message', (e.target as HTMLInputElement).value)}
+            placeholder="Log message"
+          />
+        `;
+      
+      case 'http':
+        return html`
+          <div style="display: flex; gap: 8px; flex: 2;">
+            <select
+              class="form-select"
+              style="width: 100px"
+              .value=${params.method || 'GET'}
+              @change=${(e: Event) => updateParam('method', (e.target as HTMLSelectElement).value)}
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+              <option value="PATCH">PATCH</option>
+            </select>
+            <input
+              type="text"
+              class="form-input"
+              style="flex: 1"
+              .value=${params.url || ''}
+              @input=${(e: Event) => updateParam('url', (e.target as HTMLInputElement).value)}
+              placeholder="URL"
+            />
+          </div>
+        `;
+      
+      case 'notify':
+        return html`
+          <div style="display: flex; gap: 8px; flex: 2;">
+            <select
+              class="form-select"
+              style="width: 100px"
+              .value=${params.channel || 'email'}
+              @change=${(e: Event) => updateParam('channel', (e.target as HTMLSelectElement).value)}
+            >
+              <option value="email">Email</option>
+              <option value="sms">SMS</option>
+              <option value="push">Push</option>
+              <option value="webhook">Webhook</option>
+            </select>
+            <input
+              type="text"
+              class="form-input"
+              style="flex: 1"
+              .value=${params.message || ''}
+              @input=${(e: Event) => updateParam('message', (e.target as HTMLInputElement).value)}
+              placeholder="Message"
+            />
+          </div>
+        `;
+      
+      case 'delay':
+        return html`
+          <input
+            type="number"
+            class="form-input"
+            style="flex: 2"
+            .value=${String(params.ms || 1000)}
+            @input=${(e: Event) => updateParam('ms', parseInt((e.target as HTMLInputElement).value) || 0)}
+            placeholder="Milliseconds"
+          />
+        `;
+      
+      case 'set_state':
+        return html`
+          <div style="display: flex; gap: 8px; flex: 2;">
+            <input
+              type="text"
+              class="form-input"
+              style="flex: 1"
+              .value=${params.key || ''}
+              @input=${(e: Event) => updateParam('key', (e.target as HTMLInputElement).value)}
+              placeholder="Key"
+            />
+            <input
+              type="text"
+              class="form-input"
+              style="flex: 1"
+              .value=${params.value || ''}
+              @input=${(e: Event) => updateParam('value', (e.target as HTMLInputElement).value)}
+              placeholder="Value"
+            />
+          </div>
+        `;
+      
+      case 'transform':
+        return html`
+          <input
+            type="text"
+            class="form-input"
+            style="flex: 2"
+            .value=${params.expression || ''}
+            @input=${(e: Event) => updateParam('expression', (e.target as HTMLInputElement).value)}
+            placeholder="Transform expression"
+          />
+        `;
+      
+      case 'broadcast':
+      case 'emit':
+        return html`
+          <input
+            type="text"
+            class="form-input"
+            style="flex: 2"
+            .value=${params.event || ''}
+            @input=${(e: Event) => updateParam('event', (e.target as HTMLInputElement).value)}
+            placeholder="Event name"
+          />
+        `;
+      
+      case 'script':
+        return html`
+          <textarea
+            class="form-textarea"
+            style="flex: 2"
+            .value=${params.code || ''}
+            @input=${(e: Event) => updateParam('code', (e.target as HTMLTextAreaElement).value)}
+            placeholder="// JavaScript code"
+            rows="2"
+          ></textarea>
+        `;
+      
+      default:
+        return html`
+          <textarea
+            class="form-textarea"
+            style="flex: 2"
+            .value=${JSON.stringify(params, null, 2)}
+            @input=${(e: Event) => {
+              try {
+                const value = JSON.parse((e.target as HTMLTextAreaElement).value);
+                this._updateAction(index, 'params', value);
+              } catch {}
+            }}
+            placeholder='{"key": "value"}'
+            rows="2"
+          ></textarea>
+        `;
+    }
+  }
+
   // --- Render ---
 
   override render() {
@@ -379,13 +561,26 @@ export class RuleForm extends LitElement {
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">${LABELS.LABEL_EVENT} *</label>
-            <input
-              type="text"
-              class="form-input"
-              .value=${this.formData.on}
-              @input=${(e: Event) => this._handleFieldChange('on', (e.target as HTMLInputElement).value)}
-              placeholder="e.g., user.login"
-            />
+            ${when(this._availableEventsList.length > 0, () => html`
+              <select
+                class="form-select"
+                .value=${this.formData.on}
+                @change=${(e: Event) => this._handleFieldChange('on', (e.target as HTMLSelectElement).value)}
+              >
+                <option value="">Select event...</option>
+                ${map(this._availableEventsList, (event) => html`
+                  <option value=${event}>${event}</option>
+                `)}
+              </select>
+            `, () => html`
+              <input
+                type="text"
+                class="form-input"
+                .value=${this.formData.on}
+                @input=${(e: Event) => this._handleFieldChange('on', (e.target as HTMLInputElement).value)}
+                placeholder="e.g., user.login"
+              />
+            `)}
             ${when(onError, () => html`<div class="validation-error">${onError}</div>`)}
           </div>
 
@@ -456,13 +651,16 @@ export class RuleForm extends LitElement {
           <div class="condition-list">
             ${map(conditions, (condition, index) => html`
               <div class="condition-item">
-                <input
-                  type="text"
-                  class="form-input"
+                <select
+                  class="form-select"
                   .value=${condition.field}
-                  @input=${(e: Event) => this._updateCondition(index, 'field', (e.target as HTMLInputElement).value)}
-                  placeholder="Field"
-                />
+                  @change=${(e: Event) => this._updateCondition(index, 'field', (e.target as HTMLSelectElement).value)}
+                >
+                  <option value="">Select field...</option>
+                  ${map(this._commonFields, (field) => html`
+                    <option value=${field}>${field}</option>
+                  `)}
+                </select>
                 <select
                   class="form-select"
                   .value=${condition.operator || 'EQ'}
@@ -516,19 +714,7 @@ export class RuleForm extends LitElement {
                     <option value=${act.value}>${act.label}</option>
                   `)}
                 </select>
-                <textarea
-                  class="form-textarea"
-                  style="flex: 2"
-                  .value=${JSON.stringify(action.params || {}, null, 2)}
-                  @input=${(e: Event) => {
-                    try {
-                      const value = JSON.parse((e.target as HTMLTextAreaElement).value);
-                      this._updateAction(index, 'params', value);
-                    } catch {}
-                  }}
-                  placeholder='{"key": "value"}'
-                  rows="2"
-                ></textarea>
+                ${this._renderActionParams(action, index)}
                 <input
                   type="number"
                   class="form-input"

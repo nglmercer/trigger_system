@@ -5,11 +5,11 @@
  */
 
 // Import the trigger-editor from the built distribution
-import { TriggerEditor } from "../../dist/index.js";
+import { TriggerEditor } from "../../src/index.js";
 
 // Register the custom element (already done via @customElement decorator)
 // but we can explicitly import to ensure registration
-import "../../dist/index.js";
+import "../../src/index.js";
 
 // Initialize editor when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -32,7 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
         do: { type: "log", params: { message: "User logged in" } }
       }
     ],
-    darkMode: false,
     showYamlPreview: true,
     availableActions: "log,http,notify,transform,delay,set_state,webhook,email",
     availableEvents: "user.login,user.logout,user.signup,payment.received,payment.failed",

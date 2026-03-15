@@ -41,6 +41,9 @@ export class RuleList extends LitElement {
   @property({ type: Array })
   rules: TriggerRule[] = [];
 
+  @property({ type: Boolean, reflect: true })
+  darkmode = false;
+
   // --- Event Handlers ---
 
   private _emitEdit(rule: TriggerRule): void {
