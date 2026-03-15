@@ -213,7 +213,7 @@ describe("EngineUtils - interpolateParams", () => {
             message: "${vars.prefix} ${data.name}!"
         };
         
-        const result = EngineUtils.interpolateParams(params as any, context);
+        const result = EngineUtils.interpolateParams(params, context);
         expect(result.message).toBe("Hello World!");
     });
 
@@ -232,7 +232,7 @@ describe("EngineUtils - interpolateParams", () => {
             }
         };
         
-        const result = EngineUtils.interpolateParams(params as any, context);
+        const result = EngineUtils.interpolateParams(params, context);
         // Note: interpolateDeep returns the string with template literal, not the evaluated value
         // The string "${vars.config.timeout}" is returned as-is because it doesn't match the ${...} pattern exactly
         expect(result.settings).toBeDefined();
@@ -251,7 +251,7 @@ describe("EngineUtils - interpolateParams", () => {
             list: "${vars.items}"
         };
         
-        const result = EngineUtils.interpolateParams(params as any, context);
+        const result = EngineUtils.interpolateParams(params, context);
         // Array gets stringified to "a,b"
         expect(result.list).toBe("a,b");
     });

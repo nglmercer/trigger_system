@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trigger Editor - Demo</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎯 Trigger Editor</h1>
+      <p>A browser-based visual editor for Trigger System rules</p>
+    </header>
+    
+    <div class="editor-wrapper">
+      <trigger-editor id="editor"></trigger-editor>
+    </div>
+    
+    <div class="info">
+      <h3>Quick API Examples:</h3>
+      <pre>
+// Get all rules
+const rules = editor.getRules();
+
+// Add a rule programmatically
+editor.addRule({
+  id: 'welcome-rule',
+  name: 'Welcome Message',
+  on: 'user.signup',
+  enabled: true,
+  priority: 10,
+  do: { type: 'notify', params: { message: 'Welcome!' } }
+});
+
+// Export as YAML
+const yaml = editor.exportYaml();
+console.log(yaml);
+
+// Listen for events
+editor.addEventListener('rule-added', (e) => {
+  console.log('Rule added:', e.detail);
+});
+
+editor.addEventListener('rules-changed', (e) => {
+  console.log('Rules updated:', e.detail);
+});
+      </pre>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

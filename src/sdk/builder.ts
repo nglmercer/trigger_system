@@ -125,12 +125,17 @@ export class RuleBuilder {
     return this;
   }
 
+  withEnabled(enabled: boolean): this {
+    this.rule.enabled = enabled;
+    return this;
+  }
+
   on(event: string): this {
     this.rule.on = event;
     return this;
   }
 
-  if(field: string, operator: ComparisonOperator, value: ConditionValue): this {
+  if(field: string, operator: ComparisonOperator, value?: ConditionValue): this {
     if (!this.rule.if) {
       this.rule.if = { field, operator, value };
     } else if (Array.isArray(this.rule.if)) {

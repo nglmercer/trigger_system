@@ -11,6 +11,57 @@ export class RuleExporter {
     return YAML.stringify(data);
   }
 
+  /**
+   * Converts a rule or array of rules to a JSON string.
+   */
+  static toJson(rules: TriggerRule | TriggerRule[], pretty = true): string {
+    const data = Array.isArray(rules) ? rules : [rules];
+    return JSON.stringify(data, null, pretty ? 2 : 0);
+  }
+
+  /**
+   * Convert a single rule to a clean object (remove undefined/null)
+   */
+  static cleanRule(rule: TriggerRule): Record<string, unknown> {
+    const cleaned: Record<string, unknown> = {};
+    
+    // Required fields
+    cleaned.id = rule.id;
+    cleaned.on = rule.on;
+    cleaned.do = rule.do;
+    
+    // Optional fields (only include if truthy)
+    if (rule.name) cleaned.name = rule.name;
+    if (rule.description) cleaned.description = rule.description;
+    if (rule.priority !== undefined && rule.priority !== 0) cleaned.priority = rule.priority;
+    if (rule.enabled !== undefined && rule.enabled !== true) cleaned.enabled = rule.enabled;
+    if (rule.cooldown !== undefined && rule.cooldown !== 0) cleaned.cooldown = rule.cooldown;
+    if (rule.tags && rule.tags.length > 0) cleaned.tags = rule.tags;
+    if (rule.if) cleaned.if = rule.if;
+    
+    return cleaned;
+  }
+
+  /**
+   * Convert rules to clean YAML (without undefined/null values)
+   */
+  static toCleanYaml(rules: TriggerRule | TriggerRule[]): string {
+    const data = Array.isArray(rules) ? rules : [rules];
+    const cleaned = data.map(rule => this.cleanRule(rule));
+    return YAML.stringify(cleaned, {
+      indent: 2,
+      lineWidth: 0
+    });
+  }
+
+  /**
+   * Convert rules to clean JSON (without undefined/null values)
+   */
+  static toCleanJson(rules: TriggerRule | TriggerRule[], pretty = true): string {
+    const data = Array.isArray(rules) ? rules : [rules];
+    const cleaned = data.map(rule => this.cleanRule(rule));
+    return JSON.stringify(cleaned, null, pretty ? 2 : 0);
+  }
 
   /**
    * For Node.js only: Saves a rule or array of rules to a file.

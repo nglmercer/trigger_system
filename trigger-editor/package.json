@@ -1,0 +1,35 @@
+{
+  "name": "trigger-editor",
+  "version": "1.0.0",
+  "description": "Browser-based LitComponent editor for Trigger System rules",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target browser --minify --sourcemap=external",
+    "dev": "bun --watch ./index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lit": "^3.1.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "trigger_system": "*"
+  },
+  "private": true
+}
