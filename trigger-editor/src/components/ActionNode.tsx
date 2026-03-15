@@ -1,5 +1,7 @@
+import * as React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { ActionNodeData } from '../types.ts';
+import { NodeField } from '../constants.ts';
 
 export default function ActionNode({ data }: { data: ActionNodeData }) {
   return (
@@ -20,14 +22,14 @@ export default function ActionNode({ data }: { data: ActionNodeData }) {
           className="node-input"
           placeholder="log_event"
           value={data.type || ''}
-          onChange={(evt) => data.onChange(evt.target.value, 'type')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.TYPE)}
         />
         <label className="node-label">Params (JSON)</label>
         <textarea
           className="node-textarea"
           placeholder="{}"
           value={data.params || '{}'}
-          onChange={(evt) => data.onChange(evt.target.value, 'params')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.PARAMS)}
         ></textarea>
       </div>
     </div>

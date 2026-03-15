@@ -1,5 +1,7 @@
+import * as React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { EventNodeData } from '../types.ts';
+import { NodeField } from '../constants.ts';
 
 export default function EventNode({ data }: { data: EventNodeData }) {
   return (
@@ -14,7 +16,7 @@ export default function EventNode({ data }: { data: EventNodeData }) {
           className="node-input"
           placeholder="e.g. payout-rule-1"
           value={data.id || ''}
-          onChange={(evt) => data.onChange(evt.target.value, 'id')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.ID)}
         />
         
         <label className="node-label">Display Name</label>
@@ -23,7 +25,7 @@ export default function EventNode({ data }: { data: EventNodeData }) {
           className="node-input"
           placeholder="My Amazing Rule"
           value={data.name || ''}
-          onChange={(evt) => data.onChange(evt.target.value, 'name')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.NAME)}
         />
 
         <label className="node-label">Event Name</label>
@@ -32,7 +34,7 @@ export default function EventNode({ data }: { data: EventNodeData }) {
           className="node-input"
           placeholder="e.g. PAYMENT_RECEIVED"
           value={data.event || ''}
-          onChange={(evt) => data.onChange(evt.target.value, 'event')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.EVENT)}
         />
         
         <label className="node-label">Description</label>
@@ -40,7 +42,7 @@ export default function EventNode({ data }: { data: EventNodeData }) {
           className="node-textarea"
           placeholder="What does this rule do?"
           value={data.description || ''}
-          onChange={(evt) => data.onChange(evt.target.value, 'description')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.DESCRIPTION)}
         />
       </div>
       <Handle

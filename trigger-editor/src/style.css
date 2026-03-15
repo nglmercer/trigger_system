@@ -261,6 +261,18 @@ body {
   border-color: var(--border-hover);
 }
 
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  filter: grayscale(1);
+}
+
 .btn-icon {
   width: auto;
   padding: 6px 12px;

@@ -1,19 +1,22 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   addEdge,
   Background,
   Controls,
-  Connection,
-  Edge,
-  Node,
   applyNodeChanges,
   applyEdgeChanges,
-  NodeChange,
-  EdgeChange,
   ReactFlowProvider,
   useReactFlow,
-  Position,
+} from '@xyflow/react';
+import type {
+  Node,
+  Edge,
+  NodeChange,
+  EdgeChange,
+  Connection,
+  XYPosition,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -23,35 +26,46 @@ import ActionNode from './components/ActionNode.tsx';
 
 import { RuleBuilder } from '../../src/sdk/builder.ts';
 import { RuleExporter } from '../../src/sdk/exporter.ts';
+import type { EventNodeData, ConditionNodeData, ActionNodeData } from './types.ts';
+import type { ComparisonOperator } from '../../src/types.ts';
+import { NodeType, DRAG_DATA_FORMAT, INITIAL_HINT } from './constants.ts';
+import { copyToClipboard, generateRandomId } from './utils.ts';
 
 const nodeTypes = {
-  event: EventNode,
-  condition: ConditionNode,
-  action: ActionNode,
+  [NodeType.EVENT]: EventNode,
+  [NodeType.CONDITION]: ConditionNode,
+  [NodeType.ACTION]: ActionNode,
 };
 
-const initialNodes: Node[] = [
+type AppNode = Node<EventNodeData | ConditionNodeData | ActionNodeData>;
+
+const initialNodes: AppNode[] = [
   {
     id: 'node-start',
-    type: 'event',
+    type: NodeType.EVENT,
     position: { x: 400, y: 250 },
-    data: { event: '', onChange: () => {} },
+    data: { 
+      id: generateRandomId(),
+      name: 'New Trigger Rule',
+      description: '',
+      event: '', 
+      priority: 0,
+      onChange: () => {} 
+    },
   },
 ];
 
 const initialEdges: Edge[] = [];
 
-let id = 0;
-const getId = () => `node_${id++}`;
+const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
 
 function NodeEditor() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const [nodes, setNodes] = useState<AppNode[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const [yaml, setYaml] = useState<string>('');
-  const [hint, setHint] = useState<string>('Add an Event Trigger node to start building a rule...');
+  const [isPreviewVisible, setIsPreviewVisible] = useState<boolean>(false);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as AppNode[]),
     []
   );
   const onEdgesChange = useCallback(
@@ -81,64 +95,70 @@ function NodeEditor() {
     );
   }, []);
 
-  // Update nodes with onChange handlers
+  // Ensure nodes always have their onChange handlers
   useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          onChange: (val: any, field: string) => onNodeDataChange(node.id, val, field),
-        },
-      }))
-    );
-  }, [onNodeDataChange]);
+    setNodes((nds) => {
+      let needsUpdate = false;
+      const newNodes = nds.map((node) => {
+        if (typeof node.data.onChange !== 'function' || node.id !== node.data._id) {
+          needsUpdate = true;
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              _id: node.id,
+              onChange: (val: any, f: string) => onNodeDataChange(node.id, val, f),
+            },
+          };
+        }
+        return node;
+      });
+      return needsUpdate ? newNodes : nds;
+    });
+  }, [onNodeDataChange, nodes.length]); // Re-run when length changes (new nodes)
 
-  const generateYaml = useCallback(() => {
+  const { yaml, hint } = useMemo(() => {
     try {
-      const eventNode = nodes.find((n) => n.type === 'event');
+      const eventNode = nodes.find((n) => n.type === NodeType.EVENT) as Node<EventNodeData> | undefined;
       if (!eventNode) {
-        setYaml('');
-        setHint('Add an Event Trigger node to start building a rule...');
-        return;
+        return { yaml: '', hint: INITIAL_HINT };
       }
 
-      const eventName = eventNode.data.event;
+      const { id: ruleId, event: eventName, name: ruleName, description } = eventNode.data;
+      if (!ruleId) {
+        return { yaml: '', hint: 'Give your rule a unique ID...' };
+      }
       if (!eventName) {
-        setYaml('');
-        setHint('Give your Event Trigger a name (e.g. PAYMENT_RECEIVED)...');
-        return;
+        return { yaml: '', hint: 'Give your Event Trigger a name (e.g. PAYMENT_RECEIVED)...' };
       }
 
       const builder = new RuleBuilder();
-      builder.on(eventName);
+      builder.withId(ruleId).on(eventName);
+      if (ruleName) builder.withName(ruleName);
+      if (description) builder.withDescription(description);
 
-      // Simple traversal: Event -> Condition(s) -> Action(s)
-      // This is a simplified version of the previous logic
-      let currentNodeId = eventNode.id;
-      let hasConnections = false;
+      let hasActions = false;
 
       // Find all connected paths
       const traverse = (nodeId: string) => {
         const connectedEdges = edges.filter((e) => e.source === nodeId);
         connectedEdges.forEach((edge) => {
-          hasConnections = true;
-          const target = nodes.find((n) => n.id === edge.target);
+          const target = nodes.find((n) => n.id === edge.target) as AppNode | undefined;
           if (target) {
-            if (target.type === 'condition') {
-              const { field, operator, value } = target.data;
+            if (target.type === NodeType.CONDITION) {
+              const { field, operator, value } = target.data as ConditionNodeData;
               if (field && operator && value) {
-                builder.if(field, operator, value);
+                builder.if(field, operator as ComparisonOperator, value);
               }
               traverse(target.id);
-            } else if (target.type === 'action') {
-              const { type, params } = target.data;
+            } else if (target.type === NodeType.ACTION) {
+              const { type, params } = target.data as ActionNodeData;
               if (type) {
+                hasActions = true;
                 try {
                   const parsedParams = params ? JSON.parse(params) : {};
                   builder.do(type, parsedParams);
                 } catch (e) {
-                  // Fallback if JSON is invalid
                   builder.do(type, {});
                 }
               }
@@ -147,33 +167,20 @@ function NodeEditor() {
         });
       };
 
-      traverse(currentNodeId);
+      traverse(eventNode.id);
 
-      if (!hasConnections) {
-        setYaml('');
-        setHint('Connect a Condition or Action node to complete the rule...');
-        return;
+      if (!hasActions) {
+        return { yaml: '', hint: 'Connect at least one Action node...' };
       }
 
-      // Check if we have at least one action
       const rule = builder.build();
-      if (!rule.do || rule.do.length === 0) {
-        setYaml('');
-        setHint('Connect at least one Action node...');
-        return;
-      }
-
       const yamlOutput = RuleExporter.toCleanYaml(rule);
-      setYaml(yamlOutput);
-      setHint('');
+      return { yaml: yamlOutput, hint: '' };
     } catch (e) {
       console.error('Error generating YAML:', e);
+      return { yaml: '', hint: 'Error generating rule: ' + (e as Error).message };
     }
   }, [nodes, edges]);
-
-  useEffect(() => {
-    generateYaml();
-  }, [nodes, edges, generateYaml]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -186,7 +193,7 @@ function NodeEditor() {
     (event: React.DragEvent) => {
       event.preventDefault();
 
-      const type = event.dataTransfer.getData('application/reactflow');
+      const type = event.dataTransfer.getData(DRAG_DATA_FORMAT);
 
       if (typeof type === 'undefined' || !type) {
         return;
@@ -197,11 +204,11 @@ function NodeEditor() {
         y: event.clientY,
       });
 
-      const newNode = {
+      const newNode: AppNode = {
         id: getId(),
         type,
         position,
-        data: { onChange: () => {} },
+        data: { onChange: () => {} } as any, // Cast to any temporarily, useEffect will fix it
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -214,21 +221,25 @@ function NodeEditor() {
     setEdges([]);
   };
 
-  const copyYaml = () => {
+  const copyYaml = async () => {
     if (yaml) {
-      navigator.clipboard.writeText(yaml);
-      const btn = document.getElementById('btn-copy');
-      if (btn) {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '✓ Copied';
-        btn.classList.add('btn--success');
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-          btn.classList.remove('btn--success');
-        }, 2000);
+      const success = await copyToClipboard(yaml);
+      if (success) {
+        const btn = document.getElementById('btn-copy');
+        if (btn) {
+          const originalText = btn.innerHTML;
+          btn.innerHTML = '✓ Copied';
+          btn.classList.add('btn--success');
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn--success');
+          }, 2000);
+        }
       }
     }
   };
+
+  const togglePreview = () => setIsPreviewVisible(!isPreviewVisible);
 
   return (
     <div className="react-flow-wrapper" style={{ display: 'flex', width: '100vw', height: '100vh', background: '#0d1117' }}>
@@ -239,7 +250,7 @@ function NodeEditor() {
         </div>
 
         <div className="drag-group">
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData('application/reactflow', 'event'); event.dataTransfer.effectAllowed = 'move'; }}>
+            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.EVENT); event.dataTransfer.effectAllowed = 'move'; }}>
                 <span className="drag-icon drag-icon--event">◈</span>
                 <div className="drag-info">
                     <span className="drag-name">Event Trigger</span>
@@ -247,7 +258,7 @@ function NodeEditor() {
                 </div>
             </div>
 
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData('application/reactflow', 'condition'); event.dataTransfer.effectAllowed = 'move'; }}>
+            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.CONDITION); event.dataTransfer.effectAllowed = 'move'; }}>
                 <span className="drag-icon drag-icon--condition">⚖</span>
                 <div className="drag-info">
                     <span className="drag-name">Condition</span>
@@ -255,7 +266,7 @@ function NodeEditor() {
                 </div>
             </div>
 
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData('application/reactflow', 'action'); event.dataTransfer.effectAllowed = 'move'; }}>
+            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.ACTION); event.dataTransfer.effectAllowed = 'move'; }}>
                 <span className="drag-icon drag-icon--action">⚡</span>
                 <div className="drag-info">
                     <span className="drag-name">Action</span>
@@ -301,19 +312,34 @@ function NodeEditor() {
         )}
       </main>
 
-      <aside className="panel output-panel" style={{ width: '400px', flexShrink: 0 }}>
-        <div className="output-header">
-            <div className="output-header-left">
-                <span className="output-title">YAML Output</span>
-                <span className="output-badge">React Flow</span>
-            </div>
-            <button id="btn-copy" className="btn btn-icon" onClick={copyYaml} title="Copy YAML to clipboard">
-                ⎘ Copy
-            </button>
+      <aside className="panel output-panel" style={{ width: isPreviewVisible ? '400px' : '60px', flexShrink: 0, transition: 'width 0.3s ease' }}>
+        <div className="output-header" style={{ padding: isPreviewVisible ? '18px 20px' : '18px 10px', flexDirection: isPreviewVisible ? 'row' : 'column', gap: '20px' }}>
+            {isPreviewVisible ? (
+                <>
+                    <div className="output-header-left">
+                        <span className="output-title">YAML Output</span>
+                        <span className="output-badge">React Flow</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button id="btn-copy" className="btn btn-icon" onClick={copyYaml} title="Copy YAML to clipboard">
+                             ⎘ Copy
+                        </button>
+                        <button id="btn-toggle" className="btn btn-icon btn-secondary" onClick={togglePreview} title="Hide preview">
+                             ◀
+                        </button>
+                    </div>
+                </>
+            ) : (
+                <button id="btn-toggle" className="btn btn-icon" onClick={togglePreview} title="Show YAML preview" style={{ height: '40px', writingMode: 'vertical-lr', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '10px' }}>
+                    YAML Output ▶
+                </button>
+            )}
         </div>
-        <pre id="output" className={`output-content ${!yaml ? 'output-content--hint' : ''}`}>
-          {yaml || `# ${hint}`}
-        </pre>
+        {isPreviewVisible && (
+            <pre id="output" className={`output-content ${!yaml ? 'output-content--hint' : ''}`}>
+              {yaml || `# ${hint}`}
+            </pre>
+        )}
       </aside>
     </div>
   );

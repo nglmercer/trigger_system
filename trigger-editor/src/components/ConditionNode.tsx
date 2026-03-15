@@ -1,5 +1,7 @@
+import * as React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { ConditionNodeData } from '../types.ts';
+import { NodeField } from '../constants.ts';
 
 export default function ConditionNode({ data }: { data: ConditionNodeData }) {
   return (
@@ -20,13 +22,13 @@ export default function ConditionNode({ data }: { data: ConditionNodeData }) {
           className="node-input"
           placeholder="data.amount"
           value={data.field || ''}
-          onChange={(evt) => data.onChange(evt.target.value, 'field')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.FIELD)}
         />
         <label className="node-label">Operator</label>
         <select
           className="node-input"
           value={data.operator || 'EQ'}
-          onChange={(evt) => data.onChange(evt.target.value, 'operator')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.OPERATOR)}
         >
           <option value="EQ">Equals (==)</option>
           <option value="NEQ">Not Equals (!=)</option>
@@ -45,7 +47,7 @@ export default function ConditionNode({ data }: { data: ConditionNodeData }) {
           className="node-input"
           placeholder="100"
           value={data.value || ''}
-          onChange={(evt) => data.onChange(evt.target.value, 'value')}
+          onChange={(evt) => data.onChange(evt.target.value, NodeField.VALUE)}
         />
       </div>
       <Handle
