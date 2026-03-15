@@ -52,5 +52,8 @@ export * from './icons.js';
 // Re-export form builder
 export * from './form-builder.js';
 
+// Re-export events
+export * from './events/index.js';
+
 // Re-export components
 export * from './components/index.js';

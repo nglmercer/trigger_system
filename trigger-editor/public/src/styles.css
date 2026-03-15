@@ -76,10 +76,6 @@ p {
   overflow: hidden;
 }
 
-trigger-editor {
-  display: block;
-}
-
 .info {
   margin-top: 20px;
   padding: 16px;

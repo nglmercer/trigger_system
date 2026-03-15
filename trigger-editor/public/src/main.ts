@@ -1,78 +1,53 @@
 /**
  * Trigger Editor - Main Entry Point
  * 
- * This file initializes the trigger-editor web component
+ * This file initializes the node-based trigger editor
  */
 
-// Import the trigger-editor from the built distribution
-import { TriggerEditor } from "../../src/index.js";
+// Import components from the built distribution
+import { NodeEditor } from "../../src/index.js";
 
-// Register the custom element (already done via @customElement decorator)
-// but we can explicitly import to ensure registration
+// Import to ensure registration
 import "../../src/index.js";
 
 // Initialize editor when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
-  const editor = document.getElementById("editor") as TriggerEditor;
+  const editor = document.getElementById("editor") as NodeEditor;
   
   if (!editor) {
     console.error("Editor element not found!");
     return;
   }
   
-  // Configure the editor
-  editor.config = {
-    initialRules: [
-      {
-        id: "example-rule",
-        name: "Example Rule",
-        on: "user.login",
-        enabled: true,
-        priority: 5,
-        do: { type: "log", params: { message: "User logged in" } }
-      }
-    ],
-    showYamlPreview: true,
-    availableActions: "log,http,notify,transform,delay,set_state,webhook,email",
-    availableEvents: "user.login,user.logout,user.signup,payment.received,payment.failed",
-    
-    // Callback when rules change
-    onChange: (rules) => {
-      console.log("📝 Rules changed:", rules.length, "rules");
-    },
-    
-    // Callback when rules are exported
-    onExport: (rules, format) => {
-      console.log("📤 Exported", rules.length, "rules as", format);
-    }
+  // Load an example rule into the editor
+  editor.rule = {
+    id: "example-rule",
+    name: "Example Rule",
+    on: "user.login",
+    enabled: true,
+    priority: 5,
+    cooldown: 0,
+    tags: [],
+    do: [
+      { type: "log", params: { message: "User logged in" } },
+      { type: "http", params: { url: "https://api.example.com/notify", method: "POST" } }
+    ]
   };
   
-  // Listen for events
-  editor.addEventListener("rule-added", (e: Event) => {
+  // Listen for nodes change events
+  editor.addEventListener("nodes-change", (e: Event) => {
     const customEvent = e as CustomEvent;
-    console.log("✅ Rule added:", customEvent.detail);
+    console.log("📝 Nodes changed:", customEvent.detail);
   });
   
-  editor.addEventListener("rule-updated", (e: Event) => {
-    const customEvent = e as CustomEvent;
-    console.log("✏️ Rule updated:", customEvent.detail);
-  });
+  // Example: Get the built rule
+  setTimeout(() => {
+    const rule = editor.getRule();
+    console.log("🎯 Built rule:", rule);
+    
+    const yaml = editor.exportYaml();
+    console.log("📄 YAML:\n", yaml);
+  }, 1000);
   
-  editor.addEventListener("rule-deleted", (e: Event) => {
-    const customEvent = e as CustomEvent;
-    console.log("🗑️ Rule deleted:", customEvent.detail);
-  });
-  
-  editor.addEventListener("rules-exported", (e: Event) => {
-    const customEvent = e as CustomEvent;
-    console.log("📤 Rules exported:", customEvent.detail.format, customEvent.detail.rules);
-  });
-  
-  editor.addEventListener("validation-error", (e: Event) => {
-    const customEvent = e as CustomEvent;
-    console.log("⚠️ Validation errors:", customEvent.detail);
-  });
-  
-  console.log("🎯 Trigger Editor initialized!");
-  console.log("📋 Initial rules:", editor.getRules());
+  console.log("🎯 Node-Based Trigger Editor initialized!");
 });

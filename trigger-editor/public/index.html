@@ -3,49 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trigger Editor - Demo</title>
+  <title>Trigger Rule Editor - Node-Based</title>
   <link rel="stylesheet" href="./src/styles.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    body {
+      background: #f1f5f9;
+      padding: 20px;
+    }
+    
+    .container {
+      width: 100%;
+      height: calc(100vh - 40px);
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .editor-wrapper {
+      width: 100%;
+      height: 100%;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    
+    node-editor {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>🎯 Trigger Editor</h1>
-      <p>A browser-based visual editor for Trigger System rules</p>
-    </header>
-    
     <div class="editor-wrapper">
-      <trigger-editor id="editor"></trigger-editor>
-    </div>
-    
-    <div class="info">
-      <h3>Quick API Examples:</h3>
-      <pre style="color: var(--bg);background-color: var(--text);">
-// Get all rules
-const rules = editor.getRules();
-
-// Add a rule programmatically
-editor.addRule({
-  id: 'welcome-rule',
-  name: 'Welcome Message',
-  on: 'user.signup',
-  enabled: true,
-  priority: 10,
-  do: { type: 'notify', params: { message: 'Welcome!' } }
-});
-
-// Export as YAML
-const yaml = editor.exportYaml();
-console.log(yaml);
-
-// Listen for events
-editor.addEventListener('rule-added', (e) => {
-  console.log('Rule added:', e.detail);
-});
-
-editor.addEventListener('rules-changed', (e) => {
-  console.log('Rules updated:', e.detail);
-});
-      </pre>
+      <!-- Using the new node-based editor -->
+      <node-editor id="editor"></node-editor>
     </div>
   </div>
 
