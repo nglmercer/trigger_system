@@ -121,13 +121,19 @@ function NodeEditor() {
         const targetNode = nodes.find(n => n.id === params.target);
 
         // Logic: If a Condition is being connected TO a Group (Forward Discovery)
-        // We should clean up any existing outgoing edges from the Condition
+        // We should clean up any outgoing edges from the Condition
         // because "cannot have action when in a group".
         if (sourceNode?.type === NodeType.CONDITION_GROUP && targetNode?.type === NodeType.CONDITION) {
            return addEdge(params, eds.filter(e => e.source !== targetNode.id));
         }
 
-        return addEdge(params, eds);
+        // Add class based on source node type for edge coloring
+        const edgeWithClass = {
+          ...params,
+          className: `source-${sourceNode?.type}`,
+        };
+        
+        return addEdge(edgeWithClass, eds);
       });
     },
     [setEdges, nodes]

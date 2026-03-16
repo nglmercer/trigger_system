@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useState } from 'react';
 
 export interface SelectOption {
   value: string;
@@ -141,5 +142,61 @@ export function FormField({ label, children, hint }: FormFieldProps) {
       {children}
       {hint && <div className="node-hint" style={{ fontSize: '10px', marginTop: '4px', opacity: 0.7 }}>{hint}</div>}
     </>
+  );
+}
+
+// Collapsible/Accordion component
+interface CollapsibleProps {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  icon?: React.ReactNode;
+}
+
+export function Collapsible({ title, children, defaultOpen = false, icon }: CollapsibleProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  
+  return (
+    <div style={{ marginTop: '12px', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 12px',
+          background: 'var(--bg-secondary)',
+          border: 'none',
+          color: 'var(--text-primary)',
+          cursor: 'pointer',
+          fontSize: '0.85rem',
+          fontWeight: 500,
+          textAlign: 'left',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {icon}
+          {title}
+        </span>
+        <svg 
+          width="16" 
+          height="16" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2" 
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      {isOpen && (
+        <div style={{ padding: '12px', borderTop: '1px solid var(--border)', background: 'var(--bg-primary)' }}>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }

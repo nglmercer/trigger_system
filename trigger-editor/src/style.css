@@ -10,16 +10,36 @@
   --text-secondary: #8b949e;
   --text-muted: #484f58;
 
-  /* Node Colors */
-  --event-color: #e3b341;
-  --condition-color: #3fb950;
-  --action-color: #f78166;
-  --node-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  /* Node Colors - Distinct palette for each type */
+  --event-color: #f59e0b;
+  --event-color-light: #fbbf24;
+  --event-color-dark: #d97706;
+
+  --condition-color: #10b981;
+  --condition-color-light: #34d399;
+  --condition-color-dark: #059669;
+
+  --condition-group-color: #06b6d4;
+  --condition-group-color-light: #22d3ee;
+  --condition-group-color-dark: #0891b2;
+
+  --action-color: #ef4444;
+  --action-color-light: #f87171;
+  --action-color-dark: #dc2626;
+
+  --action-group-color: #f97316;
+  --action-group-color-light: #fb923c;
+  --action-group-color-dark: #ea580c;
+
+  --node-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
   background: var(--bg-color);
   color: var(--text-primary);
   overflow: hidden;
@@ -33,7 +53,7 @@ body {
   flex-direction: column;
   height: 100vh;
   z-index: 10;
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
 
 .sidebar {
@@ -91,7 +111,7 @@ body {
   border-color: var(--accent);
   background: rgba(88, 166, 255, 0.08);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .drag-item:active {
@@ -111,9 +131,18 @@ body {
   border: 1px solid var(--border);
 }
 
-.drag-icon--event { color: var(--event-color); box-shadow: 0 0 10px rgba(227, 179, 65, 0.1); }
-.drag-icon--condition { color: var(--condition-color); box-shadow: 0 0 10px rgba(63, 185, 80, 0.1); }
-.drag-icon--action { color: var(--action-color); box-shadow: 0 0 10px rgba(247, 129, 102, 0.1); }
+.drag-icon--event {
+  color: var(--event-color);
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+}
+.drag-icon--condition {
+  color: var(--condition-color);
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.4));
+}
+.drag-icon--action {
+  color: var(--action-color);
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.4));
+}
 
 .drag-info {
   display: flex;
@@ -207,7 +236,7 @@ body {
 .output-content {
   flex: 1;
   padding: 16px 18px;
-  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-family: "Fira Code", "Cascadia Code", monospace;
   font-size: 12.5px;
   overflow-y: auto;
   white-space: pre-wrap;
@@ -290,13 +319,17 @@ body {
   border-radius: 12px;
   width: 240px;
   box-shadow: var(--node-shadow);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   overflow: visible;
 }
 
 .react-flow__node.selected .drawflow-node {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3), var(--node-shadow);
+  box-shadow:
+    0 0 0 2px rgba(88, 166, 255, 0.3),
+    var(--node-shadow);
 }
 
 .node-title {
@@ -312,9 +345,51 @@ body {
   color: #fff;
 }
 
-.node-title--event { background: linear-gradient(90deg, #9a6d00, var(--event-color)); }
-.node-title--condition { background: linear-gradient(90deg, #1a7f37, var(--condition-color)); }
-.node-title--action { background: linear-gradient(90deg, #cf222e, var(--action-color)); }
+.node-title--event {
+  background: linear-gradient(
+    135deg,
+    var(--event-color-dark),
+    var(--event-color)
+  );
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+.node-title--condition {
+  background: linear-gradient(
+    135deg,
+    var(--condition-color-dark),
+    var(--condition-color)
+  );
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+.node-title--action {
+  background: linear-gradient(
+    135deg,
+    var(--action-color-dark),
+    var(--action-color)
+  );
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+.node-title--condition-group {
+  background: linear-gradient(
+    135deg,
+    var(--group-color-dark),
+    var(--group-color)
+  );
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+.node-title--action-group {
+  background: linear-gradient(
+    135deg,
+    var(--group-color-dark),
+    var(--group-color)
+  );
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
 
 .node-delete {
   margin-left: auto;
@@ -339,6 +414,29 @@ body {
 
 .node-body {
   padding: 14px;
+  border-left: 3px solid transparent;
+}
+
+/* Colored borders for each node type */
+.event .node-body {
+  border-left-color: var(--event-color);
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.05), transparent);
+}
+.condition .node-body {
+  border-left-color: var(--condition-color);
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.05), transparent);
+}
+.condition-group .node-body {
+  border-left-color: var(--group-color);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.05), transparent);
+}
+.action .node-body {
+  border-left-color: var(--action-color);
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.05), transparent);
+}
+.action-group .node-body {
+  border-left-color: var(--group-color);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.05), transparent);
 }
 
 .node-label {
@@ -357,7 +455,9 @@ body {
 }
 
 .node-input,
-input, select, textarea {
+input,
+select,
+textarea {
   background: rgba(13, 17, 23, 0.7);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -375,7 +475,7 @@ input, select, textarea {
 textarea {
   resize: vertical;
   min-height: 60px;
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.72rem;
   line-height: 1.5;
 }
@@ -414,8 +514,14 @@ textarea:focus {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translate(-50%, 10px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 /* ─── React Flow Customizations ──────────────────────────────────────────── */
@@ -470,12 +576,57 @@ textarea:focus {
   opacity: 0.3;
 }
 
-/* Edge deletion UI (optional but let's make edges selectable) */
+/* ─── Edge/Connection Styles ─────────────────────────────────────────────── */
+.react-flow__edge-path {
+  stroke-width: 2;
+  transition:
+    stroke 0.2s,
+    stroke-width 0.2s;
+}
+
+/* Default edge color - subtle gray */
+.react-flow__edge .react-flow__edge-path {
+  stroke: #4a5568;
+  stroke-opacity: 0.6;
+}
+
+/* Edge hover */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+}
+
+/* Edge colors by source node type - muted for hierarchy */
+.react-flow__edge.source-event .react-flow__edge-path {
+  stroke: var(--event-color);
+  stroke-opacity: 0.5;
+}
+
+.react-flow__edge.source-condition .react-flow__edge-path,
+.react-flow__edge.source-condition-group .react-flow__edge-path {
+  stroke: var(--condition-color);
+  stroke-opacity: 0.5;
+}
+
+.react-flow__edge.source-action .react-flow__edge-path,
+.react-flow__edge.source-action-group .react-flow__edge-path {
+  stroke: var(--action-color);
+  stroke-opacity: 0.5;
+}
+
+/* Edge selection */
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 3;
+  stroke-opacity: 1;
 }
 
 .react-flow__edge.selected {
   z-index: 1000;
+}
+
+/* Connection line (being dragged) */
+.react-flow__connection-line {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
 }

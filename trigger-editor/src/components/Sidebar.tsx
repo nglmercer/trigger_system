@@ -134,7 +134,6 @@ export default function Sidebar({ onPlay, onClear }: SidebarProps) {
               <button id="btn-clear" className="btn btn-secondary" onClick={onClear}>
                 <ClearIcon /> Clear
               </button>
-              <p className="version-label">Trigger System Graphics v2.0</p>
             </div>
           </>
         )}
