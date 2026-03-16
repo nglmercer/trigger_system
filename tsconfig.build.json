@@ -16,7 +16,20 @@
     "vscode-extension/**/*",
     "examples/**/*",
     "docs/**/*",
-    "src/lsp/**/*",
+    "src/lsp/server.ts",
+    "src/lsp/completion-*.ts",
+    "src/lsp/completion-context.ts",
+    "src/lsp/completion-directives.ts",
+    "src/lsp/completion-helpers.ts",
+    "src/lsp/completion-index.ts",
+    "src/lsp/completion-templates.ts",
+    "src/lsp/completions.ts",
+    "src/lsp/diagnostics.ts",
+    "src/lsp/directives.ts",
+    "src/lsp/hover.ts",
+    "src/lsp/data-context.ts",
+    "src/lsp/path-utils.ts",
+    "src/lsp/semantic_tokens.ts",
     "src/cli/**/*"
   ]
 }

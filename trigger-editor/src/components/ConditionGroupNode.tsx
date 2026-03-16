@@ -2,13 +2,9 @@ import * as React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import type { ConditionGroupNodeData } from '../types.ts';
 import { NodeField } from '../constants.ts';
+import { CONDITION_GROUP_OPTIONS } from '../shared-constants.ts';
 import { ClearIcon, ConditionGroupIcon } from './Icons.tsx';
 import { SelectInput, FormField } from './FormFields.tsx';
-
-const GROUP_OPERATOR_OPTIONS = [
-  { value: 'AND', label: 'AND (All Must Match)' },
-  { value: 'OR', label: 'OR (Any Must Match)' },
-];
 
 export default function ConditionGroupNode({ id, data }: { id: string, data: ConditionGroupNodeData }) {
   const { deleteElements } = useReactFlow();
@@ -43,23 +39,28 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
         </button>
       </div>
       <div className="node-body">
-        <FormField label="Operator">
+        <FormField 
+          label="Operator"
+          hint="AND: All conditions must match. OR: Any condition can match."
+        >
           <SelectInput
             value={data.operator || 'AND'}
-            options={GROUP_OPERATOR_OPTIONS}
+            options={CONDITION_GROUP_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
             onChange={(val) => data.onChange(val, NodeField.OPERATOR)}
           />
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
-          Connect top/bottom to child conditions, Right to Actions.
+          Connect conditions to top/bottom handles
         </div>
       </div>
+      
+      {/* Output to actions after conditions are evaluated */}
       <Handle
         type="source"
         position={Position.Right}
-        id="action"
         className="node-output-handle"
         style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
+        title="Connect to action"
       />
     </div>
   );

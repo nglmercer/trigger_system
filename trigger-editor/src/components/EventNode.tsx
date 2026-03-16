@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import type { EventNodeData } from '../types.ts';
 import { NodeField } from '../constants.ts';
+import { getFieldTooltip } from '../shared-constants.ts';
 import { ClearIcon, SettingsIcon } from './Icons.tsx';
 import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from './FormFields.tsx';
 
@@ -18,7 +19,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
       </div>
       <div className="node-body">
         {/* Required Fields - Always Visible */}
-        <FormField label="Rule ID (required)">
+        <FormField 
+          label="Rule ID (required)"
+          hint={getFieldTooltip('id')}
+        >
           <TextInput
             value={data.id || ''}
             onChange={(val) => data.onChange(val as string, NodeField.ID)}
@@ -26,7 +30,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
           />
         </FormField>
         
-        <FormField label="Display Name (required)">
+        <FormField 
+          label="Display Name (required)"
+          hint={getFieldTooltip('name')}
+        >
           <TextInput
             value={data.name || ''}
             onChange={(val) => data.onChange(val as string, NodeField.NAME)}
@@ -34,7 +41,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
           />
         </FormField>
 
-        <FormField label="Event Name (required)">
+        <FormField 
+          label="Event Name (required)"
+          hint={getFieldTooltip('on')}
+        >
           <TextInput
             value={data.event || ''}
             onChange={(val) => data.onChange(val as string, NodeField.EVENT)}
@@ -48,7 +58,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
           icon={<SettingsIcon size={14} />}
           defaultOpen={false}
         >
-          <FormField label="Description">
+          <FormField 
+            label="Description"
+            hint={getFieldTooltip('description')}
+          >
             <TextAreaInput
               value={data.description || ''}
               onChange={(val) => data.onChange(val, NodeField.DESCRIPTION)}
@@ -58,7 +71,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
 
           <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
             <div style={{ flex: 1 }}>
-              <FormField label="Priority">
+              <FormField 
+                label="Priority"
+                hint={getFieldTooltip('priority')}
+              >
                 <TextInput
                   value={data.priority || 0}
                   onChange={(val) => data.onChange(val as number, NodeField.PRIORITY)}
@@ -77,7 +93,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
 
           <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
             <div style={{ flex: 1 }}>
-              <FormField label="Cooldown (ms)">
+              <FormField 
+                label="Cooldown (ms)"
+                hint={getFieldTooltip('cooldown')}
+              >
                 <TextInput
                   value={data.cooldown || 0}
                   onChange={(val) => data.onChange(val as number, 'cooldown')}
@@ -87,7 +106,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
               </FormField>
             </div>
             <div style={{ flex: 1 }}>
-              <FormField label="Tags (comma separated)">
+              <FormField 
+                label="Tags (comma separated)"
+                hint={getFieldTooltip('tags')}
+              >
                 <TextInput
                   value={data.tags?.join(', ') || ''}
                   onChange={(val) => data.onChange((val as string).split(',').map(s => s.trim()).filter(Boolean), 'tags')}

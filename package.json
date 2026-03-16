@@ -39,6 +39,11 @@
       },
       "default": "./dist/node/index.js"
     },
+    "./lsp": {
+      "types": "./dist/lsp/hover-constants.d.ts",
+      "import": "./dist/lsp/hover-constants.js",
+      "default": "./dist/lsp/hover-constants.js"
+    },
     "./node": {
       "import": "./dist/node/node.js",
       "require": "./dist/node/node.js",

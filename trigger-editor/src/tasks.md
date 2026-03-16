@@ -9,4 +9,6 @@
 - conditions order in group conditions
 - actions order in group action
 
-##
+## implement better hint
+
+- only show on hover or implement tooltip
