@@ -147,7 +147,7 @@ function NodeEditor() {
     // Node Category Helpers
     const isSourceAction = sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP;
     const isTargetAction = targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP;
-    const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
+    //const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
     const isTargetCondition = targetNode.type === NodeType.CONDITION || targetNode.type === NodeType.CONDITION_GROUP;
 
     // RULE 1: Actions cannot point to Conditions
@@ -162,9 +162,35 @@ function NodeEditor() {
        const isAllowedTarget = isTargetAction || targetNode.type === NodeType.CONDITION_GROUP || isDiscoveryEdge;
        if (!isAllowedTarget) return false;
     }
+
+    // RULE 4: If EventTrigger is connected to ConditionGroup, it cannot connect to Conditions or Actions directly
+    if (sourceNode.type === NodeType.EVENT) {
+      // Check if this Event is already connected to a ConditionGroup
+      const hasConditionGroupConnection = edges.some(edge => {
+        const targetNode = nodes.find(n => n.id === edge.target);
+        return edge.source === sourceNode.id && targetNode?.type === NodeType.CONDITION_GROUP;
+      });
+      
+      if (hasConditionGroupConnection && (isTargetCondition || isTargetAction)) {
+        return false;
+      }
+    }
+
+    // RULE 5: If Action is connected to ActionGroup, it cannot connect to Conditions - must go through ActionGroup
+    if ((sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP) && isTargetCondition) {
+      // Check if this Action is already connected to an ActionGroup (as target of an ActionGroup)
+      const isConnectedToActionGroup = edges.some(edge => {
+        const sourceNodeOfEdge = nodes.find(n => n.id === edge.source);
+        return edge.target === sourceNode.id && sourceNodeOfEdge?.type === NodeType.ACTION_GROUP;
+      });
+      
+      if (isConnectedToActionGroup) {
+        return false;
+      }
+    }
     
     return true;
-  }, [nodes]);
+  }, [nodes, edges]);
 
   const { screenToFlowPosition } = useReactFlow();
 
@@ -190,7 +216,9 @@ function NodeEditor() {
           } : {})
         },
       };
-      setNodes((nds) => nds.concat(newNode as any));
+      // please fix or implement a better types or builder for make and build, never use any
+      //@ts-expect-error
+      setNodes((nds) => nds.concat(newNode));
     },
     [screenToFlowPosition, setNodes]
   );

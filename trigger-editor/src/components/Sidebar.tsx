@@ -1,5 +1,7 @@
 import * as React from 'react';
+import { useState } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
+import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon } from './Icons.tsx';
 
 interface SidebarProps {
   onPlay: () => void;
@@ -7,74 +9,136 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onPlay, onClear }: SidebarProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData(DRAG_DATA_FORMAT, nodeType);
     event.dataTransfer.effectAllowed = 'move';
   };
 
   return (
-    <aside className="panel sidebar" style={{ width: '300px', flexShrink: 0 }}>
-      <div className="sidebar-header">
-        <h1 className="sidebar-title">Components</h1>
-        <p className="sidebar-subtitle">Drag onto canvas</p>
-      </div>
-
-      <div className="drag-group">
-        <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.EVENT)}>
-          <span className="drag-icon drag-icon--event">◈</span>
-          <div className="drag-info">
-            <span className="drag-name">Event Trigger</span>
-            <span className="drag-desc">Starts the rule</span>
-          </div>
-        </div>
-
-        <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION)}>
-          <span className="drag-icon drag-icon--condition">⚖</span>
-          <div className="drag-info">
-            <span className="drag-name">Condition</span>
-            <span className="drag-desc">Filter by field value</span>
-          </div>
-        </div>
-
-        <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION_GROUP)}>
-          <span className="drag-icon drag-icon--condition">📂</span>
-          <div className="drag-info">
-            <span className="drag-name">Condition Group</span>
-            <span className="drag-desc">AND / OR logical group</span>
-          </div>
-        </div>
-
-        <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION)}>
-          <span className="drag-icon drag-icon--action">⚡</span>
-          <div className="drag-info">
-            <span className="drag-name">Action</span>
-            <span className="drag-desc">Execute a handler</span>
-          </div>
-        </div>
-
-        <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}>
-          <span className="drag-icon drag-icon--action">📦</span>
-          <div className="drag-info">
-            <span className="drag-name">Action Group</span>
-            <span className="drag-desc">Group of actions</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="sidebar-divider"></div>
-      <div className="sidebar-footer">
+    <>
+      {/* Floating Toggle Button */}
+      {!isOpen && (
         <button 
-          className="btn btn-primary" 
-          onClick={onPlay} 
-          style={{ marginBottom: '8px', background: 'var(--condition-color)' }}
+          onClick={() => setIsOpen(true)}
+          style={{
+            position: 'fixed',
+            left: '16px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 1000,
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}
+          title="Open Components"
         >
-          ▶ Play / Test
+          <GridIcon />
         </button>
-        <button id="btn-clear" className="btn btn-secondary" onClick={onClear}>
-          ✕ Clear
-        </button>
-        <p className="version-label">Trigger System Graphics v2.0</p>
-      </div>
-    </aside>
+      )}
+
+      <aside 
+        className="panel sidebar" 
+        style={{ 
+          width: isOpen ? '300px' : '0px', 
+          flexShrink: 0, 
+          overflow: 'hidden',
+          transition: 'width 0.3s ease',
+          position: 'relative',
+          zIndex: 999
+        }}
+      >
+        <div className="sidebar-header" style={{ padding: isOpen ? '18px 20px' : '0', opacity: isOpen ? 1 : 0, transition: 'opacity 0.2s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <h1 className="sidebar-title">Components</h1>
+            <button 
+              onClick={() => setIsOpen(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+              }}
+              title="Hide Sidebar"
+            >
+              <ChevronIcon direction="left" />
+            </button>
+          </div>
+          <p className="sidebar-subtitle">Drag onto canvas</p>
+        </div>
+
+        {isOpen && (
+          <>
+            <div className="drag-group">
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.EVENT)}>
+                <span className="drag-icon drag-icon--event"><EventIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">Event Trigger</span>
+                  <span className="drag-desc">Starts the rule</span>
+                </div>
+              </div>
+
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION)}>
+                <span className="drag-icon drag-icon--condition"><ConditionIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">Condition</span>
+                  <span className="drag-desc">Filter by field value</span>
+                </div>
+              </div>
+
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION_GROUP)}>
+                <span className="drag-icon drag-icon--condition"><ConditionGroupIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">Condition Group</span>
+                  <span className="drag-desc">AND / OR logical group</span>
+                </div>
+              </div>
+
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION)}>
+                <span className="drag-icon drag-icon--action"><ActionIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">Action</span>
+                  <span className="drag-desc">Execute a handler</span>
+                </div>
+              </div>
+
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}>
+                <span className="drag-icon drag-icon--action"><ActionGroupIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">Action Group</span>
+                  <span className="drag-desc">Group of actions</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="sidebar-divider"></div>
+            <div className="sidebar-footer">
+              <button 
+                className="btn btn-primary" 
+                onClick={onPlay} 
+                style={{ marginBottom: '8px', background: 'var(--condition-color)' }}
+              >
+                <PlayIcon /> Play / Test
+              </button>
+              <button id="btn-clear" className="btn btn-secondary" onClick={onClear}>
+                <ClearIcon /> Clear
+              </button>
+              <p className="version-label">Trigger System Graphics v2.0</p>
+            </div>
+          </>
+        )}
+      </aside>
+    </>
   );
 }

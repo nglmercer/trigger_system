@@ -1,15 +1,15 @@
-import { Handle, Position, useReactFlow, useHandleConnections } from '@xyflow/react';
+import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionNodeData } from '../types.ts';
 import { NodeField, NodeType } from '../constants.ts';
 
 export default function ConditionNode({ id, data }: { id: string, data: ConditionNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
+  const edges = useEdges();
   
   // Detection logic to hide "next" handle if part of a group
-  const connections = useHandleConnections({ type: 'target' });
-  const isPartofGroup = connections.some(c => {
-    const sourceNode = getNode(c.source);
-    return sourceNode?.type === NodeType.CONDITION_GROUP;
+  const isPartofGroup = edges.some(e => {
+    const sourceNode = getNode(e.source);
+    return e.target === id && sourceNode?.type === NodeType.CONDITION_GROUP;
   });
 
   return (

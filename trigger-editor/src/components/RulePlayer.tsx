@@ -20,25 +20,6 @@ const DEFAULT_EVENTS = [
       ip: '127.0.0.1',
       userAgent: 'Mozilla/5.0'
     }
-  },
-  {
-    name: 'Payment Success',
-    event: 'PAYMENT_SUCCESS',
-    data: {
-      amount: 49.99,
-      currency: 'USD',
-      userId: 'user_123',
-      transactionId: 'tx_555'
-    }
-  },
-  {
-    name: 'Error Alert',
-    event: 'error',
-    data: {
-      code: 'DB_CONNECTION_FAILED',
-      severity: 'high',
-      message: 'Could not connect to database at 10.0.0.5'
-    }
   }
 ];
 
@@ -196,7 +177,6 @@ export default function RulePlayer({ rule, errors, isOpen, onClose }: RulePlayer
                                   {act.error !== undefined ? '✕' : '✓'}
                                 </span>
                                 <span className="action-type-name">{act.type}</span>
-                                <span className="action-time">{(act as any).duration || 12}ms</span>
                                 <span className="chevron">{isExpanded ? '▼' : '▶'}</span>
                               </div>
                               
