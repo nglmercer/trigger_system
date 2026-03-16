@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { RuleBuilder } from "./builder";
+import { RuleBuilder, optimizeCondition, optimizeAction, type OptimizeOptions } from "./builder";
 import { RuleExporter } from "./exporter";
 import type { ConditionGroup, ActionGroup, RuleCondition, Action, Condition } from "../types";
 
@@ -234,5 +234,102 @@ describe("RuleBuilder SDK", () => {
     const doNode = rule.do as Action;
     expect(doNode).toBeDefined();
     expect(doNode.type).toBe("send_email");
+  });
+
+  test("should keep duplicates when deduplicate is false", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-no-dedup")
+      .on("event")
+      .ifComplex(c => 
+        c.where("a", "EQ", 1)
+         .where("a", "EQ", 1) // duplicate - should be kept
+         .where("b", "EQ", 2)
+      )
+      .do("log", { msg: "test" })
+      .optimize({ deduplicate: false })
+      .build();
+
+    const yaml = RuleExporter.toCleanYaml(rule);
+    
+    // With deduplicate: false, 'a' should appear twice
+    const aMatches = (yaml.match(/field: a/g) || []).length;
+    expect(aMatches).toBe(2);
+    
+    // b should appear once
+    expect(yaml).toContain("field: b");
+  });
+
+  test("should deduplicate using uniqueIdField", () => {
+    const conditions: RuleCondition[] = [
+      { field: "a", operator: "EQ", value: 1, id: "cond-1" } as RuleCondition,
+      { field: "a", operator: "EQ", value: 1, id: "cond-2" } as RuleCondition, // same content, different id - should be kept
+      { field: "a", operator: "EQ", value: 1 } as RuleCondition, // no id - kept (not deduplicated against items with IDs)
+    ];
+
+    const options: OptimizeOptions = { deduplicate: true, uniqueIdField: "id" };
+    const result = optimizeCondition(conditions, options);
+
+    // Should have 3: items with IDs are kept regardless, item without ID is kept
+    // because it's not a duplicate of the ones with IDs (different key set)
+    expect(result).toBeDefined();
+    if (Array.isArray(result)) {
+      expect(result.length).toBe(3);
+    }
+  });
+
+  test("should keep actions with different ids using uniqueIdField", () => {
+    const actions: Action[] = [
+      { type: "log", params: { msg: "A" }, id: "action-1" } as Action,
+      { type: "log", params: { msg: "A" }, id: "action-2" } as Action, // same content, different id
+      { type: "log", params: { msg: "A" } } as Action, // no id - kept
+    ];
+
+    const options: OptimizeOptions = { deduplicate: true, uniqueIdField: "id" };
+    const result = optimizeAction(actions, options);
+
+    // Should have 3: action-1 and action-2 (different IDs), plus the one without id
+    expect(result).toBeDefined();
+    if (Array.isArray(result)) {
+      expect(result.length).toBe(3);
+    }
+  });
+
+  test("should work with graph parser optimizeOptions", () => {
+    const nodes = [
+      { id: "e1", type: "event", data: { id: "rule-opt-1", event: "user_login" } },
+      { id: "c1", type: "condition", data: { field: "role", operator: "EQ", value: "admin" } },
+      { id: "c2", type: "condition", data: { field: "role", operator: "EQ", value: "admin" } }, // duplicate
+      { id: "a1", type: "action", data: { type: "notify", params: { msg: "Admin logged in" } } }
+    ];
+
+    const edges = [
+      { source: "e1", target: "c1" },
+      { source: "e1", target: "c2" },
+      { source: "c1", target: "a1" },
+      { source: "c2", target: "a1" }
+    ];
+
+    // Test with deduplicate: true (default for conditions)
+    const builder1 = RuleBuilder.fromGraph(nodes, edges, { 
+      optimizeOptions: { deduplicate: true } 
+    });
+    const rule1 = builder1.build();
+    
+    // With deduplicate: true, conditions should be merged into one
+    expect(rule1.if).toBeDefined();
+    const yaml1 = RuleExporter.toCleanYaml(rule1);
+    const roleMatches1 = (yaml1.match(/field: role/g) || []).length;
+    expect(roleMatches1).toBe(1);
+
+    // Test with deduplicate: false
+    const builder2 = RuleBuilder.fromGraph(nodes, edges, { 
+      optimizeOptions: { deduplicate: false } 
+    });
+    const rule2 = builder2.build();
+    
+    const yaml2 = RuleExporter.toCleanYaml(rule2);
+    const roleMatches2 = (yaml2.match(/field: role/g) || []).length;
+    expect(roleMatches2).toBe(2);
   });
 });

@@ -208,20 +208,33 @@ function NodeEditor() {
         return false;
       }
       
-      // Check if this Condition is already connected to an Action/ActionGroup
+      // Check outputs of this condition
       const conditionHasActionOutput = edges.some(e => 
         e.source === sourceNode.id && 
         (nodes.find(n => n.id === e.target)?.type === NodeType.ACTION ||
          nodes.find(n => n.id === e.target)?.type === NodeType.ACTION_GROUP)
       );
+
+      const conditionHasConditionOutput = edges.some(e => 
+        e.source === sourceNode.id && 
+        nodes.find(n => n.id === e.target)?.type === NodeType.CONDITION
+      );
       
-      // If this condition already has an action output, don't allow another connection
-      if (conditionHasActionOutput && (isTargetAction || targetNode.type === NodeType.ACTION_GROUP)) {
-        return false;
+      // If connecting to Action
+      if (isTargetAction || targetNode.type === NodeType.ACTION_GROUP) {
+        // Only one Action output allowed, and ONLY if we don't already have a Condition output (only the last condition can connect to Action)
+        if (conditionHasActionOutput || conditionHasConditionOutput) {
+          return false;
+        }
       }
       
       // If connecting to another Condition, that's a chain (allowed)
       if (targetNode.type === NodeType.CONDITION) {
+        // Cannot connect to another condition if it already has an Action output
+        if (conditionHasActionOutput || conditionHasConditionOutput) {
+          return false;
+        }
+
         // Check if target condition already has an input from another condition
         const targetHasConditionInput = edges.some(e => 
           e.target === targetNode.id &&

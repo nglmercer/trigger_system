@@ -1,4 +1,4 @@
-import { RuleBuilder } from './builder';
+import { RuleBuilder, type OptimizeOptions } from './builder';
 import type {
   TriggerRule,
   RuleCondition,
@@ -17,6 +17,12 @@ export interface GraphParserOptions {
   extractEventData?: (n: SDKGraphNode) => Partial<TriggerRule>;
   resolveCondition?: (id: string, ctx: GraphParserContext) => RuleCondition | null;
   resolveAction?: (id: string, ctx: GraphParserContext) => Action | ActionGroup | null;
+  /**
+   * Options to control deduplication behavior.
+   * Use this to keep intentional duplicates (for templates) or use uniqueIdField
+   * to differentiate items that should not be merged.
+   */
+  optimizeOptions?: OptimizeOptions;
 }
 
 export interface GraphParserContext {
@@ -168,6 +174,11 @@ export function parseGraph(
   transformers?: GraphParserContext['transformers']
 ): RuleBuilder {
   const builder = new RuleBuilder();
+  
+  // Apply optimization options if provided
+  if (options.optimizeOptions) {
+    builder.withOptimizeOptions(options.optimizeOptions);
+  }
 
   const isEvent = options.isEventNode || defaultIsEventNode;
   const isCond = options.isCondNode || defaultIsCondNode;
