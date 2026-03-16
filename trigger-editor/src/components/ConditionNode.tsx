@@ -1,6 +1,22 @@
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionNodeData } from '../types.ts';
 import { NodeField, NodeType } from '../constants.ts';
+import { ClearIcon, ConditionIcon } from './Icons.tsx';
+import { TextInput, SelectInput, FormField } from './FormFields.tsx';
+import type { ComparisonOperator } from '../../../src/types';
+
+const OPERATOR_OPTIONS = [
+  { value: 'EQ', label: 'Equals (==)' },
+  { value: 'NEQ', label: 'Not Equals (!=)' },
+  { value: 'GT', label: 'Greater Than (>)' },
+  { value: 'GTE', label: 'Greater Than or Equal (>=)' },
+  { value: 'LT', label: 'Less Than (<)' },
+  { value: 'LTE', label: 'Less Than or Equal (<=)' },
+  { value: 'CONTAINS', label: 'Contains' },
+  { value: 'NOT_CONTAINS', label: 'Not Contains' },
+  { value: 'STARTS_WITH', label: 'Starts With' },
+  { value: 'ENDS_WITH', label: 'Ends With' },
+];
 
 export default function ConditionNode({ id, data }: { id: string, data: ConditionNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
@@ -21,43 +37,35 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
       />
       <div className="node-title node-title--condition">
-        <span className="node-icon">⚖</span> Condition
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">✕</button>
+        <span className="node-icon"><ConditionIcon /></span> Condition
+        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
+          <ClearIcon size={14} />
+        </button>
       </div>
       <div className="node-body">
-        <label className="node-label">Field</label>
-        <input
-          type="text"
-          className="node-input"
-          placeholder="data.amount"
-          value={data.field || ''}
-          onChange={(evt) => data.onChange(evt.target.value, NodeField.FIELD)}
-        />
-        <label className="node-label">Operator</label>
-        <select
-          className="node-input"
-          value={data.operator || 'EQ'}
-          onChange={(evt) => data.onChange(evt.target.value, NodeField.OPERATOR)}
-        >
-          <option value="EQ">Equals (==)</option>
-          <option value="NEQ">Not Equals (!=)</option>
-          <option value="GT">Greater Than (&gt;)</option>
-          <option value="GTE">Greater Than or Equal (&gt;=)</option>
-          <option value="LT">Less Than (&lt;)</option>
-          <option value="LTE">Less Than or Equal (&lt;=)</option>
-          <option value="CONTAINS">Contains</option>
-          <option value="NOT_CONTAINS">Not Contains</option>
-          <option value="STARTS_WITH">Starts With</option>
-          <option value="ENDS_WITH">Ends With</option>
-        </select>
-        <label className="node-label">Value</label>
-        <input
-          type="text"
-          className="node-input"
-          placeholder="100"
-          value={data.value || ''}
-          onChange={(evt) => data.onChange(evt.target.value, NodeField.VALUE)}
-        />
+        <FormField label="Field">
+          <TextInput
+            value={data.field || ''}
+            onChange={(val) => data.onChange(val as string, NodeField.FIELD)}
+            placeholder="data.amount"
+          />
+        </FormField>
+        
+        <FormField label="Operator">
+          <SelectInput
+            value={data.operator || 'EQ'}
+            options={OPERATOR_OPTIONS}
+            onChange={(val) => data.onChange(val as ComparisonOperator, NodeField.OPERATOR)}
+          />
+        </FormField>
+        
+        <FormField label="Value">
+          <TextInput
+            value={data.value || ''}
+            onChange={(val) => data.onChange(val as string, NodeField.VALUE)}
+            placeholder="100"
+          />
+        </FormField>
       </div>
       {!isPartofGroup && (
         <Handle

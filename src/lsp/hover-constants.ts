@@ -4,7 +4,7 @@
  * Contains all static documentation for fields, operators, actions
  */
 
-import type { MarkupContent } from 'vscode-languageserver/node';
+//import type { MarkupContent } from 'vscode-languageserver/node';
 
 /**
  * Field documentation with descriptions and allowed values
