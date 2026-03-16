@@ -1,6 +1,8 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
+import { setGlobalContextData } from './AutocompleteContext.ts';
+import { useAlert } from './Alert.tsx';
 import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon } from './Icons.tsx';
 
 interface SidebarProps {
@@ -10,6 +12,25 @@ interface SidebarProps {
 
 export default function Sidebar({ onPlay, onClear }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { success, error } = useAlert();
+  
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+          setGlobalContextData(json);
+          success('Autocompletion logic loaded successfully!');
+        } catch (err) {
+          error('Invalid JSON file.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
   
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData(DRAG_DATA_FORMAT, nodeType);
@@ -130,6 +151,20 @@ export default function Sidebar({ onPlay, onClear }: SidebarProps) {
                 style={{ marginBottom: '8px', background: 'var(--condition-color)' }}
               >
                 <PlayIcon /> Play / Test
+              </button>
+              <input 
+                type="file" 
+                accept=".json" 
+                style={{ display: 'none' }} 
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+              />
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => fileInputRef.current?.click()} 
+                style={{ marginBottom: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+              >
+                Upload Variables JSON
               </button>
               <button id="btn-clear" className="btn btn-secondary" onClick={onClear}>
                 <ClearIcon /> Clear

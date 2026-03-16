@@ -1,8 +1,10 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { copyToClipboard } from '../utils.ts';
 import { INITIAL_HINT } from '../constants.ts';
 import { CopyIcon, CodeIcon, ChevronIcon } from './Icons.tsx';
+import { resolveAutocompleteValue } from './AutocompleteContext.ts';
+import { InputHoverTooltip } from './FormFields.tsx';
 
 interface OutputPanelProps {
   yaml: string;
@@ -11,6 +13,60 @@ interface OutputPanelProps {
 
 export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const preRef = useRef<HTMLPreElement>(null);
+  const [hoveredVar, setHoveredVar] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+  const getVarAtPoint = useCallback((e: React.MouseEvent) => {
+    // Get the text character position under the mouse
+    const range = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+    if (!range || !preRef.current) return null;
+    const text = preRef.current.textContent || '';
+    // Walk the text nodes to get character offset
+    let offset = 0;
+    const walker = document.createTreeWalker(preRef.current, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node === range.startContainer) {
+        offset += range.startOffset;
+        break;
+      } else {
+        offset += (node.textContent || '').length;
+      }
+    }
+    // Find if current offset is inside a ${...} expression
+    const regex = /\$\{([a-zA-Z0-9_.]+)\}/g;
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      if (offset >= m.index && offset <= m.index + m[0].length) {
+        return m[1];
+      }
+    }
+    return null;
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const found = getVarAtPoint(e);
+    if (found && resolveAutocompleteValue(found) !== undefined) {
+      setHoveredVar(found);
+      setTooltipPos({ x: e.clientX, y: e.clientY });
+    } else {
+      setHoveredVar(null);
+    }
+  }, [getVarAtPoint]);
+
+  const renderTooltip = () => {
+    if (!hoveredVar) return null;
+    return (
+      <InputHoverTooltip 
+        targetVar={hoveredVar}
+        anchorRef={preRef as React.RefObject<HTMLElement | null>}
+        visible={true}
+        followMouse={true}
+        mousePos={tooltipPos}
+      />
+    );
+  };
 
   const onCopy = async () => {
     if (!yaml) return;
@@ -89,7 +145,14 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
                 </ul>
               </div>
             )}
-            <pre className={`output-content ${!yaml ? 'output-content--hint' : ''}`} style={{ margin: 0 }}>
+            {renderTooltip()}
+            <pre 
+              ref={preRef}
+              className={`output-content ${!yaml ? 'output-content--hint' : ''}`} 
+              style={{ margin: 0, cursor: 'default' }}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={() => setHoveredVar(null)}
+            >
               {yaml || INITIAL_HINT}
             </pre>
           </div>

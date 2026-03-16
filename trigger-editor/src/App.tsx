@@ -23,6 +23,8 @@ import '@xyflow/react/dist/style.css';
 import Sidebar from './components/Sidebar.tsx';
 import OutputPanel from './components/OutputPanel.tsx';
 import RulePlayer from './components/RulePlayer.tsx';
+import { ParamsModal } from './components/ParamsModal.tsx';
+import { AlertProvider } from './components/Alert.tsx';
 
 import EventNode from './components/EventNode.tsx';
 import ConditionNode from './components/ConditionNode.tsx';
@@ -395,6 +397,8 @@ function NodeEditor() {
         rule={rule}
         errors={errors}
       />
+      
+      <ParamsModal />
     </div>
   );
 }
@@ -402,7 +406,9 @@ function NodeEditor() {
 export default function App() {
   return (
     <ReactFlowProvider>
-      <NodeEditor />
+      <AlertProvider>
+        <NodeEditor />
+      </AlertProvider>
     </ReactFlowProvider>
   );
 }
