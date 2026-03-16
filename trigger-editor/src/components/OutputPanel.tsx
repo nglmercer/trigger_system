@@ -86,6 +86,58 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
     }
   };
 
+  // Render YAML with ${...} variables highlighted and hoverable
+  const renderYamlWithHighlights = (text: string): React.ReactNode[] => {
+    const parts: React.ReactNode[] = [];
+    const regex = /(\$\{[a-zA-Z0-9_.]+\})/g;
+    let lastIdx = 0;
+    let match;
+    let key = 0;
+    while ((match = regex.exec(text)) !== null) {
+      // Plain text before the token
+      if (match.index > lastIdx) {
+        parts.push(text.slice(lastIdx, match.index));
+      }
+      // The ${...} token — parse the var name
+      const full = match[1]; // e.g. "${data.comment}"
+      const varName = full!.slice(2, -1); // "data.comment"
+      const hasValue = getHoverInfo(varName) !== undefined;
+      parts.push(
+        <span
+          key={key++}
+          onMouseEnter={(e) => {
+            if (hasValue) {
+              setHoveredVar(varName);
+              setTooltipPos({ x: e.clientX, y: e.clientY });
+            }
+          }}
+          onMouseLeave={() => setHoveredVar(null)}
+          onMouseMove={(e) => {
+            if (hasValue) setTooltipPos({ x: e.clientX, y: e.clientY });
+          }}
+          style={{
+            color: hasValue ? '#58a6ff' : '#e6edf3',
+            background: hasValue ? 'rgba(88,166,255,0.12)' : 'transparent',
+            borderRadius: '3px',
+            padding: '0 2px',
+            cursor: hasValue ? 'help' : 'default',
+            borderBottom: hasValue ? '1px dashed rgba(88,166,255,0.5)' : 'none',
+            textDecoration: 'none',
+          }}
+        >
+          {full}
+        </span>
+      );
+      lastIdx = match.index + full!.length;
+      key++;
+    }
+    // Remaining plain text
+    if (lastIdx < text.length) {
+      parts.push(text.slice(lastIdx));
+    }
+    return parts;
+  };
+
   return (
     <>
       {/* Floating Toggle Button */}
@@ -150,11 +202,10 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
             <pre 
               ref={preRef}
               className={`output-content ${!yaml ? 'output-content--hint' : ''}`} 
-              style={{ margin: 0, cursor: 'default' }}
-              onMouseMove={handleMouseMove}
+              style={{ margin: 0 }}
               onMouseLeave={() => setHoveredVar(null)}
             >
-              {yaml || INITIAL_HINT}
+              {yaml ? renderYamlWithHighlights(yaml) : INITIAL_HINT}
             </pre>
           </div>
         )}

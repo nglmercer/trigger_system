@@ -23,8 +23,10 @@ function formatDisplay(val: JsonValue): string {
  * Recursively builds a flat list of dot-notation paths from an object.
  * Forces all paths to be prefixed under "data.*".
  */
-function buildPaths(obj: JsonValue, prefix: string, out: CompletionItem[]): void {
-  // Always emit the prefix itself with its type
+function buildPaths(obj: JsonValue, prefix: string, out: CompletionItem[], seen: Set<string>): void {
+  if (seen.has(prefix)) return;
+  seen.add(prefix);
+
   const kind = getKind(obj);
   out.push({
     label: prefix,
@@ -37,7 +39,7 @@ function buildPaths(obj: JsonValue, prefix: string, out: CompletionItem[]): void
 
   if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
     for (const [key, child] of Object.entries(obj)) {
-      buildPaths(child as JsonValue, `${prefix}.${key}`, out);
+      buildPaths(child as JsonValue, `${prefix}.${key}`, out, seen);
     }
   }
 }
@@ -101,6 +103,7 @@ export function getCompletions(term: string): CompletionItem[] {
   if (!_context || typeof _context !== 'object') return [];
 
   const all: CompletionItem[] = [];
+  const seen = new Set<string>();
 
   // Determine if the context is already wrapped in a "data" key
   const contextKeys = Object.keys(_context);
@@ -110,19 +113,14 @@ export function getCompletions(term: string): CompletionItem[] {
   if (hasNativeData) {
     // Context = { data: { ... } } — build from context.data under "data" prefix
     const dataVal = (_context as Record<string, JsonValue>)['data'];
-    if (dataVal !== undefined) buildPaths(dataVal, 'data', all);
+    if (dataVal !== undefined) buildPaths(dataVal, 'data', all, seen);
   } else {
     // Context is flat — treat entire context as the "data" root
-    buildPaths(_context as JsonValue, 'data', all);
+    buildPaths(_context as JsonValue, 'data', all, seen);
   }
 
-  // Deduplicate by label (safety net)
-  const seen = new Set<string>();
-  const unique = all.filter(item => {
-    if (seen.has(item.label)) return false;
-    seen.add(item.label);
-    return true;
-  });
+  // Output is already deduplicated by seen Set — no extra filter needed
+  const unique = all;
 
   const lterm = term.toLowerCase();
   return unique

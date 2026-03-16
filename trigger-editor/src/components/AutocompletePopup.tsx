@@ -158,9 +158,9 @@ export function AutocompletePopup({ value, onSelect, anchorRef, isFocused }: Aut
         }}>
           Variables (LSP)
         </li>
-        {items.map(item => (
+        {items.map((item, i) => (
           <li
-            key={item.label}
+            key={`${item.label}-${i}`}
             onClick={() => applyCompletion(item)}
             onMouseEnter={() => setHoveredItem(item.label)}
             style={{
