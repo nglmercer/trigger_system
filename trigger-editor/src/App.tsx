@@ -5,7 +5,7 @@ import {
   addEdge,
   Background,
   Controls,
-  applyNodeChanges,
+  useNodesState,
   applyEdgeChanges,
   ReactFlowProvider,
   useReactFlow,
@@ -14,22 +14,24 @@ import {
 import type {
   Node,
   Edge,
-  NodeChange,
-  EdgeChange,
   Connection,
-  XYPosition,
+  EdgeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
+import Sidebar from './components/Sidebar.tsx';
+import OutputPanel from './components/OutputPanel.tsx';
+import RulePlayer from './components/RulePlayer.tsx';
 
 import EventNode from './components/EventNode.tsx';
 import ConditionNode from './components/ConditionNode.tsx';
 import ConditionGroupNode from './components/ConditionGroupNode.tsx';
 import ActionNode from './components/ActionNode.tsx';
 import ActionGroupNode from './components/ActionGroupNode.tsx';
-import RulePlayer from './components/RulePlayer.tsx';
 
-import { RuleBuilder } from '../../src/sdk/builder.ts';
-import { RuleExporter } from '../../src/sdk/exporter.ts';
+import { useRuleBuilder } from './hooks/useRuleBuilder.ts';
+import { NodeType, DRAG_DATA_FORMAT } from './constants.ts';
+import { generateRandomId } from './utils.ts';
 import type { 
   EventNodeData, 
   ConditionNodeData, 
@@ -37,9 +39,6 @@ import type {
   ActionNodeData, 
   ActionGroupNodeData 
 } from './types.ts';
-import type { ComparisonOperator, RuleCondition, Action, ActionGroup, ExecutionMode } from '../../src/types.ts';
-import { NodeType, DRAG_DATA_FORMAT, INITIAL_HINT } from './constants.ts';
-import { copyToClipboard, generateRandomId } from './utils.ts';
 
 const nodeTypes = {
   [NodeType.EVENT]: EventNode,
@@ -57,51 +56,23 @@ type AppNode = Node<
   ActionGroupNodeData
 >;
 
-const initialNodes: AppNode[] = [
-  {
-    id: 'node-start',
-    type: NodeType.EVENT,
-    position: { x: 400, y: 250 },
-    data: { 
-      id: generateRandomId(),
-      name: 'New Trigger Rule',
-      description: '',
-      event: '', 
-      priority: 0,
-      enabled: true,
-      onChange: () => {} 
-    },
-  },
-];
-
-const initialEdges: Edge[] = [];
-
 const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
 
 function NodeEditor() {
-  const [nodes, setNodes] = useState<AppNode[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const [isPreviewVisible, setIsPreviewVisible] = useState<boolean>(false);
-  const [isPlayerOpen, setIsPlayerOpen] = useState<boolean>(false);
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as AppNode[]),
-    []
-  );
+  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
 
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } }, eds)),
-    []
-  );
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
-  const onReconnect = useCallback(
-    (oldEdge: Edge, newConnection: Connection) => setEdges((els) => reconnectEdge(oldEdge, newConnection, els)),
-    []
-  );
+  const buildRule = useRuleBuilder(nodes, edges);
+  
+  // Compute rule, yaml and errors in real-time
+  const { rule, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
 
   const onNodeDataChange = useCallback((id: string, value: any, field: string) => {
     setNodes((nds) =>
@@ -109,24 +80,19 @@ function NodeEditor() {
         if (node.id === id) {
           return {
             ...node,
-            data: {
-              ...node.data,
-              [field]: value,
-            },
+            data: { ...node.data, [field]: value },
           };
         }
         return node;
       })
     );
-  }, []);
+  }, [setNodes]);
 
-  // Ensure nodes always have their onChange handlers
+  // Ensure nodes have their onChange and latest state
   useEffect(() => {
-    setNodes((nds) => {
-      let needsUpdate = false;
-      const newNodes = nds.map((node) => {
-        if (typeof node.data.onChange !== 'function' || node.id !== node.data._id) {
-          needsUpdate = true;
+    setNodes((nds) => 
+      nds.map((node) => {
+        if (typeof node.data.onChange !== 'function' || node.data._id !== node.id) {
           return {
             ...node,
             data: {
@@ -137,244 +103,74 @@ function NodeEditor() {
           };
         }
         return node;
-      });
-      return needsUpdate ? newNodes : nds;
-    });
-  }, [onNodeDataChange, nodes.length]); // Re-run when length changes (new nodes)
-  
-  const buildRule = useCallback(() => {
-    try {
-      const eventNode = nodes.find((n) => n.type === NodeType.EVENT) as Node<EventNodeData> | undefined;
-      if (!eventNode) return null;
+      })
+    );
+  }, [nodes.length, onNodeDataChange, setNodes]);
 
-      const { id: ruleId, event: eventName, name: ruleName, description, priority, enabled, cooldown, tags } = eventNode.data;
-      if (!ruleId || !eventName) return null;
+  const onConnect = useCallback(
+    (params: Connection) => setEdges((eds: Edge[]) => addEdge(params, eds)),
+    [setEdges]
+  );
 
-      const builder = new RuleBuilder();
-      builder.withId(ruleId).on(eventName);
-      if (ruleName) builder.withName(ruleName);
-      if (description) builder.withDescription(description);
-      if (priority !== undefined) builder.withPriority(priority);
-      if (enabled !== undefined) builder.withEnabled(enabled);
-      if (cooldown !== undefined) builder.withCooldown(cooldown);
-      if (tags && tags.length > 0) builder.withTags(tags);
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => setEdges((els: Edge[]) => reconnectEdge(oldEdge, newConnection, els)),
+    [setEdges]
+  );
 
-      const resolveCondition = (nodeId: string, visited = new Set<string>()): RuleCondition | null => {
-        if (visited.has(nodeId)) return null;
-        visited.add(nodeId);
-        const node = nodes.find(n => n.id === nodeId);
-        if (!node) return null;
-
-        if (node.type === NodeType.CONDITION) {
-          const { field, operator, value } = node.data as ConditionNodeData;
-          return (field && operator) ? { field, operator: operator as ComparisonOperator, value } : null;
-        } 
-        
-        if (node.type === NodeType.CONDITION_GROUP) {
-          const { operator } = node.data as ConditionGroupNodeData;
-          const subEdges = edges.filter(e => e.source === nodeId);
-          const subConditions = subEdges
-            .map(e => resolveCondition(e.target, visited))
-            .filter((c): c is RuleCondition => c !== null);
-          
-          if (subConditions.length > 0) {
-            return { operator: (operator || 'AND') as 'AND' | 'OR', conditions: subConditions };
-          }
-        }
-        return null;
-      };
-
-      const resolveAction = (nodeId: string, visited = new Set<string>()): Action | null => {
-        if (visited.has(nodeId)) return null;
-        visited.add(nodeId);
-        const node = nodes.find(n => n.id === nodeId);
-        if (!node) return null;
-
-        if (node.type === NodeType.ACTION) {
-          const { type, params } = node.data as ActionNodeData;
-          if (type) {
-            try {
-              const parsedParams = params ? JSON.parse(params) : {};
-              return { type, params: parsedParams };
-            } catch (e) {
-              return { type, params: {} };
-            }
-          }
-        } 
-        
-        if (node.type === NodeType.ACTION_GROUP) {
-          const { mode } = node.data as ActionGroupNodeData;
-          const subEdges = edges.filter(e => e.source === nodeId);
-          const subActions = subEdges
-            .map(e => resolveAction(e.target, visited))
-            .filter((a): a is Action => a !== null);
-          
-          if (subActions.length > 0) {
-            return { 
-              mode: (mode || 'ALL') as ExecutionMode, 
-              actions: subActions 
-            } as any;
-          }
-        }
-        return null;
-      };
-
-      const rootEdges = edges.filter(e => e.source === eventNode.id);
-      const conditions: RuleCondition[] = [];
-      const actions: (Action | ActionGroup)[] = [];
-
-      rootEdges.forEach(edge => {
-        const cond = resolveCondition(edge.target);
-        if (cond) conditions.push(cond);
-        else {
-          const act = resolveAction(edge.target);
-          if (act) actions.push(act);
-        }
-      });
-
-      if (conditions.length > 0) {
-        builder.withIf(conditions.length === 1 ? conditions[0]! : conditions);
-      }
-
-      if (actions.length > 0) {
-        if (actions.length === 1) builder.withDo(actions[0]!);
-        else builder.withDo(actions as Action[]);
-      }
-
-      if (actions.length === 0) return null;
-      return builder.build();
-    } catch (e) {
-      console.error('Error building rule:', e);
-      return null;
-    }
-  }, [nodes, edges]);
-
-  const { yaml } = useMemo(() => {
-    const rule = buildRule();
-    if (!rule) return { yaml: '' };
-    return { yaml: RuleExporter.toCleanYaml(rule) };
-  }, [buildRule]);
-
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
+  const isValidConnection = useCallback((connection: Connection | Edge) => {
+    const sourceNode = nodes.find((n) => n.id === connection.source);
+    const targetNode = nodes.find((n) => n.id === connection.target);
+    if (!sourceNode || !targetNode || sourceNode.id === targetNode.id) return false;
+    if (targetNode.type === NodeType.EVENT) return false;
+    
+    // Strict flow: Event -> Condition -> Action
+    const isSourceAction = sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP;
+    const isTargetCondition = targetNode.type === NodeType.CONDITION || targetNode.type === NodeType.CONDITION_GROUP;
+    if (isSourceAction && isTargetCondition) return false;
+    
+    return true;
+  }, [nodes]);
 
   const { screenToFlowPosition } = useReactFlow();
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-
       const type = event.dataTransfer.getData(DRAG_DATA_FORMAT);
+      if (!type) return;
 
-      if (typeof type === 'undefined' || !type) {
-        return;
-      }
-
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
-      const newNode: AppNode = {
+      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      const newNode = {
         id: getId(),
         type,
         position,
-        data: { onChange: () => {} } as any, // Cast to any temporarily, useEffect will fix it
+        data: { 
+          onChange: () => {},
+          ...(type === NodeType.EVENT ? { 
+            id: generateRandomId(), 
+            name: 'New Rule', 
+            enabled: true, 
+            priority: 0,
+            event: ''
+          } : {})
+        },
       };
-
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => nds.concat(newNode as any));
     },
-    [screenToFlowPosition]
+    [screenToFlowPosition, setNodes]
   );
 
-  const clearEditor = () => {
-    setNodes(initialNodes);
-    setEdges([]);
-  };
-
-  const copyYaml = async () => {
-    if (yaml) {
-      const success = await copyToClipboard(yaml);
-      if (success) {
-        const btn = document.getElementById('btn-copy');
-        if (btn) {
-          const originalText = btn.innerHTML;
-          btn.innerHTML = '✓ Copied';
-          btn.classList.add('btn--success');
-          setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.classList.remove('btn--success');
-          }, 2000);
-        }
-      }
-    }
-  };
-
-  const togglePreview = () => setIsPreviewVisible(!isPreviewVisible);
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
 
   return (
     <div className="react-flow-wrapper" style={{ display: 'flex', width: '100vw', height: '100vh', background: '#0d1117' }}>
-      <aside className="panel sidebar" style={{ width: '300px', flexShrink: 0 }}>
-        <div className="sidebar-header">
-            <h1 className="sidebar-title">Components</h1>
-            <p className="sidebar-subtitle">Drag onto canvas</p>
-        </div>
-
-        <div className="drag-group">
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.EVENT); event.dataTransfer.effectAllowed = 'move'; }}>
-                <span className="drag-icon drag-icon--event">◈</span>
-                <div className="drag-info">
-                    <span className="drag-name">Event Trigger</span>
-                    <span className="drag-desc">Starts the rule</span>
-                </div>
-            </div>
-
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.CONDITION); event.dataTransfer.effectAllowed = 'move'; }}>
-                <span className="drag-icon drag-icon--condition">⚖</span>
-                <div className="drag-info">
-                    <span className="drag-name">Condition</span>
-                    <span className="drag-desc">Filter by field value</span>
-                </div>
-            </div>
-
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.CONDITION_GROUP); event.dataTransfer.effectAllowed = 'move'; }}>
-                <span className="drag-icon drag-icon--condition">📂</span>
-                <div className="drag-info">
-                    <span className="drag-name">Condition Group</span>
-                    <span className="drag-desc">AND / OR logical group</span>
-                </div>
-            </div>
-
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.ACTION); event.dataTransfer.effectAllowed = 'move'; }}>
-                <span className="drag-icon drag-icon--action">⚡</span>
-                <div className="drag-info">
-                    <span className="drag-name">Action</span>
-                    <span className="drag-desc">Execute a handler</span>
-                </div>
-            </div>
-
-            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.ACTION_GROUP); event.dataTransfer.effectAllowed = 'move'; }}>
-                <span className="drag-icon drag-icon--action">📦</span>
-                <div className="drag-info">
-                    <span className="drag-name">Action Group</span>
-                    <span className="drag-desc">Group of actions</span>
-                </div>
-            </div>
-        </div>
-
-        <div className="sidebar-divider"></div>
-        <div className="sidebar-footer">
-            <button className="btn btn-primary" onClick={() => setIsPlayerOpen(true)} style={{ marginBottom: '8px', background: 'var(--condition-color)' }}>
-                ▶ Play / Test
-            </button>
-            <button id="btn-clear" className="btn btn-secondary" onClick={clearEditor}>
-                ✕ Clear
-            </button>
-            <p className="version-label">Trigger System Graphics v2.0</p>
-        </div>
-      </aside>
+      <Sidebar 
+        onPlay={() => setIsPlayerOpen(true)} 
+        onClear={() => { setNodes([]); setEdges([]); }} 
+      />
 
       <main style={{ flexGrow: 1, position: 'relative' }} onDragOver={onDragOver} onDrop={onDrop}>
         <ReactFlow
@@ -384,54 +180,23 @@ function NodeEditor() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onReconnect={onReconnect}
+          isValidConnection={isValidConnection}
           nodeTypes={nodeTypes}
           fitView
-          style={{ background: '#0d1117' }}
           colorMode="dark"
-          deleteKeyCode={['Backspace', 'Delete']}
-          multiSelectionKeyCode={['Control', 'Meta']}
-          selectionKeyCode={['Shift']}
         >
           <Background color="#30363d" gap={20} />
           <Controls />
         </ReactFlow>
-        
       </main>
 
-      <aside className="panel output-panel" style={{ width: isPreviewVisible ? '400px' : '60px', flexShrink: 0, transition: 'width 0.3s ease' }}>
-        <div className="output-header" style={{ padding: isPreviewVisible ? '18px 20px' : '18px 10px', flexDirection: isPreviewVisible ? 'row' : 'column', gap: '20px' }}>
-            {isPreviewVisible ? (
-                <>
-                    <div className="output-header-left">
-                        <span className="output-title">YAML Output</span>
-                        <span className="output-badge">React Flow</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button id="btn-copy" className="btn btn-icon" onClick={copyYaml} title="Copy YAML to clipboard">
-                             ⎘ Copy
-                        </button>
-                        <button id="btn-toggle" className="btn btn-icon btn-secondary" onClick={togglePreview} title="Hide preview">
-                             ◀
-                        </button>
-                    </div>
-                </>
-            ) : (
-                <button id="btn-toggle" className="btn btn-icon" onClick={togglePreview} title="Show YAML preview" style={{ height: '40px', writingMode: 'vertical-lr', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '10px' }}>
-                    ▶
-                </button>
-            )}
-        </div>
-        {isPreviewVisible && (
-            <pre id="output" className={`output-content ${!yaml ? 'output-content--hint' : ''}`}>
-              {yaml}
-            </pre>
-        )}
-      </aside>
+      <OutputPanel yaml={yaml} errors={errors} />
 
       <RulePlayer 
         isOpen={isPlayerOpen} 
         onClose={() => setIsPlayerOpen(false)} 
-        rule={buildRule()} 
+        rule={rule}
+        errors={errors}
       />
     </div>
   );

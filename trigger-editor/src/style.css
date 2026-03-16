@@ -431,6 +431,21 @@ textarea:focus {
   filter: brightness(1.2);
 }
 
+.react-flow__handle.connecting {
+  background: var(--accent) !important;
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.react-flow__handle.valid {
+  background: var(--condition-color) !important;
+  transform: scale(1.4);
+}
+
+.react-flow__handle.invalid {
+  background: #cf222e !important;
+  transform: scale(1.4);
+}
+
 .react-flow__controls {
   background: var(--panel-bg);
   border: 1px solid var(--border);

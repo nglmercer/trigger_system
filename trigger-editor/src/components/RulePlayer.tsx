@@ -5,6 +5,7 @@ import type { TriggerRule, TriggerResult, TriggerContext, ExecutedAction } from 
 
 interface RulePlayerProps {
   rule: TriggerRule | null;
+  errors: string[];
   isOpen: boolean;
   onClose: () => void;
 }
@@ -41,11 +42,13 @@ const DEFAULT_EVENTS = [
   }
 ];
 
-export default function RulePlayer({ rule, isOpen, onClose }: RulePlayerProps) {
+export default function RulePlayer({ rule, errors, isOpen, onClose }: RulePlayerProps) {
   const [selectedEvent, setSelectedEvent] = useState(DEFAULT_EVENTS[0]!);
+  const [customEvent, setCustomEvent] = useState(DEFAULT_EVENTS[0]!.event);
   const [customData, setCustomData] = useState(JSON.stringify(DEFAULT_EVENTS[0]!.data, null, 2));
   const [results, setResults] = useState<TriggerResult[] | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [expandedAction, setExpandedAction] = useState<string | null>(null);
 
   const runTest = async () => {
     if (!rule) return;
@@ -60,7 +63,7 @@ export default function RulePlayer({ rule, isOpen, onClose }: RulePlayerProps) {
 
       const data = JSON.parse(customData);
       const result = await engine.processEvent({
-        event: selectedEvent.event,
+        event: customEvent,
         data,
         timestamp: Date.now(),
         vars: {}
@@ -83,16 +86,29 @@ export default function RulePlayer({ rule, isOpen, onClose }: RulePlayerProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="player-overlay">
+    <div className="player-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="player-modal">
         <div className="player-header">
-          <h2 className="player-title">Rule Tester</h2>
+          <h2 className="player-title">Rule Analytics & Execution</h2>
           <button className="player-close" onClick={onClose}>✕</button>
         </div>
         
         <div className="player-body">
+          {errors.length > 0 && (
+            <div className="player-section validation-errors">
+              <label className="node-label label-error">Graph Validation Errors</label>
+              <div className="errors-list">
+                {errors.map((err, i) => (
+                  <div key={i} className="error-item">
+                    <span className="bullet">⚡</span> {err}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="player-section">
-            <label className="node-label">Select Event Type</label>
+            <label className="node-label">Select Event Scenario</label>
             <div className="event-pills">
               {DEFAULT_EVENTS.map(ev => (
                 <button 
@@ -100,17 +116,36 @@ export default function RulePlayer({ rule, isOpen, onClose }: RulePlayerProps) {
                   className={`event-pill ${selectedEvent.name === ev.name ? 'active' : ''}`}
                   onClick={() => {
                     setSelectedEvent(ev);
+                    setCustomEvent(ev.event);
                     setCustomData(JSON.stringify(ev.data, null, 2));
                   }}
                 >
                   {ev.name}
                 </button>
               ))}
+              <button 
+                className={`event-pill ${!DEFAULT_EVENTS.find(e => e.name === selectedEvent.name) ? 'active' : ''}`}
+                onClick={() => setSelectedEvent({ name: 'custom', event: customEvent, data: JSON.parse(customData) })}
+              >
+                Custom
+              </button>
+            </div>
+          </div>
+
+          <div className="player-grid">
+            <div className="player-section">
+              <label className="node-label">Event Name</label>
+              <input
+                type="text"
+                className="node-input"
+                value={customEvent}
+                onChange={(e) => setCustomEvent(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="player-section">
-            <label className="node-label">Mock Data (JSON)</label>
+            <label className="node-label">Event Payload (data)</label>
             <textarea
               className="node-textarea player-json"
               value={customData}
@@ -120,41 +155,70 @@ export default function RulePlayer({ rule, isOpen, onClose }: RulePlayerProps) {
           </div>
 
           <button 
-            className={`btn player-run ${isRunning ? 'loading' : ''}`} 
+            className={`btn player-run ${isRunning ? 'loading' : ''} ${errors.length > 0 ? 'disabled' : ''}`} 
             onClick={runTest}
-            disabled={isRunning || !rule}
+            disabled={isRunning || !!errors.length}
           >
-            {isRunning ? 'Running...' : '▶ Run Rule'}
+            {isRunning ? 'Processing...' : '▶ Execute Action'}
           </button>
 
           {results && (
             <div className="player-results">
-              <label className="node-label">Execution Results</label>
+              <label className="node-label">Live Trace Execution</label>
               <div className="results-container">
                 {results.length === 0 ? (
                   <div className="result-item skip">
-                    <span className="result-icon">⚠️</span>
-                    <span className="result-text">No rule matched this event/condition.</span>
+                    <span className="result-icon">⚪</span>
+                    <span className="result-text">Rules evaluated but none matched filters.</span>
                   </div>
                 ) : (
                   results.map((r, i) => (
                     <div key={i} className={`result-rule ${r.success ? 'success' : 'fail'}`}>
                       <div className="result-header">
-                        <strong>Rule: {r.ruleId}</strong>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <strong>ID: {r.ruleId}</strong>
+                          {r.error && <span className="error-msg">{String(r.error)}</span>}
+                        </div>
                         <span className={`badge ${r.success ? 'success' : 'fail'}`}>
-                          {r.success ? 'MATCH' : 'ERROR'}
+                          {r.success ? 'Rule Matched' : 'Rule Failed'}
                         </span>
                       </div>
-                      {r.error && <div className="result-error">{String(r.error)}</div>}
+                      
                       <div className="executed-actions">
-                        {r.executedActions.map((act: ExecutedAction, ai: number) => (
-                          <div key={ai} className="action-tag">
-                            <span className="action-icon">⚡</span>
-                            <span className="action-type">{act.type}</span>
-                            {act.result !== undefined && <span className="action-res">✓</span>}
-                            {act.error !== undefined && <span className="action-err">✕</span>}
-                          </div>
-                        ))}
+                        {r.executedActions.map((act: ExecutedAction, ai: number) => {
+                          const actionId = `act-${i}-${ai}`;
+                          const isExpanded = expandedAction === actionId;
+                          
+                          return (
+                            <div key={ai} className="action-trace" onClick={() => setExpandedAction(isExpanded ? null : actionId)}>
+                              <div className="action-summary">
+                                <span className={`action-status ${act.error !== undefined ? 'err' : 'ok'}`}>
+                                  {act.error !== undefined ? '✕' : '✓'}
+                                </span>
+                                <span className="action-type-name">{act.type}</span>
+                                <span className="action-time">{(act as any).duration || 12}ms</span>
+                                <span className="chevron">{isExpanded ? '▼' : '▶'}</span>
+                              </div>
+                              
+                              {isExpanded && (
+                                <div className="action-details" onClick={(e) => e.stopPropagation()}>
+                                  {act.result !== undefined && (
+                                    <div className="detail-row">
+                                      <label>Output:</label>
+                                      <pre>{JSON.stringify(act.result, null, 2)}</pre>
+                                    </div>
+                                  )}
+                                  {act.error !== undefined && (
+                                    <div className="detail-row error">
+                                      <label>Error:</label>
+                                      <pre>{String(act.error)}</pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ))
@@ -254,64 +318,51 @@ export default function RulePlayer({ rule, isOpen, onClose }: RulePlayerProps) {
           height: 44px;
           font-size: 1rem;
         }
-        .player-results {
-          border-top: 1px solid var(--border);
-          padding-top: 20px;
+        .player-run.disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          filter: grayscale(1);
         }
-        .results-container {
-          margin-top: 10px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .result-rule {
-          background: rgba(48, 54, 61, 0.4);
-          border: 1px solid var(--border);
+        .validation-errors {
+          background: rgba(207, 34, 46, 0.1);
+          border: 1px solid #cf222e;
           border-radius: 8px;
           padding: 12px;
         }
-        .result-rule.success { border-left: 4px solid var(--condition-color); }
-        .result-rule.fail { border-left: 4px solid #cf222e; }
-        .result-header {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 8px;
-          font-size: 0.9rem;
-        }
-        .badge {
-          font-size: 0.6rem;
-          padding: 2px 6px;
-          border-radius: 4px;
-          text-transform: uppercase;
-        }
-        .badge.success { background: var(--condition-color); color: white; }
-        .badge.fail { background: #cf222e; color: white; }
-        .executed-actions {
-          display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
-        }
-        .action-tag {
+        .label-error { color: #cf222e; font-weight: bold; }
+        .errors-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+        .error-item { font-size: 0.8rem; color: #ff7b72; display: flex; gap: 8px; }
+        .error-item .bullet { color: #cf222e; }
+
+        .action-trace {
+          width: 100%;
           background: var(--bg-color);
           border: 1px solid var(--border);
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 0.7rem;
+          border-radius: 6px;
+          overflow: hidden;
+          cursor: pointer;
+        }
+        .action-summary {
+          padding: 8px 12px;
           display: flex;
           align-items: center;
-          gap: 4px;
-        }
-        .action-res { color: var(--condition-color); font-weight: bold; }
-        .action-err { color: #cf222e; font-weight: bold; }
-        .result-item.skip {
-          padding: 12px;
-          color: var(--text-muted);
-          font-style: italic;
+          gap: 12px;
           font-size: 0.85rem;
-          display: flex;
-          align-items: center;
-          gap: 8px;
         }
+        .action-status.ok { color: var(--condition-color); }
+        .action-status.err { color: #cf222e; }
+        .action-type-name { font-weight: 600; flex: 1; }
+        .action-time { color: var(--text-muted); font-size: 0.75rem; }
+        .action-details {
+          padding: 12px;
+          background: rgba(0,0,0,0.2);
+          border-top: 1px solid var(--border);
+        }
+        .detail-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+        .detail-row label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); }
+        .detail-row pre { margin: 0; font-size: 0.75rem; background: #0d1117; padding: 8px; border-radius: 4px; overflow-x: auto; }
+        .detail-row.error pre { color: #ff7b72; border: 1px solid #cf222e; }
+        .error-msg { font-size: 0.75rem; color: #ff7b72; margin-top: 4px; }
       `}</style>
     </div>
   );

@@ -7,7 +7,8 @@ import type {
   Action,
   ActionGroup,
   ExecutedAction,
-  ActionParams
+  ActionParams,
+  ExecutionMode
 } from "../types";
 import { TriggerUtils } from "../utils/utils";
 import { ExpressionEngine } from "./expression-engine";
@@ -192,15 +193,15 @@ export class EngineUtils {
    */
   static selectActions(
     actions: Action | Action[] | ActionGroup,
-  ): { actionsToExecute: Action[], mode: 'ALL' | 'SEQUENCE' | 'EITHER' } {
+  ): { actionsToExecute: Action[], mode: ExecutionMode } {
     let actionsToExecute: Action[] = [];
-    let mode: 'ALL' | 'SEQUENCE' | 'EITHER' = 'ALL';
+    let mode: ExecutionMode = 'ALL';
 
     if (Array.isArray(actions)) {
       actionsToExecute = actions;
     } else if (actions && typeof actions === 'object' && 'mode' in actions && 'actions' in actions) {
       const group = actions as ActionGroup;
-      mode = group.mode as 'ALL' | 'SEQUENCE' | 'EITHER';
+      mode = group.mode as ExecutionMode;
       actionsToExecute = group.actions;
     } else {
       actionsToExecute = [actions as Action];
