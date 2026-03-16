@@ -25,19 +25,25 @@ export class RuleExporter {
   static cleanRule(rule: TriggerRule): Record<string, unknown> {
     const cleaned: Record<string, unknown> = {};
     
-    // Required fields
+    // Core Identification
     cleaned.id = rule.id;
-    cleaned.on = rule.on;
-    cleaned.do = rule.do;
-    
-    // Optional fields (only include if truthy)
     if (rule.name) cleaned.name = rule.name;
     if (rule.description) cleaned.description = rule.description;
+    
+    // Trigger Condition
+    cleaned.on = rule.on;
+    
+    // Logic & Metadata
     if (rule.priority !== undefined && rule.priority !== 0) cleaned.priority = rule.priority;
     if (rule.enabled !== undefined && rule.enabled !== true) cleaned.enabled = rule.enabled;
     if (rule.cooldown !== undefined && rule.cooldown !== 0) cleaned.cooldown = rule.cooldown;
     if (rule.tags && rule.tags.length > 0) cleaned.tags = rule.tags;
+    
+    // The conditional part
     if (rule.if) cleaned.if = rule.if;
+    
+    // The action part (always last)
+    cleaned.do = rule.do;
     
     return cleaned;
   }

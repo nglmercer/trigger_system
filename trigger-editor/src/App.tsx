@@ -5,7 +5,7 @@ import {
   addEdge,
   Background,
   Controls,
-  useNodesState,
+  applyNodeChanges,
   applyEdgeChanges,
   ReactFlowProvider,
   useReactFlow,
@@ -16,6 +16,7 @@ import type {
   Edge,
   Connection,
   EdgeChange,
+  NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -59,7 +60,13 @@ type AppNode = Node<
 const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
 
 function NodeEditor() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>([]);
+  const [nodes, setNodes] = useState<AppNode[]>([]);
+  
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as AppNode[]),
+    []
+  );
+
   const [edges, setEdges] = useState<Edge[]>([]);
   
   const onEdgesChange = useCallback(

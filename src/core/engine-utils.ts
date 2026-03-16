@@ -192,9 +192,9 @@ export class EngineUtils {
    * Selects an action to execute based on mode and random weights
    */
   static selectActions(
-    actions: Action | Action[] | ActionGroup,
-  ): { actionsToExecute: Action[], mode: ExecutionMode } {
-    let actionsToExecute: Action[] = [];
+    actions: Action | Action[] | ActionGroup | (Action | ActionGroup)[],
+  ): { actionsToExecute: (Action | ActionGroup)[], mode: ExecutionMode } {
+    let actionsToExecute: (Action | ActionGroup)[] = [];
     let mode: ExecutionMode = 'ALL';
 
     if (Array.isArray(actions)) {
@@ -208,11 +208,12 @@ export class EngineUtils {
     }
 
     if (mode === 'EITHER' && actionsToExecute.length > 0) {
-      const totalWeight = actionsToExecute.reduce((sum, a) => sum + (a.probability || 1), 0);
+      const getWeight = (a: Action | ActionGroup) => ('probability' in a ? (a.probability as number) : 1);
+      const totalWeight = actionsToExecute.reduce((sum, a) => sum + getWeight(a), 0);
       let random = Math.random() * totalWeight;
 
       for (const action of actionsToExecute) {
-        const weight = action.probability || 1;
+        const weight = getWeight(action);
         random -= weight;
         if (random <= 0) {
           return { actionsToExecute: [action], mode };

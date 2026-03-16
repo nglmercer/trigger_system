@@ -236,31 +236,39 @@ export class TriggerEngine {
    * Executes the actions of a rule
    */
   protected async executeRuleActions(
-    actionConfig: Action | Action[] | ActionGroup,
+    actionConfig: Action | Action[] | ActionGroup | (Action | ActionGroup)[],
     context: TriggerContext
   ): Promise<ExecutedAction[]> {
     const { actionsToExecute } = EngineUtils.selectActions(actionConfig);
     const executionLogs: ExecutedAction[] = [];
 
     for (const action of actionsToExecute) {
+      // Handle nested ActionGroups
+      if ('actions' in action && 'mode' in action) {
+        executionLogs.push(...(await this.executeRuleActions(action, context)));
+        continue;
+      }
+
+      const act = action as Action;
+
       // Handle conditional actions
-      if ('if' in action && action.if && (action.then || action.else)) {
-        const conditionMet = this.evaluateConditions(action.if, context);
+      if ('if' in act && act.if && (act.then || act.else)) {
+        const conditionMet = this.evaluateConditions(act.if, context);
         
-        if (conditionMet && action.then) {
-          executionLogs.push(...(await this.executeRuleActions(action.then, context)));
-        } else if (!conditionMet && action.else) {
-          executionLogs.push(...(await this.executeRuleActions(action.else, context)));
+        if (conditionMet && act.then) {
+          executionLogs.push(...(await this.executeRuleActions(act.then, context)));
+        } else if (!conditionMet && act.else) {
+          executionLogs.push(...(await this.executeRuleActions(act.else, context)));
         }
         continue;
       }
 
       // Handle direct if shorthand
-      if ('if' in action && action.if) {
-        if (!this.evaluateConditions(action.if, context)) continue;
+      if ('if' in act && act.if) {
+        if (!this.evaluateConditions(act.if, context)) continue;
       }
 
-      const result = await this.executeSingleAction(action, context);
+      const result = await this.executeSingleAction(act, context);
       executionLogs.push(result);
       
       if (result.type === 'BREAK') break;

@@ -179,7 +179,7 @@ export class RuleBuilder {
     return this;
   }
 
-  withDo(action: Action | Action[] | ActionGroup): this {
+  withDo(action: Action | ActionGroup | (Action | ActionGroup)[]): this {
     this.rule.do = action;
     return this;
   }

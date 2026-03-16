@@ -84,7 +84,7 @@ export type ExecutionMode = 'ALL' | 'EITHER' | 'SEQUENCE';
 
 export interface ActionGroup {
   mode: ExecutionMode;
-  actions: Action[];
+  actions: (Action | ActionGroup)[];
 }
 
 // --- The Rule ---
@@ -92,7 +92,7 @@ export interface ActionGroup {
 export interface TriggerRule extends RuleMetadata {
   on: string;
   if?: RuleCondition | RuleCondition[];
-  do: Action | Action[] | ActionGroup;
+  do: Action | Action[] | ActionGroup | (Action | ActionGroup)[];
 }
 
 // --- Engine Context ---
