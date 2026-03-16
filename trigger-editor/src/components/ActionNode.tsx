@@ -1,18 +1,27 @@
 import * as React from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionNodeData } from '../types.ts';
-import { NodeField } from '../constants.ts';
+import { NodeField, NodeType } from '../constants.ts';
 import { ClearIcon, ActionIcon } from './Icons.tsx';
 import { TextInput, TextAreaInput, FormField } from './FormFields.tsx';
 
 export default function ActionNode({ id, data }: { id: string, data: ActionNodeData }) {
-  const { deleteElements } = useReactFlow();
+  const { deleteElements, getNode } = useReactFlow();
+  const edges = useEdges();
+  
+  // Show output handle for connecting to ActionGroup or chaining actions
+  // Always show to allow initial connections
+  const isConnectedToActionGroup = edges.some(e => 
+    (e.target === id && getNode(e.source)?.type === NodeType.ACTION_GROUP) ||
+    (e.source === id && getNode(e.target)?.type === NodeType.ACTION_GROUP)
+  );
 
   return (
     <div className="drawflow-node action">
       <Handle
         type="target"
         position={Position.Left}
+        id="action-input"
         className="node-input-handle"
         style={{ background: 'var(--action-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
       />
@@ -39,6 +48,21 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
           />
         </FormField>
       </div>
+      {/* Output handle for connecting to ActionGroup or chaining actions */}
+      {/* Always show output handle to allow connections */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="action-output"
+        className="node-output-handle"
+        style={{ 
+          background: 'var(--action-color)', 
+          border: '2px solid var(--bg-color)', 
+          width: '12px', 
+          height: '12px'
+        }}
+        title="Connect to ActionGroup or another Action"
+      />
     </div>
   );
 }

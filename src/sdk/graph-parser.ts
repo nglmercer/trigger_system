@@ -89,7 +89,7 @@ export function resolveCondition(id: string, ctx: GraphParserContext): RuleCondi
 
     // Condition nodes don't typically chain into other conditions directly in this builder map, 
     // but if they do, we treat them as AND.
-    const condChildrenEdges = ctx.edges.filter(e => e.source === id && !e.sourceHandle?.startsWith('cond') && isCond(ctx.nodes.find(n => n.id === e.target)!));
+    const condChildrenEdges = ctx.edges.filter(e => e.source === id && isCond(ctx.nodes.find(n => n.id === e.target)!));
     const children = condChildrenEdges.map(e => resolveCondition(e.target, ctx)).filter((c): c is RuleCondition => c !== null);
 
     if (children.length > 0) {

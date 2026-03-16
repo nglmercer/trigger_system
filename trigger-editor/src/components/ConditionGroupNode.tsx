@@ -1,13 +1,30 @@
 import * as React from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionGroupNodeData } from '../types.ts';
-import { NodeField } from '../constants.ts';
+import { NodeField, NodeType } from '../constants.ts';
 import { CONDITION_GROUP_OPTIONS } from '../shared-constants.ts';
 import { ClearIcon, ConditionGroupIcon } from './Icons.tsx';
 import { SelectInput, FormField } from './FormFields.tsx';
 
 export default function ConditionGroupNode({ id, data }: { id: string, data: ConditionGroupNodeData }) {
-  const { deleteElements } = useReactFlow();
+  const { deleteElements, getNode } = useReactFlow();
+  const edges = useEdges();
+  
+  // Check if this ConditionGroup has incoming connection from Event or Condition
+  const hasInput = edges.some(e => 
+    e.target === id && 
+    (getNode(e.source)?.type === NodeType.EVENT ||
+     getNode(e.source)?.type === NodeType.CONDITION)
+  );
+  
+  // Count how many conditions are connected to this group
+  // SDK looks for edges where sourceHandle starts with 'cond'
+  const connectedConditions = edges.filter(e => 
+    e.source === id && e.sourceHandle?.startsWith('cond')
+  ).length;
+
+  // Condition Group has LEFT input and RIGHT output - standard 2-point connection
+  // Output is always visible (connects to conditions in sequence)
 
   return (
     <div className="drawflow-node condition-group">
@@ -17,20 +34,21 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
         id="input"
         className="node-input-handle"
         style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
+        title="Connect from event or condition"
       />
+      {/* Right handle for connecting to conditions (always visible) */}
       <Handle
         type="source"
-        position={Position.Top}
-        id="cond-1"
+        position={Position.Right}
+        id="cond-output"
         className="node-output-handle"
-        style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '10px', height: '10px', top: '-5px' }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="cond-2"
-        className="node-output-handle"
-        style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '10px', height: '10px', bottom: '-5px' }}
+        style={{ 
+          background: 'var(--condition-color)', 
+          border: '2px solid var(--bg-color)', 
+          width: '12px', 
+          height: '12px'
+        }}
+        title="Connect to condition"
       />
       <div className="node-title node-title--condition">
         <span className="node-icon"><ConditionGroupIcon /></span> Condition Group
@@ -50,18 +68,12 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
           />
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
-          Connect conditions to top/bottom handles
+          {connectedConditions > 0 
+            ? `${connectedConditions} condition(s) connected`
+            : 'Connect from event or condition to left'
+          }
         </div>
       </div>
-      
-      {/* Output to actions after conditions are evaluated */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="node-output-handle"
-        style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
-        title="Connect to action"
-      />
     </div>
   );
 }

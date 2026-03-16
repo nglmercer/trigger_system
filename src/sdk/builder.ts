@@ -73,8 +73,9 @@ export function optimizeAction(act: Action | ActionGroup | (Action | ActionGroup
        }
     }
 
-    const unique = Array.from(new Set(inlined.map(a => JSON.stringify(a)))).map(s => JSON.parse(s));
-    return unique.length === 0 ? undefined : (unique.length === 1 ? unique[0] : unique);
+    if (inlined.length === 0) return undefined;
+    if (inlined.length === 1) return inlined[0];
+    return inlined;
   }
 
   // It's a single item
@@ -94,12 +95,10 @@ export function optimizeAction(act: Action | ActionGroup | (Action | ActionGroup
       }
     }
 
-    const uniqueChildren = Array.from(new Set(inlined.map(a => JSON.stringify(a)))).map(s => JSON.parse(s));
+    if (inlined.length === 0) return undefined;
+    if (inlined.length === 1) return inlined[0];
 
-    if (uniqueChildren.length === 0) return undefined;
-    if (uniqueChildren.length === 1) return uniqueChildren[0];
-
-    return { mode: group.mode, actions: uniqueChildren };
+    return { mode: group.mode, actions: inlined };
   }
 
   return act;

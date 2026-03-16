@@ -18,11 +18,19 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
     return e.target === id && sourceNode?.type === NodeType.CONDITION_GROUP;
   });
 
+  // Check if this condition already has an output connection to an action
+  const hasActionOutput = edges.some(e => 
+    e.source === id && 
+    (getNode(e.target)?.type === NodeType.ACTION ||
+     getNode(e.target)?.type === NodeType.ACTION_GROUP)
+  );
+
   return (
     <div className="drawflow-node condition">
       <Handle
         type="target"
         position={Position.Left}
+        id="condition-input"
         className="node-input-handle"
         style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
       />
@@ -67,16 +75,15 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         </FormField>
       </div>
       
-      {/* Output handle for sequential flow - conditions lead to actions */}
-      {!isPartofGroup && (
         <Handle
           type="source"
           position={Position.Right}
+          id="condition-output"
           className="node-output-handle"
           style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
-          title="Connect to action"
+          title="Connect to action or next condition"
         />
-      )}
+
     </div>
   );
 }

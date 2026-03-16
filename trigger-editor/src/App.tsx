@@ -127,13 +127,21 @@ function NodeEditor() {
            return addEdge(params, eds.filter(e => e.source !== targetNode.id));
         }
 
-        // Add class based on source node type for edge coloring
-        const edgeWithClass = {
-          ...params,
+        // Generate unique edge ID to prevent merging
+        const edgeId = `edge_${params.source}_${params.target}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+        // Create edge with unique ID and class for coloring
+        const newEdge: Edge = {
+          id: edgeId,
+          source: params.source,
+          target: params.target,
+          sourceHandle: params.sourceHandle,
+          targetHandle: params.targetHandle,
           className: `source-${sourceNode?.type}`,
         };
         
-        return addEdge(edgeWithClass, eds);
+        // Add edge directly to allow multiple edges between same nodes
+        return [...eds, newEdge];
       });
     },
     [setEdges, nodes]
@@ -153,46 +161,153 @@ function NodeEditor() {
     // Node Category Helpers
     const isSourceAction = sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP;
     const isTargetAction = targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP;
-    //const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
+    const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
     const isTargetCondition = targetNode.type === NodeType.CONDITION || targetNode.type === NodeType.CONDITION_GROUP;
 
-    // RULE 1: Actions cannot point to Conditions
-    if (isSourceAction && isTargetCondition) return false;
-
-    // RULE 2: Condition Group 'input' handle (Left) can be Target of Event or other Conditions
-    // RULE 3: Condition Group 'output' handles (Right/Top/Bottom)
-    if (sourceNode.type === NodeType.CONDITION_GROUP) {
-       // Right point to Actions/Groups
-       // Top/Bottom point to child Conditions
-       const isDiscoveryEdge = isTargetCondition && (connection.sourceHandle?.includes('cond'));
-       const isAllowedTarget = isTargetAction || targetNode.type === NodeType.CONDITION_GROUP || isDiscoveryEdge;
-       if (!isAllowedTarget) return false;
-    }
-
-    // RULE 4: If EventTrigger is connected to ConditionGroup, it cannot connect to Conditions or Actions directly
+    // ============================================================
+    // RULE 1: Event Node can only have ONE single connection
+    // ============================================================
     if (sourceNode.type === NodeType.EVENT) {
-      // Check if this Event is already connected to a ConditionGroup
-      const hasConditionGroupConnection = edges.some(edge => {
-        const targetNode = nodes.find(n => n.id === edge.target);
-        return edge.source === sourceNode.id && targetNode?.type === NodeType.CONDITION_GROUP;
-      });
-      
-      if (hasConditionGroupConnection && (isTargetCondition || isTargetAction)) {
+      const existingOutgoingEdges = edges.filter(e => e.source === sourceNode.id);
+      if (existingOutgoingEdges.length >= 1) {
+        return false; // Event can only have one outgoing connection
+      }
+    }
+
+    // ============================================================
+    // RULE 2: Condition Group - Input handle only accepts Event or Condition
+    // ============================================================
+    if (targetNode.type === NodeType.CONDITION_GROUP && connection.targetHandle === 'input') {
+      // Input of ConditionGroup can only accept from Event or Condition (not from Action or ActionGroup)
+      if (sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP) {
         return false;
       }
     }
 
-    // RULE 5: If Action is connected to ActionGroup, it cannot connect to Conditions - must go through ActionGroup
-    if ((sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP) && isTargetCondition) {
-      // Check if this Action is already connected to an ActionGroup (as target of an ActionGroup)
-      const isConnectedToActionGroup = edges.some(edge => {
-        const sourceNodeOfEdge = nodes.find(n => n.id === edge.source);
-        return edge.target === sourceNode.id && sourceNodeOfEdge?.type === NodeType.ACTION_GROUP;
-      });
-      
-      if (isConnectedToActionGroup) {
+    // ============================================================
+    // RULE 3: Condition Group - Output connects to Conditions
+    // ConditionGroup can connect to multiple Conditions in sequence
+    // ============================================================
+    if (sourceNode.type === NodeType.CONDITION_GROUP) {
+      // Right handle of ConditionGroup can connect to Conditions
+      if (connection.sourceHandle?.startsWith('cond')) {
+        // Can only connect to Conditions (not to Actions or ActionGroups)
+        if (targetNode.type !== NodeType.CONDITION) {
+          return false;
+        }
+      }
+    }
+
+    // ============================================================
+    // RULE 4: Conditions chain - Only the LAST condition can connect to Action/ActionGroup
+    // Conditions cannot connect to Condition Groups
+    // ============================================================
+    if (sourceNode.type === NodeType.CONDITION) {
+      // Condition cannot connect to ConditionGroup
+      if (targetNode.type === NodeType.CONDITION_GROUP) {
         return false;
       }
+      
+      // Check if this Condition is already connected to an Action/ActionGroup
+      const conditionHasActionOutput = edges.some(e => 
+        e.source === sourceNode.id && 
+        (nodes.find(n => n.id === e.target)?.type === NodeType.ACTION ||
+         nodes.find(n => n.id === e.target)?.type === NodeType.ACTION_GROUP)
+      );
+      
+      // If this condition already has an action output, don't allow another connection
+      if (conditionHasActionOutput && (isTargetAction || targetNode.type === NodeType.ACTION_GROUP)) {
+        return false;
+      }
+      
+      // If connecting to another Condition, that's a chain (allowed)
+      if (targetNode.type === NodeType.CONDITION) {
+        // Check if target condition already has an input from another condition
+        const targetHasConditionInput = edges.some(e => 
+          e.target === targetNode.id &&
+          nodes.find(n => n.id === e.source)?.type === NodeType.CONDITION
+        );
+        // Allow if target has no condition input yet (for chaining)
+        if (targetHasConditionInput) {
+          return false;
+        }
+      }
+    }
+
+    // ============================================================
+    // RULE 5: Action Group - Input can accept from Event, Condition, ConditionGroup, or Action
+    // (Action can connect directly to ActionGroup for grouping)
+    // ============================================================
+    if (targetNode.type === NodeType.ACTION_GROUP) {
+      // ActionGroup can receive from Event, Condition, ConditionGroup, or Action
+      const isValidSource = 
+        sourceNode.type === NodeType.EVENT || 
+        sourceNode.type === NodeType.CONDITION || 
+        sourceNode.type === NodeType.CONDITION_GROUP ||
+        sourceNode.type === NodeType.ACTION;
+      if (!isValidSource) {
+        return false; // ActionGroup can only receive from Event/Condition/ConditionGroup/Action
+      }
+    }
+
+    // ============================================================
+    // RULE 6: Action can connect to ActionGroup (for grouping)
+    // AND can connect to another Action (for chaining in ActionGroup context)
+    // ============================================================
+    if (sourceNode.type === NodeType.ACTION) {
+      // Action can connect to ActionGroup
+      if (targetNode.type === NodeType.ACTION_GROUP) {
+        return true;
+      }
+      
+      // Action can also connect to another Action (for chaining)
+      // This enables sequential action execution within an ActionGroup
+      if (targetNode.type === NodeType.ACTION) {
+        // Allow any Action-to-Action connection since handles are now always visible
+        // The actual execution order will be determined by the ActionGroup mode
+        return true;
+      }
+      
+      // Action cannot connect directly to Condition or ConditionGroup
+      if (isTargetCondition) {
+        return false;
+      }
+    }
+
+    // ============================================================
+    // RULE 7: Action Group can connect to Actions (for chaining within group)
+    // ============================================================
+    if (sourceNode.type === NodeType.ACTION_GROUP) {
+      // ActionGroup can connect to Actions (for sequential execution)
+      if (targetNode.type === NodeType.ACTION) {
+        return true;
+      }
+      
+      // ActionGroup cannot connect to Conditions
+      if (isTargetCondition) {
+        return false;
+      }
+    }
+
+    // ============================================================
+    // RULE 8: Prevent circular connections
+    // ============================================================
+    // Check if creating this edge would create a cycle
+    const wouldCreateCycle = (sourceId: string, targetId: string): boolean => {
+      const visited = new Set<string>();
+      const stack = [targetId];
+      while (stack.length > 0) {
+        const current = stack.pop()!;
+        if (current === sourceId) return true;
+        if (visited.has(current)) continue;
+        visited.add(current);
+        edges.filter(e => e.source === current).forEach(e => stack.push(e.target));
+      }
+      return false;
+    };
+    
+    if (wouldCreateCycle(sourceNode.id, targetNode.id)) {
+      return false;
     }
     
     return true;

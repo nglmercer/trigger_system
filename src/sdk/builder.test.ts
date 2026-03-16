@@ -156,13 +156,13 @@ describe("RuleBuilder SDK", () => {
     // wait, our optimizer leaves one ActionGroup if >1 items.
     expect(allMatches).toBeLessThanOrEqual(1);
 
-    // msg A should appear once
+    // msg A should appear twice
     const aMatches = (yaml.match(/msg: A/g) || []).length;
-    expect(aMatches).toBe(1);
+    expect(aMatches).toBe(2);
 
-    // type: action_inside_all should appear once
+    // type: action_inside_all should appear twice
     const insideMatches = (yaml.match(/type: action_inside_all/g) || []).length;
-    expect(insideMatches).toBe(1);
+    expect(insideMatches).toBe(2);
   });
 
   test("should build a rule from generic graph nodes and edges", () => {
