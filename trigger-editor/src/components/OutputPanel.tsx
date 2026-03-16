@@ -3,8 +3,8 @@ import { useState, useRef, useCallback } from 'react';
 import { copyToClipboard } from '../utils.ts';
 import { INITIAL_HINT } from '../constants.ts';
 import { CopyIcon, CodeIcon, ChevronIcon } from './Icons.tsx';
-import { resolveAutocompleteValue } from './AutocompleteContext.ts';
-import { InputHoverTooltip } from './FormFields.tsx';
+import { getHoverInfo } from '../lsp/engine.ts';
+import { HoverTooltip } from './AutocompletePopup.tsx';
 
 interface OutputPanelProps {
   yaml: string;
@@ -47,7 +47,7 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const found = getVarAtPoint(e);
-    if (found && resolveAutocompleteValue(found) !== undefined) {
+    if (found && getHoverInfo(found) !== undefined) {
       setHoveredVar(found);
       setTooltipPos({ x: e.clientX, y: e.clientY });
     } else {
@@ -57,11 +57,12 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
 
   const renderTooltip = () => {
     if (!hoveredVar) return null;
+    const info = getHoverInfo(hoveredVar);
+    if (!info) return null;
     return (
-      <InputHoverTooltip 
-        targetVar={hoveredVar}
-        anchorRef={preRef as React.RefObject<HTMLElement | null>}
-        visible={true}
+      <HoverTooltip 
+        info={info}
+        anchorRect={preRef.current?.getBoundingClientRect() ?? null}
         followMouse={true}
         mousePos={tooltipPos}
       />

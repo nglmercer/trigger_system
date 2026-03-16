@@ -1,70 +1,54 @@
+/**
+ * Backwards-compatible adapter that bridges the old AutocompleteContext API
+ * to the new LSP engine. Use `lsp/index.ts` for new code.
+ */
 import { useState, useEffect } from 'react';
+import { loadContext, getContext, onContextChange, getHoverInfo } from '../lsp/engine.ts';
+import type { LSPContext } from '../lsp/types.ts';
 
-type ContextData = Record<string, any>;
+// ─── Legacy API compatibility ─────────────────────────────────────────────────
 
-let globalContextData: ContextData = {};
-let listeners: (() => void)[] = [];
+/** @deprecated Use `loadContext` from `lsp/engine.ts` instead */
+export const setGlobalContextData = loadContext;
 
-export const setGlobalContextData = (data: ContextData) => {
-  globalContextData = data;
-  listeners.forEach(l => l());
+/** @deprecated Use `getContext` from `lsp/engine.ts` instead */
+export const getGlobalContextData = getContext;
+
+/** @deprecated Use `getHoverInfo` from `lsp/engine.ts` instead */
+export const resolveAutocompleteValue = (path: string) => {
+  const info = getHoverInfo(path);
+  return info?.value;
 };
 
-export const getGlobalContextData = () => globalContextData;
-
-export const resolveAutocompleteValue = (path: string): any => {
-  if (!path) return undefined;
-  let keys = path.split('.');
-  
-  // If the path starts with 'data' but the actual JSON doesn't have a top-level 'data' object
-  // (because we artificially wrapped it), we drop the 'data' part to resolve it.
-  const hasNativelyData = globalContextData && typeof globalContextData === 'object' && 'data' in globalContextData && Object.keys(globalContextData).length === 1;
-  if (!hasNativelyData && keys[0] === 'data') {
-    keys.shift();
-  }
-
-  let current = globalContextData;
-  for (const k of keys) {
-    if (current && typeof current === 'object' && k in current) {
-      current = current[k];
-    } else {
-      return undefined;
-    }
-  }
-  return current;
-};
-
+/** @deprecated Use `useCompletions` from `lsp/hooks.ts` instead */
 export const useAutocompletePaths = (): string[] => {
   const [paths, setPaths] = useState<string[]>([]);
-  
+
   useEffect(() => {
-    const updatePaths = () => {
-      const newPaths: string[] = ['data'];
-      function recurse(obj: any, currentPath: string) {
+    const rebuild = () => {
+      const ctx = getContext();
+      const out: string[] = [];
+      function recurse(obj: any, prefix: string) {
+        if (!prefix) return;
+        out.push(prefix);
         if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-          for (const [key, value] of Object.entries(obj)) {
-            const newPath = currentPath ? `${currentPath}.${key}` : key;
-            newPaths.push(newPath);
-            recurse(value, newPath);
+          for (const [k, v] of Object.entries(obj)) {
+            recurse(v, `${prefix}.${k}`);
           }
         }
       }
-      
-      // If the user's uploaded JSON already has { "data": { ... } } at the root,
-      // unwrap it so we don't get 'data.data.xyz'.
-      if (globalContextData && typeof globalContextData === 'object' && 'data' in globalContextData && Object.keys(globalContextData).length === 1) {
-        recurse(globalContextData.data, 'data');
+      const hasNativeData = ctx && 'data' in ctx && Object.keys(ctx).length === 1;
+      if (hasNativeData) {
+        recurse(ctx.data, 'data');
       } else {
-        recurse(globalContextData, 'data');
+        recurse(ctx, 'data');
       }
-      
-      setPaths(newPaths);
+      setPaths(out);
     };
 
-    updatePaths();
-    listeners.push(updatePaths);
-    return () => { listeners = listeners.filter(l => l !== updatePaths); };
+    rebuild();
+    return onContextChange(rebuild);
   }, []);
-  
+
   return paths;
 };
