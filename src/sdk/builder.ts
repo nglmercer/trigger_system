@@ -1,3 +1,4 @@
+import { parseGraph, type GraphParserContext, type GraphParserOptions } from './graph-parser';
 import type {
   TriggerRule,
   RuleCondition,
@@ -8,7 +9,9 @@ import type {
   Condition,
   ConditionGroup,
   ConditionValue,
-  ActionParams
+  ActionParams,
+  SDKGraphNode,
+  SDKGraphEdge
 } from "../types";
 
 // --- SDK UTILITIES FOR OPTIMIZATION ---
@@ -187,6 +190,19 @@ export class RuleBuilder {
     enabled: true,
     priority: 0
   };
+
+  /**
+   * Build a TriggerRule strictly from a standard set of nodes and edges.
+   * This is useful for UIs (like React Flow) that manage condition topologies.
+   */
+  static fromGraph(
+    nodes: SDKGraphNode[], 
+    edges: SDKGraphEdge[], 
+    options?: GraphParserOptions,
+    transformers?: GraphParserContext['transformers']
+  ): RuleBuilder {
+    return parseGraph(nodes, edges, options, transformers);
+  }
 
   withId(id: string): this {
     this.rule.id = id;

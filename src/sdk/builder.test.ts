@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { RuleBuilder } from "./builder";
 import { RuleExporter } from "./exporter";
-import type { ConditionGroup, ActionGroup } from "../types";
+import type { ConditionGroup, ActionGroup, RuleCondition, Action, Condition } from "../types";
 
 describe("RuleBuilder SDK", () => {
   test("should create a basic rule with correct key order", () => {
@@ -160,8 +160,79 @@ describe("RuleBuilder SDK", () => {
     const aMatches = (yaml.match(/msg: A/g) || []).length;
     expect(aMatches).toBe(1);
 
-    // action_inside_all should appear once
+    // type: action_inside_all should appear once
     const insideMatches = (yaml.match(/type: action_inside_all/g) || []).length;
     expect(insideMatches).toBe(1);
+  });
+
+  test("should build a rule from generic graph nodes and edges", () => {
+    const nodes = [
+      { id: "e1", type: "event", data: { id: "rule-graph-1", event: "user_login" } },
+      { id: "c1", type: "condition", data: { field: "role", operator: "EQ", value: "admin" } },
+      { id: "a1", type: "action", data: { type: "notify", params: { msg: "Admin logged in" } } }
+    ];
+
+    const edges = [
+      { source: "e1", target: "c1" },
+      { source: "c1", target: "a1" }
+    ];
+
+    const builder = RuleBuilder.fromGraph(nodes, edges);
+    const rule = builder.build();
+
+    expect(rule.id).toBe("rule-graph-1");
+    expect(rule.on).toBe("user_login");
+    
+    // Verify condition
+    const ifNode = rule.if as Condition;
+    expect(ifNode).toBeDefined();
+    expect(ifNode.field).toBe("role");
+    expect(ifNode.value).toBe("admin");
+
+    // Verify action
+    const doNode = rule.do as Action;
+    expect(doNode).toBeDefined();
+    expect(doNode.type).toBe("notify");
+  });
+  test("should build a rule from generic graph nodes with transformers", () => {
+    const nodes = [
+      { id: "e1", type: "event", data: { id: "rule-trans-1", event: "user_login" } },
+      { id: "c1", type: "condition", data: { field: "role", operator: "EQ", value: "admin" } },
+      { id: "a1", type: "action", data: { type: "notify", params: { msg: "Admin logged in" } } }
+    ];
+
+    const edges = [
+      { source: "e1", target: "c1" },
+      { source: "c1", target: "a1" }
+    ];
+
+    const builder = RuleBuilder.fromGraph(nodes, edges, {}, {
+      condition: (cond, node) => {
+        if ('field' in cond && cond.field === 'role') {
+          return { ...cond, field: 'user_role' };
+        }
+        return cond;
+      },
+      action: (act, node) => {
+        if ('type' in act && act.type === 'notify') {
+          return { ...act, type: 'send_email' };
+        }
+        return act;
+      }
+    });
+
+    const rule = builder.build();
+
+    expect(rule.id).toBe("rule-trans-1");
+    
+    // Verify condition changed
+    const ifNode = rule.if as Condition;
+    expect(ifNode).toBeDefined();
+    expect(ifNode.field).toBe("user_role");
+    
+    // Verify action changed
+    const doNode = rule.do as Action;
+    expect(doNode).toBeDefined();
+    expect(doNode.type).toBe("send_email");
   });
 });

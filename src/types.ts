@@ -185,3 +185,18 @@ export type EngineActionHandler = (params: ActionParams, context: TriggerContext
 export type TriggerCondition = Condition;
 export type TriggerAction = Action;
 export type TriggerConditionGroup = ConditionGroup;
+
+// --- Graph Building Types ---
+
+export interface SDKGraphNode {
+  id: string;
+  type: string;
+  data: any;
+}
+
+export interface SDKGraphEdge {
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+}
