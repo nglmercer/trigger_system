@@ -1,7 +1,9 @@
 export enum NodeType {
   EVENT = 'event',
   CONDITION = 'condition',
+  CONDITION_GROUP = 'condition_group',
   ACTION = 'action',
+  ACTION_GROUP = 'action_group',
 }
 
 export const DRAG_DATA_FORMAT = 'application/reactflow';
@@ -24,4 +26,5 @@ export enum NodeField {
   VALUE = 'value',
   TYPE = 'type',
   PARAMS = 'params',
+  MODE = 'mode',
 }

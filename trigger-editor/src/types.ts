@@ -1,4 +1,4 @@
-import type { ComparisonOperator } from '../../src/types';
+import type { ComparisonOperator, ExecutionMode } from '../../src/types';
 
 export interface AppNodeData {
   onChange: (val: any, field: string) => void;
@@ -22,7 +22,15 @@ export interface ConditionNodeData extends AppNodeData {
   value: any;
 }
 
+export interface ConditionGroupNodeData extends AppNodeData {
+  operator: 'AND' | 'OR';
+}
+
 export interface ActionNodeData extends AppNodeData {
   type: string;
   params: string; // JSON string
+}
+
+export interface ActionGroupNodeData extends AppNodeData {
+  mode: ExecutionMode;
 }

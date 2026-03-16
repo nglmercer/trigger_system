@@ -23,22 +23,39 @@ import '@xyflow/react/dist/style.css';
 
 import EventNode from './components/EventNode.tsx';
 import ConditionNode from './components/ConditionNode.tsx';
+import ConditionGroupNode from './components/ConditionGroupNode.tsx';
 import ActionNode from './components/ActionNode.tsx';
+import ActionGroupNode from './components/ActionGroupNode.tsx';
+import RulePlayer from './components/RulePlayer.tsx';
 
 import { RuleBuilder } from '../../src/sdk/builder.ts';
 import { RuleExporter } from '../../src/sdk/exporter.ts';
-import type { EventNodeData, ConditionNodeData, ActionNodeData } from './types.ts';
-import type { ComparisonOperator } from '../../src/types.ts';
+import type { 
+  EventNodeData, 
+  ConditionNodeData, 
+  ConditionGroupNodeData, 
+  ActionNodeData, 
+  ActionGroupNodeData 
+} from './types.ts';
+import type { ComparisonOperator, RuleCondition, Action, ActionGroup, ExecutionMode } from '../../src/types.ts';
 import { NodeType, DRAG_DATA_FORMAT, INITIAL_HINT } from './constants.ts';
 import { copyToClipboard, generateRandomId } from './utils.ts';
 
 const nodeTypes = {
   [NodeType.EVENT]: EventNode,
   [NodeType.CONDITION]: ConditionNode,
+  [NodeType.CONDITION_GROUP]: ConditionGroupNode,
   [NodeType.ACTION]: ActionNode,
+  [NodeType.ACTION_GROUP]: ActionGroupNode,
 };
 
-type AppNode = Node<EventNodeData | ConditionNodeData | ActionNodeData>;
+type AppNode = Node<
+  EventNodeData | 
+  ConditionNodeData | 
+  ConditionGroupNodeData | 
+  ActionNodeData | 
+  ActionGroupNodeData
+>;
 
 const initialNodes: AppNode[] = [
   {
@@ -65,6 +82,7 @@ function NodeEditor() {
   const [nodes, setNodes] = useState<AppNode[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [isPreviewVisible, setIsPreviewVisible] = useState<boolean>(false);
+  const [isPlayerOpen, setIsPlayerOpen] = useState<boolean>(false);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as AppNode[]),
@@ -123,21 +141,14 @@ function NodeEditor() {
       return needsUpdate ? newNodes : nds;
     });
   }, [onNodeDataChange, nodes.length]); // Re-run when length changes (new nodes)
-
-  const { yaml } = useMemo(() => {
+  
+  const buildRule = useCallback(() => {
     try {
       const eventNode = nodes.find((n) => n.type === NodeType.EVENT) as Node<EventNodeData> | undefined;
-      if (!eventNode) {
-        return { yaml: ''};
-      }
+      if (!eventNode) return null;
 
       const { id: ruleId, event: eventName, name: ruleName, description, priority, enabled, cooldown, tags } = eventNode.data;
-      if (!ruleId) {
-        return { yaml: '' };
-      }
-      if (!eventName) {
-        return { yaml: '' };
-      }
+      if (!ruleId || !eventName) return null;
 
       const builder = new RuleBuilder();
       builder.withId(ruleId).on(eventName);
@@ -148,50 +159,101 @@ function NodeEditor() {
       if (cooldown !== undefined) builder.withCooldown(cooldown);
       if (tags && tags.length > 0) builder.withTags(tags);
 
-      let hasActions = false;
+      const resolveCondition = (nodeId: string, visited = new Set<string>()): RuleCondition | null => {
+        if (visited.has(nodeId)) return null;
+        visited.add(nodeId);
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) return null;
 
-      // Find all connected paths
-      const traverse = (nodeId: string) => {
-        const connectedEdges = edges.filter((e) => e.source === nodeId);
-        connectedEdges.forEach((edge) => {
-          const target = nodes.find((n) => n.id === edge.target) as AppNode | undefined;
-          if (target) {
-            if (target.type === NodeType.CONDITION) {
-              const { field, operator, value } = target.data as ConditionNodeData;
-              if (field && operator && value) {
-                builder.if(field, operator as ComparisonOperator, value);
-              }
-              traverse(target.id);
-            } else if (target.type === NodeType.ACTION) {
-              const { type, params } = target.data as ActionNodeData;
-              if (type) {
-                hasActions = true;
-                try {
-                  const parsedParams = params ? JSON.parse(params) : {};
-                  builder.do(type, parsedParams);
-                } catch (e) {
-                  builder.do(type, {});
-                }
-              }
-            }
+        if (node.type === NodeType.CONDITION) {
+          const { field, operator, value } = node.data as ConditionNodeData;
+          return (field && operator) ? { field, operator: operator as ComparisonOperator, value } : null;
+        } 
+        
+        if (node.type === NodeType.CONDITION_GROUP) {
+          const { operator } = node.data as ConditionGroupNodeData;
+          const subEdges = edges.filter(e => e.source === nodeId);
+          const subConditions = subEdges
+            .map(e => resolveCondition(e.target, visited))
+            .filter((c): c is RuleCondition => c !== null);
+          
+          if (subConditions.length > 0) {
+            return { operator: (operator || 'AND') as 'AND' | 'OR', conditions: subConditions };
           }
-        });
+        }
+        return null;
       };
 
-      traverse(eventNode.id);
+      const resolveAction = (nodeId: string, visited = new Set<string>()): Action | null => {
+        if (visited.has(nodeId)) return null;
+        visited.add(nodeId);
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) return null;
 
-      if (!hasActions) {
-        return { yaml: '' };
+        if (node.type === NodeType.ACTION) {
+          const { type, params } = node.data as ActionNodeData;
+          if (type) {
+            try {
+              const parsedParams = params ? JSON.parse(params) : {};
+              return { type, params: parsedParams };
+            } catch (e) {
+              return { type, params: {} };
+            }
+          }
+        } 
+        
+        if (node.type === NodeType.ACTION_GROUP) {
+          const { mode } = node.data as ActionGroupNodeData;
+          const subEdges = edges.filter(e => e.source === nodeId);
+          const subActions = subEdges
+            .map(e => resolveAction(e.target, visited))
+            .filter((a): a is Action => a !== null);
+          
+          if (subActions.length > 0) {
+            return { 
+              mode: (mode || 'ALL') as ExecutionMode, 
+              actions: subActions 
+            } as any;
+          }
+        }
+        return null;
+      };
+
+      const rootEdges = edges.filter(e => e.source === eventNode.id);
+      const conditions: RuleCondition[] = [];
+      const actions: (Action | ActionGroup)[] = [];
+
+      rootEdges.forEach(edge => {
+        const cond = resolveCondition(edge.target);
+        if (cond) conditions.push(cond);
+        else {
+          const act = resolveAction(edge.target);
+          if (act) actions.push(act);
+        }
+      });
+
+      if (conditions.length > 0) {
+        builder.withIf(conditions.length === 1 ? conditions[0]! : conditions);
       }
 
-      const rule = builder.build();
-      const yamlOutput = RuleExporter.toCleanYaml(rule);
-      return { yaml: yamlOutput };
+      if (actions.length > 0) {
+        if (actions.length === 1) builder.withDo(actions[0]!);
+        else builder.withDo(actions as Action[]);
+      }
+
+      if (actions.length === 0) return null;
+      return builder.build();
     } catch (e) {
-      console.error('Error generating YAML:', e);
-      return { yaml: '' };
+      console.error('Error building rule:', e);
+      return null;
     }
   }, [nodes, edges]);
+
+  const { yaml } = useMemo(() => {
+    const rule = buildRule();
+    if (!rule) return { yaml: '' };
+    return { yaml: RuleExporter.toCleanYaml(rule) };
+  }, [buildRule]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -277,6 +339,14 @@ function NodeEditor() {
                 </div>
             </div>
 
+            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.CONDITION_GROUP); event.dataTransfer.effectAllowed = 'move'; }}>
+                <span className="drag-icon drag-icon--condition">📂</span>
+                <div className="drag-info">
+                    <span className="drag-name">Condition Group</span>
+                    <span className="drag-desc">AND / OR logical group</span>
+                </div>
+            </div>
+
             <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.ACTION); event.dataTransfer.effectAllowed = 'move'; }}>
                 <span className="drag-icon drag-icon--action">⚡</span>
                 <div className="drag-info">
@@ -284,10 +354,21 @@ function NodeEditor() {
                     <span className="drag-desc">Execute a handler</span>
                 </div>
             </div>
+
+            <div className="drag-item" draggable onDragStart={(event) => { event.dataTransfer.setData(DRAG_DATA_FORMAT, NodeType.ACTION_GROUP); event.dataTransfer.effectAllowed = 'move'; }}>
+                <span className="drag-icon drag-icon--action">📦</span>
+                <div className="drag-info">
+                    <span className="drag-name">Action Group</span>
+                    <span className="drag-desc">Group of actions</span>
+                </div>
+            </div>
         </div>
 
         <div className="sidebar-divider"></div>
         <div className="sidebar-footer">
+            <button className="btn btn-primary" onClick={() => setIsPlayerOpen(true)} style={{ marginBottom: '8px', background: 'var(--condition-color)' }}>
+                ▶ Play / Test
+            </button>
             <button id="btn-clear" className="btn btn-secondary" onClick={clearEditor}>
                 ✕ Clear
             </button>
@@ -346,6 +427,12 @@ function NodeEditor() {
             </pre>
         )}
       </aside>
+
+      <RulePlayer 
+        isOpen={isPlayerOpen} 
+        onClose={() => setIsPlayerOpen(false)} 
+        rule={buildRule()} 
+      />
     </div>
   );
 }

@@ -153,6 +153,11 @@ export class RuleBuilder {
     return this;
   }
 
+  withIf(condition: RuleCondition | RuleCondition[]): this {
+    this.rule.if = condition;
+    return this;
+  }
+
   do(type: string, params?: ActionParams, options?: { delay?: number, probability?: number }): this {
     const action: Action = { type, params, ...options };
     if (!this.rule.do) {
@@ -171,6 +176,11 @@ export class RuleBuilder {
     const builder = new ActionBuilder();
     const result = sub(builder).build();
     this.rule.do = result;
+    return this;
+  }
+
+  withDo(action: Action | Action[] | ActionGroup): this {
+    this.rule.do = action;
     return this;
   }
 
