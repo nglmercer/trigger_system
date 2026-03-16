@@ -1,9 +1,11 @@
 import * as React from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import type { ActionNodeData } from '../types.ts';
 import { NodeField } from '../constants.ts';
 
-export default function ActionNode({ data }: { data: ActionNodeData }) {
+export default function ActionNode({ id, data }: { id: string, data: ActionNodeData }) {
+  const { deleteElements } = useReactFlow();
+
   return (
     <div className="drawflow-node action">
       <Handle
@@ -14,6 +16,7 @@ export default function ActionNode({ data }: { data: ActionNodeData }) {
       />
       <div className="node-title node-title--action">
         <span className="node-icon">⚡</span> Action
+        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">✕</button>
       </div>
       <div className="node-body">
         <label className="node-label">Action Type</label>

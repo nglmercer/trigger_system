@@ -11,6 +11,9 @@ export interface EventNodeData extends AppNodeData {
   description: string;
   event: string;
   priority: number;
+  enabled: boolean;
+  cooldown?: number;
+  tags?: string[];
 }
 
 export interface ConditionNodeData extends AppNodeData {

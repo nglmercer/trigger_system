@@ -9,6 +9,7 @@ import {
   applyEdgeChanges,
   ReactFlowProvider,
   useReactFlow,
+  reconnectEdge,
 } from '@xyflow/react';
 import type {
   Node,
@@ -50,6 +51,7 @@ const initialNodes: AppNode[] = [
       description: '',
       event: '', 
       priority: 0,
+      enabled: true,
       onChange: () => {} 
     },
   },
@@ -75,6 +77,11 @@ function NodeEditor() {
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } }, eds)),
+    []
+  );
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => setEdges((els) => reconnectEdge(oldEdge, newConnection, els)),
     []
   );
 
@@ -117,25 +124,29 @@ function NodeEditor() {
     });
   }, [onNodeDataChange, nodes.length]); // Re-run when length changes (new nodes)
 
-  const { yaml, hint } = useMemo(() => {
+  const { yaml } = useMemo(() => {
     try {
       const eventNode = nodes.find((n) => n.type === NodeType.EVENT) as Node<EventNodeData> | undefined;
       if (!eventNode) {
-        return { yaml: '', hint: INITIAL_HINT };
+        return { yaml: ''};
       }
 
-      const { id: ruleId, event: eventName, name: ruleName, description } = eventNode.data;
+      const { id: ruleId, event: eventName, name: ruleName, description, priority, enabled, cooldown, tags } = eventNode.data;
       if (!ruleId) {
-        return { yaml: '', hint: 'Give your rule a unique ID...' };
+        return { yaml: '' };
       }
       if (!eventName) {
-        return { yaml: '', hint: 'Give your Event Trigger a name (e.g. PAYMENT_RECEIVED)...' };
+        return { yaml: '' };
       }
 
       const builder = new RuleBuilder();
       builder.withId(ruleId).on(eventName);
       if (ruleName) builder.withName(ruleName);
       if (description) builder.withDescription(description);
+      if (priority !== undefined) builder.withPriority(priority);
+      if (enabled !== undefined) builder.withEnabled(enabled);
+      if (cooldown !== undefined) builder.withCooldown(cooldown);
+      if (tags && tags.length > 0) builder.withTags(tags);
 
       let hasActions = false;
 
@@ -170,15 +181,15 @@ function NodeEditor() {
       traverse(eventNode.id);
 
       if (!hasActions) {
-        return { yaml: '', hint: 'Connect at least one Action node...' };
+        return { yaml: '' };
       }
 
       const rule = builder.build();
       const yamlOutput = RuleExporter.toCleanYaml(rule);
-      return { yaml: yamlOutput, hint: '' };
+      return { yaml: yamlOutput };
     } catch (e) {
       console.error('Error generating YAML:', e);
-      return { yaml: '', hint: 'Error generating rule: ' + (e as Error).message };
+      return { yaml: '' };
     }
   }, [nodes, edges]);
 
@@ -276,11 +287,6 @@ function NodeEditor() {
         </div>
 
         <div className="sidebar-divider"></div>
-
-        <div className="sidebar-hint">
-            <p>Connect <strong>Event → Action</strong> to create a rule. Add <strong>Conditions</strong> in between to filter.</p>
-        </div>
-
         <div className="sidebar-footer">
             <button id="btn-clear" className="btn btn-secondary" onClick={clearEditor}>
                 ✕ Clear
@@ -296,20 +302,19 @@ function NodeEditor() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onReconnect={onReconnect}
           nodeTypes={nodeTypes}
           fitView
           style={{ background: '#0d1117' }}
           colorMode="dark"
+          deleteKeyCode={['Backspace', 'Delete']}
+          multiSelectionKeyCode={['Control', 'Meta']}
+          selectionKeyCode={['Shift']}
         >
           <Background color="#30363d" gap={20} />
           <Controls />
         </ReactFlow>
         
-        {hint && (
-          <div id="canvas-hint">
-            💡 {hint}
-          </div>
-        )}
       </main>
 
       <aside className="panel output-panel" style={{ width: isPreviewVisible ? '400px' : '60px', flexShrink: 0, transition: 'width 0.3s ease' }}>
@@ -331,13 +336,13 @@ function NodeEditor() {
                 </>
             ) : (
                 <button id="btn-toggle" className="btn btn-icon" onClick={togglePreview} title="Show YAML preview" style={{ height: '40px', writingMode: 'vertical-lr', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '10px' }}>
-                    YAML Output ▶
+                    ▶
                 </button>
             )}
         </div>
         {isPreviewVisible && (
             <pre id="output" className={`output-content ${!yaml ? 'output-content--hint' : ''}`}>
-              {yaml || `# ${hint}`}
+              {yaml}
             </pre>
         )}
       </aside>

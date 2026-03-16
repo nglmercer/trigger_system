@@ -316,6 +316,27 @@ body {
 .node-title--condition { background: linear-gradient(90deg, #1a7f37, var(--condition-color)); }
 .node-title--action { background: linear-gradient(90deg, #cf222e, var(--action-color)); }
 
+.node-delete {
+  margin-left: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.node-delete:hover {
+  background: #cf222e;
+  color: #fff;
+}
+
 .node-body {
   padding: 14px;
 }
@@ -432,4 +453,14 @@ textarea:focus {
 .react-flow__attribution {
   background: transparent;
   opacity: 0.3;
+}
+
+/* Edge deletion UI (optional but let's make edges selectable) */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.react-flow__edge.selected {
+  z-index: 1000;
 }

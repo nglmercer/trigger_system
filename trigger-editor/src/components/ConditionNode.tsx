@@ -1,9 +1,11 @@
 import * as React from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import type { ConditionNodeData } from '../types.ts';
 import { NodeField } from '../constants.ts';
 
-export default function ConditionNode({ data }: { data: ConditionNodeData }) {
+export default function ConditionNode({ id, data }: { id: string, data: ConditionNodeData }) {
+  const { deleteElements } = useReactFlow();
+
   return (
     <div className="drawflow-node condition">
       <Handle
@@ -14,6 +16,7 @@ export default function ConditionNode({ data }: { data: ConditionNodeData }) {
       />
       <div className="node-title node-title--condition">
         <span className="node-icon">⚖</span> Condition
+        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">✕</button>
       </div>
       <div className="node-body">
         <label className="node-label">Field</label>
