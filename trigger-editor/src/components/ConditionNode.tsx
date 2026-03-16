@@ -1,10 +1,16 @@
-import * as React from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position, useReactFlow, useHandleConnections } from '@xyflow/react';
 import type { ConditionNodeData } from '../types.ts';
-import { NodeField } from '../constants.ts';
+import { NodeField, NodeType } from '../constants.ts';
 
 export default function ConditionNode({ id, data }: { id: string, data: ConditionNodeData }) {
-  const { deleteElements } = useReactFlow();
+  const { deleteElements, getNode } = useReactFlow();
+  
+  // Detection logic to hide "next" handle if part of a group
+  const connections = useHandleConnections({ type: 'target' });
+  const isPartofGroup = connections.some(c => {
+    const sourceNode = getNode(c.source);
+    return sourceNode?.type === NodeType.CONDITION_GROUP;
+  });
 
   return (
     <div className="drawflow-node condition">
@@ -53,12 +59,14 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
           onChange={(evt) => data.onChange(evt.target.value, NodeField.VALUE)}
         />
       </div>
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="node-output-handle"
-        style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
-      />
+      {!isPartofGroup && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="node-output-handle"
+          style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
+        />
+      )}
     </div>
   );
 }

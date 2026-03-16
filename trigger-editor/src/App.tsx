@@ -115,8 +115,22 @@ function NodeEditor() {
   }, [nodes.length, onNodeDataChange, setNodes]);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds: Edge[]) => addEdge(params, eds)),
-    [setEdges]
+    (params: Connection) => {
+      setEdges((eds: Edge[]) => {
+        const sourceNode = nodes.find(n => n.id === params.source);
+        const targetNode = nodes.find(n => n.id === params.target);
+
+        // Logic: If a Condition is being connected TO a Group (Forward Discovery)
+        // We should clean up any existing outgoing edges from the Condition
+        // because "cannot have action when in a group".
+        if (sourceNode?.type === NodeType.CONDITION_GROUP && targetNode?.type === NodeType.CONDITION) {
+           return addEdge(params, eds.filter(e => e.source !== targetNode.id));
+        }
+
+        return addEdge(params, eds);
+      });
+    },
+    [setEdges, nodes]
   );
 
   const onReconnect = useCallback(
@@ -130,10 +144,24 @@ function NodeEditor() {
     if (!sourceNode || !targetNode || sourceNode.id === targetNode.id) return false;
     if (targetNode.type === NodeType.EVENT) return false;
     
-    // Strict flow: Event -> Condition -> Action
+    // Node Category Helpers
     const isSourceAction = sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP;
+    const isTargetAction = targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP;
+    const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
     const isTargetCondition = targetNode.type === NodeType.CONDITION || targetNode.type === NodeType.CONDITION_GROUP;
+
+    // RULE 1: Actions cannot point to Conditions
     if (isSourceAction && isTargetCondition) return false;
+
+    // RULE 2: Condition Group 'input' handle (Left) can be Target of Event or other Conditions
+    // RULE 3: Condition Group 'output' handles (Right/Top/Bottom)
+    if (sourceNode.type === NodeType.CONDITION_GROUP) {
+       // Right point to Actions/Groups
+       // Top/Bottom point to child Conditions
+       const isDiscoveryEdge = isTargetCondition && (connection.sourceHandle?.includes('cond'));
+       const isAllowedTarget = isTargetAction || targetNode.type === NodeType.CONDITION_GROUP || isDiscoveryEdge;
+       if (!isAllowedTarget) return false;
+    }
     
     return true;
   }, [nodes]);

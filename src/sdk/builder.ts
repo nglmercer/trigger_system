@@ -11,6 +11,99 @@ import type {
   ActionParams
 } from "../types";
 
+// --- SDK UTILITIES FOR OPTIMIZATION ---
+
+export function optimizeCondition(cond: RuleCondition | RuleCondition[]): RuleCondition | RuleCondition[] | undefined {
+  if (!cond) return undefined;
+  
+  if (Array.isArray(cond)) {
+    const opt = cond.map(c => optimizeCondition(c)).filter((c): c is RuleCondition => c !== undefined);
+    const unique = Array.from(new Set(opt.map(c => JSON.stringify(c)))).map(s => JSON.parse(s));
+    return unique.length === 0 ? undefined : (unique.length === 1 ? unique[0] : unique);
+  }
+
+  // It's a single condition
+  if ('operator' in cond && 'conditions' in cond) {
+    const group = cond as ConditionGroup;
+    let optChildren = optimizeCondition(group.conditions);
+    if (!optChildren) return undefined;
+    if (!Array.isArray(optChildren)) optChildren = [optChildren];
+
+    // Inline children that are groups with the SAME operator
+    const inlined: RuleCondition[] = [];
+    for (const child of optChildren) {
+      if ('operator' in child && 'conditions' in child && (child as ConditionGroup).operator === group.operator) {
+        inlined.push(...((child as ConditionGroup).conditions as RuleCondition[]));
+      } else {
+        inlined.push(child);
+      }
+    }
+
+    // Deduplicate
+    const uniqueChildren = Array.from(new Set(inlined.map(c => JSON.stringify(c)))).map(s => JSON.parse(s));
+
+    if (uniqueChildren.length === 0) return undefined;
+    if (uniqueChildren.length === 1) return uniqueChildren[0];
+    
+    return { operator: group.operator, conditions: uniqueChildren };
+  }
+
+  return cond;
+}
+
+export function optimizeAction(act: Action | ActionGroup | (Action | ActionGroup)[]): Action | ActionGroup | (Action | ActionGroup)[] | undefined {
+  if (!act) return undefined;
+
+  if (Array.isArray(act)) {
+    const opt = act.map(a => optimizeAction(a)).filter((a): a is Action | ActionGroup => a !== undefined);
+    
+    // Inline array inside array (flatten)
+    const flattened = opt.flatMap(a => Array.isArray(a) ? a : [a]);
+    
+    // Inline ActionGroups with mode ALL since array is implicitly ALL
+    const inlined: (Action | ActionGroup)[] = [];
+    for (const child of flattened) {
+       if ('mode' in child && 'actions' in child && (child as ActionGroup).mode === 'ALL') {
+          inlined.push(...((child as ActionGroup).actions));
+       } else {
+          inlined.push(child);
+       }
+    }
+
+    const unique = Array.from(new Set(inlined.map(a => JSON.stringify(a)))).map(s => JSON.parse(s));
+    return unique.length === 0 ? undefined : (unique.length === 1 ? unique[0] : unique);
+  }
+
+  // It's a single item
+  if ('mode' in act && 'actions' in act) {
+    const group = act as ActionGroup;
+    let optChildren = optimizeAction(group.actions);
+    if (!optChildren) return undefined;
+    if (!Array.isArray(optChildren)) optChildren = [optChildren];
+
+    // Inline children that are ActionGroups with the SAME mode
+    const inlined: (Action | ActionGroup)[] = [];
+    for (const child of optChildren) {
+      if ('mode' in child && 'actions' in child && (child as ActionGroup).mode === group.mode) {
+        inlined.push(...((child as ActionGroup).actions));
+      } else {
+        inlined.push(child);
+      }
+    }
+
+    const uniqueChildren = Array.from(new Set(inlined.map(a => JSON.stringify(a)))).map(s => JSON.parse(s));
+
+    if (uniqueChildren.length === 0) return undefined;
+    if (uniqueChildren.length === 1) return uniqueChildren[0];
+
+    return { mode: group.mode, actions: uniqueChildren };
+  }
+
+  return act;
+}
+
+// ----------------------------------------
+
 export class ConditionBuilder {
   private conditions: (Condition | ConditionGroup)[] = [];
   private op: 'AND' | 'OR' = 'AND';
@@ -130,6 +223,15 @@ export class RuleBuilder {
     return this;
   }
 
+  // --- Better / Fluent Aliases ---
+  id(id: string) { return this.withId(id); }
+  name(name: string) { return this.withName(name); }
+  description(desc: string) { return this.withDescription(desc); }
+  priority(p: number) { return this.withPriority(p); }
+  enabled(e: boolean) { return this.withEnabled(e); }
+  cooldown(c: number) { return this.withCooldown(c); }
+  tags(t: string[]) { return this.withTags(t); }
+
   on(event: string): this {
     this.rule.on = event;
     return this;
@@ -189,6 +291,16 @@ export class RuleBuilder {
     if (!this.rule.id) throw new Error("Rule ID is required");
     if (!this.rule.on) throw new Error("Rule 'on' event is required");
     if (!this.rule.do) throw new Error("Rule 'do' action is required");
+
+    // Optimize structures before finalizing
+    if (this.rule.if) {
+      this.rule.if = optimizeCondition(this.rule.if as RuleCondition | RuleCondition[]);
+    }
+    
+    if (this.rule.do) {
+      const opt = optimizeAction(this.rule.do as Action | ActionGroup | (Action | ActionGroup)[]);
+      this.rule.do = opt ? opt : this.rule.do;
+    }
 
     return this.rule as TriggerRule;
   }
