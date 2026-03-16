@@ -4,6 +4,7 @@ import type { ActionNodeData } from '../types.ts';
 import { NodeField, NodeType } from '../constants.ts';
 import { ClearIcon, ActionIcon } from './Icons.tsx';
 import { TextInput, TextAreaInput, FormField } from './FormFields.tsx';
+import { ParamsBuilder } from './ParamsBuilder.tsx';
 
 export default function ActionNode({ id, data }: { id: string, data: ActionNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
@@ -39,12 +40,11 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
             placeholder="log_event"
           />
         </FormField>
-        <FormField label="Params (JSON)">
-          <TextAreaInput
+        <FormField label="Params">
+          <ParamsBuilder
             value={data.params || '{}'}
             onChange={(val) => data.onChange(val, NodeField.PARAMS)}
-            placeholder="{}"
-            rows={3}
+            placeholder='{"key": "value"}'
           />
         </FormField>
       </div>

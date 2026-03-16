@@ -485,6 +485,67 @@ textarea:focus {
   background: rgba(13, 17, 23, 0.9);
 }
 
+/* ─── Node Button Styles ─────────────────────────────────────────────────── */
+.node-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.2s;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  width: auto;
+}
+
+.node-btn:hover {
+  background: var(--border);
+  border-color: var(--border-hover);
+}
+
+.node-btn:active {
+  transform: translateY(0);
+}
+
+.node-btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.node-btn--primary:hover {
+  filter: brightness(1.1);
+  background: var(--accent);
+}
+
+.node-btn--secondary {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+.node-btn--secondary:hover {
+  background: #3d444d;
+  border-color: var(--border-hover);
+}
+
+.node-btn--danger {
+  background: transparent;
+  color: var(--action-color);
+  border-color: transparent;
+  padding: 4px 6px;
+}
+
+.node-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--action-color);
+}
+
 /* ─── Canvas Hint ────────────────────────────────────────────────────────── */
 #canvas-hint {
   position: absolute;
