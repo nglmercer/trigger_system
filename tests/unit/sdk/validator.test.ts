@@ -262,6 +262,120 @@ describe("ArkType Validator Tests", () => {
         expect(result.valid).toBe(false);
     });
 
+    // Test for lines 305-309: MATCHES with non-string value (number)
+    test("Should fail if MATCHES operator value is not string (number)", () => {
+        const ruleData = {
+            id: "matches-type-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "MATCHES",
+                value: 123
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.issues.some(i => i.message.includes("MATCHES"))).toBe(true);
+        }
+    });
+
+    // Test for lines 305-309: MATCHES with non-string value (boolean)
+    test("Should fail if MATCHES operator value is not string (boolean)", () => {
+        const ruleData = {
+            id: "matches-bool-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "MATCHES",
+                value: true
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.issues.some(i => i.message.includes("expects a string"))).toBe(true);
+        }
+    });
+
+    // Test for lines 272-276: RANGE with invalid element type (object)
+    test("Should fail if RANGE operator has array with object elements", () => {
+        const ruleData = {
+            id: "range-object-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "RANGE",
+                value: [{ min: 1 }, { max: 10 }] // Objects instead of numbers/strings
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.issues.some(i => i.message.includes("Range values"))).toBe(true);
+        }
+    });
+
+    // Test for lines 272-276: RANGE with invalid element type (boolean)
+    test("Should fail if RANGE operator has array with boolean elements", () => {
+        const ruleData = {
+            id: "range-bool-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "RANGE",
+                value: [true, false] // Booleans instead of numbers/strings
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            expect(result.issues.some(i => i.message.includes("Range values"))).toBe(true);
+        }
+    });
+
+    // Test for lines 335-339: HAS_KEY with non-string (array)
+    // Note: Array value is caught by ArkType schema validation first, not by semantic validation
+    test("Should fail if HAS_KEY operator value is array - schema validation", () => {
+        const ruleData = {
+            id: "haskey-array-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "HAS_KEY",
+                value: ["key1", "key2"]
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        // Schema validation catches array as invalid type for HAS_KEY
+        expect(result.valid).toBe(false);
+    });
+
+    // Test for lines 335-339: HAS_KEY with non-string (object)
+    test("Should fail if HAS_KEY operator value is object", () => {
+        const ruleData = {
+            id: "haskey-obj-fail",
+            on: "E",
+            if: {
+                field: "data.x",
+                operator: "HAS_KEY",
+                value: { nested: "key" }
+            },
+            do: { type: "A" }
+        };
+        const result = TriggerValidator.validate(ruleData);
+        expect(result.valid).toBe(false);
+        if (!result.valid) {
+            const issue = result.issues.find(i => i.message.includes("HAS_KEY"));
+            expect(issue).toBeDefined();
+        }
+    });
+
     test("Should fail if numeric operator has non-numeric value", () => {
         const ruleData = {
             id: "numeric-fail",

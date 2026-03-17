@@ -324,6 +324,103 @@ describe("SDK Exporter Tests", () => {
     });
   });
 
+  // Tests for lines 17-18: toJson with array
+  describe("RuleExporter.toJson", () => {
+    test("should export a single rule to JSON", () => {
+      const rule = new RuleBuilder()
+        .withId("json-test")
+        .on("TEST")
+        .do("LOG", { message: "Hello" })
+        .build();
+      
+      const json = RuleExporter.toJson(rule);
+      
+      expect(json).toContain("json-test");
+      expect(json).toContain("TEST");
+    });
+
+    test("should export array of rules to JSON", () => {
+      const rules = [
+        new RuleBuilder()
+          .withId("rule1")
+          .on("TEST1")
+          .do("LOG", { message: "Rule 1" })
+          .build(),
+        new RuleBuilder()
+          .withId("rule2")
+          .on("TEST2")
+          .do("LOG", { message: "Rule 2" })
+          .build()
+      ];
+      
+      const json = RuleExporter.toJson(rules);
+      
+      expect(json).toContain("rule1");
+      expect(json).toContain("rule2");
+    });
+
+    test("should export JSON without pretty print when pretty is false", () => {
+      const rule = new RuleBuilder()
+        .withId("json-test")
+        .on("TEST")
+        .do("LOG", { message: "Hello" })
+        .build();
+      
+      const json = RuleExporter.toJson(rule, false);
+      
+      expect(json).not.toContain("\n");
+    });
+  });
+
+  // Tests for lines 66-68: toCleanJson with array
+  describe("RuleExporter.toCleanJson", () => {
+    test("should export a single rule to clean JSON", () => {
+      const rule = new RuleBuilder()
+        .withId("clean-json-test")
+        .on("TEST")
+        .do("LOG", { message: "Hello" })
+        .build();
+      
+      const json = RuleExporter.toCleanJson(rule);
+      
+      expect(json).toContain("clean-json-test");
+    });
+
+    test("should export array of rules to clean JSON", () => {
+      const rules = [
+        new RuleBuilder()
+          .withId("rule1")
+          .on("TEST1")
+          .do("LOG", { message: "Rule 1" })
+          .build(),
+        new RuleBuilder()
+          .withId("rule2")
+          .on("TEST2")
+          .do("LOG", { message: "Rule 2" })
+          .build()
+      ];
+      
+      const json = RuleExporter.toCleanJson(rules);
+      
+      expect(json).toContain("rule1");
+      expect(json).toContain("rule2");
+    });
+
+    test("should export clean JSON without undefined values", () => {
+      const rule = new RuleBuilder()
+        .withId("clean-test")
+        .withName("Test Rule")
+        .on("TEST")
+        .do("LOG", { message: "Hello" })
+        .build();
+      
+      const json = RuleExporter.toCleanJson(rule);
+      
+      // Should not contain undefined
+      expect(json).not.toContain("undefined");
+    });
+  });
+
   describe("RuleExporter.saveToFile", () => {
     test("should save rule to file", async () => {
       const rule = new RuleBuilder()

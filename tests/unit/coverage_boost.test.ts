@@ -24,6 +24,44 @@ describe('Coverage Boost - ActionRegistry', () => {
     it('should expose handlers map', () => {
         expect(registry.Handlers instanceof Map).toBe(true);
     });
+    it('should expose getDefinition', () => {
+        const logDefinition = registry.getDefinition('LOG');
+        const allDefinitions = registry.getDefinitions();
+        const {params, returns, handler,description} = logDefinition || {};
+        //console.log(returns?.toJSON())
+        /*
+        {
+            optional: [
+                {
+                key: "content",
+                value: "string",
+                }, {
+                key: "message",
+                value: "string",
+                }
+            ],
+            domain: "object",
+        } 
+        {
+            required: [
+                {
+                key: "message",
+                value: "string",
+                }
+            ],
+            domain: "object",
+        }
+        function
+        text
+        */
+
+        expect(description).toBeString();
+        //
+        expect(params?.toJSON()).toBeObject();
+        expect(returns?.toJSON()).toBeObject();
+        expect(handler).toBeInstanceOf(Function);
+        expect(allDefinitions.LOG).toBeDefined();
+    })
 
     it('should execute default math action', () => {
         const handler = registry.get('math')!;

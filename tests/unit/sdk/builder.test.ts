@@ -278,6 +278,94 @@ describe("RuleBuilder SDK", () => {
     }
   });
 
+  // Test for line 95: deduplicateById with uniqueIdField (covers conditions with uniqueIdField)
+  test("should deduplicate conditions using uniqueIdField and remove true duplicates", () => {
+    const conditions: RuleCondition[] = [
+      { field: "a", operator: "EQ", value: 1, id: "cond-1" } as RuleCondition,
+      { field: "a", operator: "EQ", value: 1, id: "cond-1" } as RuleCondition, // same id - should be removed
+      { field: "b", operator: "EQ", value: 2 } as RuleCondition, // no id, different content
+    ];
+
+    const options: OptimizeOptions = { deduplicate: true, uniqueIdField: "id" };
+    const result = optimizeCondition(conditions, options);
+
+    expect(result).toBeDefined();
+    if (Array.isArray(result)) {
+      // Should have 2: one cond-1 (deduplicated), one without id
+      expect(result.length).toBe(2);
+    }
+  });
+
+  // Test for line 149: Inline ActionGroups with mode ALL
+  test("should inline ActionGroups with mode ALL", () => {
+    const actions = [
+      { type: "log", params: { msg: "A" } },
+      { 
+        mode: "ALL", 
+        actions: [
+          { type: "log", params: { msg: "B1" } },
+          { type: "log", params: { msg: "B2" } }
+        ]
+      },
+      { type: "log", params: { msg: "C" } }
+    ];
+
+    const result = optimizeAction(actions as any);
+
+    expect(result).toBeDefined();
+    // Should be inlined: A + B1 + B2 + C = 4 actions
+    if (Array.isArray(result)) {
+      expect(result.length).toBe(4);
+    }
+  });
+
+  // Test for line 180: Inline children with same mode as parent group
+  test("should inline nested ActionGroups with same mode", () => {
+    const actions = [
+      { 
+        mode: "SEQUENCE", 
+        actions: [
+          { type: "log", params: { msg: "A" } },
+          { 
+            mode: "SEQUENCE", // Same mode - should be inlined
+            actions: [
+              { type: "log", params: { msg: "B1" } },
+              { type: "log", params: { msg: "B2" } }
+            ]
+          },
+          { type: "log", params: { msg: "C" } }
+        ]
+      }
+    ];
+
+    const result = optimizeAction(actions as any);
+
+    expect(result).toBeDefined();
+    // Result should have mode SEQUENCE with 4 inlined actions
+    const actionGroup = result as { mode: string; actions: unknown[] };
+    if ('mode' in actionGroup && 'actions' in actionGroup) {
+      expect(actionGroup.actions.length).toBe(4);
+    }
+  });
+
+  // Test for lines 162, 193-195: deduplicateById for actions with uniqueIdField
+  test("should deduplicate actions using uniqueIdField", () => {
+    const actions: Action[] = [
+      { type: "log", params: { msg: "A" }, id: "action-1" } as Action,
+      { type: "log", params: { msg: "A" }, id: "action-1" } as Action, // same id - should be removed
+      { type: "log", params: { msg: "B" }, id: "action-2" } as Action, // different id
+    ];
+
+    const options: OptimizeOptions = { deduplicate: true, uniqueIdField: "id" };
+    const result = optimizeAction(actions, options);
+
+    expect(result).toBeDefined();
+    // Should have 2: one action-1 (deduplicated), one action-2
+    if (Array.isArray(result)) {
+      expect(result.length).toBe(2);
+    }
+  });
+
   test("should keep actions with different ids using uniqueIdField", () => {
     const actions: Action[] = [
       { type: "log", params: { msg: "A" }, id: "action-1" } as Action,

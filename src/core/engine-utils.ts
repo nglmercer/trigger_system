@@ -8,12 +8,13 @@ import type {
   ActionGroup,
   ExecutedAction,
   ActionParams,
+  ActionParamValue,
   ExecutionMode
 } from "../types";
 import { TriggerUtils } from "../utils/utils";
 import { ExpressionEngine } from "./expression-engine";
 import { ControlFlow } from "./constants";
-
+import { ActionRegistry } from "./action-registry";
 /**
  * Common utilities for engine logic to avoid repetition across different engine implementations
  */
@@ -85,7 +86,7 @@ export class EngineUtils {
   static async processSingleActionBase(
     action: Action,
     context: TriggerContext,
-    actionRegistry?: any // Optional registry to check for shorthand types
+    actionRegistry?: ActionRegistry // Optional registry to check for shorthand types
   ): Promise<{ 
     shouldExecute: boolean, 
     executedAction?: ExecutedAction,
@@ -102,7 +103,7 @@ export class EngineUtils {
             const hasHandler = actionRegistry ? !!actionRegistry.get(key) : true; // Assume true if no registry
             if (hasHandler) {
                 normalizedAction.type = key;
-                const value = (normalizedAction as any)[key];
+                const value = (normalizedAction)[key];
                 if (typeof value === 'string') {
                     normalizedAction.params = { ...normalizedAction.params, message: value, content: value };
                 } else if (typeof value === 'object' && value !== null) {
@@ -232,7 +233,7 @@ export class EngineUtils {
   static interpolateParams(params: ActionParams, context: TriggerContext): ActionParams {
     const result: ActionParams = {};
     for (const [key, val] of Object.entries(params)) {
-      result[key] = this.interpolateDeep(val, context) as any;
+      result[key] = this.interpolateDeep(val, context) as ActionParamValue;
     }
     return result;
   }
