@@ -19,7 +19,7 @@ export class BrowserPersistence implements PersistenceAdapter {
     return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
   }
 
-  private ensureLoaded() {
+  public ensureLoaded() {
     if (this.isLoaded) return;
     
     if (this.isAvailable()) {

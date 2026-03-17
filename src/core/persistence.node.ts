@@ -33,7 +33,7 @@ export class FilePersistence implements PersistenceAdapter {
     this.isLoaded = true;
   }
 
-  private persist() {
+  public persist() {
     try {
         const dir = dirname(this.filePath);
         if (!existsSync(dir)) {
