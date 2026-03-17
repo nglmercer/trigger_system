@@ -22,7 +22,6 @@ import '@xyflow/react/dist/style.css';
 
 import Sidebar from './components/Sidebar.tsx';
 import OutputPanel from './components/OutputPanel.tsx';
-import RulePlayer from './components/RulePlayer.tsx';
 import { ParamsModal } from './components/ParamsModal.tsx';
 import { AlertProvider } from './components/Alert.tsx';
 
@@ -44,6 +43,14 @@ import type {
 } from './types.ts';
 import { loadImports } from './lsp/engine.ts';
 import type { ImportConfig } from './lsp/types.ts';
+import { 
+  exportToJson, 
+  downloadJson, 
+  downloadYaml, 
+  createImportPicker, 
+  sanitizeNodesForImport,
+  type ExportData 
+} from './utils/exportImport.ts';
 
 const nodeTypes = {
   [NodeType.EVENT]: EventNode,
@@ -99,7 +106,6 @@ function NodeEditor() {
     []
   );
 
-  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   const buildRule = useRuleBuilder(nodes, edges);
   
@@ -176,6 +182,36 @@ function NodeEditor() {
     (oldEdge: Edge, newConnection: Connection) => setEdges((els: Edge[]) => reconnectEdge(oldEdge, newConnection, els)),
     [setEdges]
   );
+
+  // ============================================================
+  // Export Handlers
+  // ============================================================
+  const handleExportJson = useCallback(() => {
+    if (nodes.length === 0) return;
+    const json = exportToJson(nodes, edges, yaml);
+    const filename = `trigger-rule-${Date.now()}.json`;
+    downloadJson(json, filename);
+  }, [nodes, edges, yaml]);
+
+  const handleExportYaml = useCallback(() => {
+    if (!yaml) return;
+    const filename = `trigger-rule-${Date.now()}.yaml`;
+    downloadYaml(yaml, filename);
+  }, [yaml]);
+
+  // ============================================================
+  // Import Handler
+  // ============================================================
+  const handleImport = useCallback(async () => {
+    const data = await createImportPicker();
+    if (!data) return;
+    
+    // Sanitize nodes to ensure they have proper onChange handlers
+    const sanitizedNodes = sanitizeNodesForImport(data.nodes, onNodeDataChange);
+    
+    setNodes(sanitizedNodes);
+    setEdges(data.edges || []);
+  }, [onNodeDataChange]);
 
   const isValidConnection = useCallback((connection: Connection | Edge) => {
     const sourceNode = nodes.find((n) => n.id === connection.source);
@@ -390,8 +426,11 @@ function NodeEditor() {
   return (
     <div className="react-flow-wrapper" style={{ display: 'flex', width: '100vw', height: '100vh', background: '#0d1117' }}>
       <Sidebar 
-        onPlay={() => setIsPlayerOpen(true)} 
         onClear={() => { setNodes([]); setEdges([]); }} 
+        onExportJson={handleExportJson}
+        onExportYaml={handleExportYaml}
+        onImport={handleImport}
+        hasNodes={nodes.length > 0}
       />
 
       <main style={{ flexGrow: 1, position: 'relative' }} onDragOver={onDragOver} onDrop={onDrop}>
@@ -413,13 +452,6 @@ function NodeEditor() {
       </main>
 
       <OutputPanel yaml={yaml} errors={errors} />
-
-      <RulePlayer 
-        isOpen={isPlayerOpen} 
-        onClose={() => setIsPlayerOpen(false)} 
-        rule={rule}
-        errors={errors}
-      />
       
       <ParamsModal />
     </div>

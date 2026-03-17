@@ -1,16 +1,19 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
-import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon, DatabaseIcon, SettingsIcon } from './Icons.tsx';
+import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon } from './Icons.tsx';
 import { Modal } from './Modal.tsx';
 import { ImportList } from './ImportList.tsx';
 
 interface SidebarProps {
-  onPlay: () => void;
   onClear: () => void;
+  onExportJson: () => void;
+  onExportYaml: () => void;
+  onImport: () => void;
+  hasNodes: boolean;
 }
 
-export default function Sidebar({ onPlay, onClear }: SidebarProps) {
+export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, hasNodes }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -200,13 +203,44 @@ export default function Sidebar({ onPlay, onClear }: SidebarProps) {
             </div>
 
             <div className="sidebar-footer">
+            
+              {/* Export/Import Section */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                marginBottom: '8px',
+                paddingTop: '8px',
+                borderTop: '1px solid var(--border)'
+              }}>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onImport}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  title="Import from JSON file"
+                >
+                  <UploadIcon size={14} /> Import
+                </button>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onExportJson}
+                  disabled={!hasNodes}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  title="Export as JSON (for re-import)"
+                >
+                  <DownloadIcon size={14} /> JSON
+                </button>
+              </div>
+              
               <button 
-                className="btn btn-primary" 
-                onClick={onPlay} 
-                style={{ marginBottom: '8px', background: 'var(--condition-color)' }}
+                className="btn btn-secondary" 
+                onClick={onExportYaml}
+                disabled={!hasNodes}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                title="Export as YAML (configuration only)"
               >
-                <PlayIcon /> Play / Test
+                <DownloadIcon size={14} /> Export YAML
               </button>
+              
               <button id="btn-clear" className="btn btn-secondary" onClick={onClear} style={{ marginTop: '8px' }}>
                 <ClearIcon /> Clear
               </button>

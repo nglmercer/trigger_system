@@ -1,0 +1,178 @@
+import type { Node, Edge } from '@xyflow/react';
+import type {
+  EventNodeData,
+  ConditionNodeData,
+  ConditionGroupNodeData,
+  ActionNodeData,
+  ActionGroupNodeData,
+} from '../types';
+
+export type AppNode = Node<
+  | EventNodeData
+  | ConditionNodeData
+  | ConditionGroupNodeData
+  | ActionNodeData
+  | ActionGroupNodeData
+>;
+
+/**
+ * Export format version for future compatibility
+ */
+export const EXPORT_VERSION = '1.0.0';
+
+/**
+ * Complete export data structure - contains both nodes/edges and optional YAML
+ */
+export interface ExportData {
+  version: string;
+  exportedAt: string;
+  nodes: AppNode[];
+  edges: Edge[];
+  /** Optional: pre-generated YAML (useful for quick preview) */
+  yaml?: string;
+  /** Metadata about the export */
+  metadata?: {
+    name?: string;
+    description?: string;
+    nodeCount: number;
+    edgeCount: number;
+  };
+}
+
+/**
+ * Export nodes and edges as JSON file
+ * This is the RECOMMENDED format for import/export as it preserves all data
+ */
+export function exportToJson(nodes: AppNode[], edges: Edge[], yaml?: string): string {
+  const exportData: ExportData = {
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    nodes,
+    edges,
+    yaml,
+    metadata: {
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+    },
+  };
+
+  return JSON.stringify(exportData, null, 2);
+}
+
+/**
+ * Download data as a JSON file
+ */
+export function downloadJson(data: string, filename: string): void {
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Download data as a YAML file
+ */
+export function downloadYaml(yaml: string, filename: string): void {
+  const blob = new Blob([yaml], { type: 'text/yaml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Parse and validate imported JSON data
+ */
+export function parseImportData(jsonString: string): ExportData | null {
+  try {
+    const data = JSON.parse(jsonString);
+    
+    // Validate structure
+    if (!data.nodes || !Array.isArray(data.nodes)) {
+      console.error('Invalid import: missing nodes array');
+      return null;
+    }
+    
+    if (!data.edges || !Array.isArray(data.edges)) {
+      console.error('Invalid import: missing edges array');
+      return null;
+    }
+    
+    // Validate version (forward compatibility)
+    if (data.version && data.version !== EXPORT_VERSION) {
+      console.warn(`Import version mismatch: expected ${EXPORT_VERSION}, got ${data.version}`);
+    }
+    
+    return data as ExportData;
+  } catch (e) {
+    console.error('Failed to parse import data:', e);
+    return null;
+  }
+}
+
+/**
+ * Create a file input for importing
+ * Returns a promise that resolves with the parsed data
+ */
+export function createImportPicker(): Promise<ExportData | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      
+      try {
+        const text = await file.text();
+        const data = parseImportData(text);
+        resolve(data);
+      } catch (err) {
+        console.error('Failed to read file:', err);
+        resolve(null);
+      }
+    };
+    
+    input.click();
+  });
+}
+
+/**
+ * Sanitize imported nodes to ensure they have proper onChange handlers
+ * This is needed because the onChange function is recreated on import
+ */
+export function sanitizeNodesForImport(
+  nodes: AppNode[],
+  onNodeDataChange: (id: string, value: any, field: string) => void
+): AppNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    data: {
+      ...node.data,
+      _id: node.id,
+      onChange: (val: any, f: string) => onNodeDataChange(node.id, val, f),
+    },
+  }));
+}
+
+/**
+ * Export rules as YAML only
+ * Note: This loses editor-specific data like node positions
+ * Use this only for sharing the compiled rule, not for re-importing
+ */
+export function exportToYamlOnly(yaml: string): string {
+  return yaml;
+}
