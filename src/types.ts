@@ -19,6 +19,37 @@ export interface RuleMetadata {
 
 // --- Conditions ---
 
+// Constants for validation - arrays of valid operators
+/** List of all equality operators */
+export const EQUALITY_OPERATORS = ['EQ', '==', 'NEQ', '!='] as const;
+/** List of all comparison operators */
+export const COMPARISON_OPERATORS = ['GT', '>', 'GTE', '>=', 'LT', '<', 'LTE', '<='] as const;
+/** List of list/collection operators */
+export const LIST_OPERATORS = ['IN', 'NOT_IN', 'RANGE'] as const;
+/** List of string matching operators */
+export const STRING_OPERATORS = ['CONTAINS', 'NOT_CONTAINS', 'STARTS_WITH', 'ENDS_WITH'] as const;
+/** List of null-checking operators */
+export const NULL_OPERATORS = ['IS_NULL', 'IS_NONE'] as const;
+/** List of all valid operators */
+export const ALL_OPERATORS = [
+  ...EQUALITY_OPERATORS,
+  ...COMPARISON_OPERATORS,
+  ...LIST_OPERATORS,
+  ...STRING_OPERATORS,
+  'IS_EMPTY',
+  'HAS_KEY',
+  'MATCHES',
+  'SINCE', 'AFTER',
+  'BEFORE', 'UNTIL',
+  'RANGE'
+] as const;
+
+/** Condition group operators */
+export const CONDITION_GROUP_OPERATORS = ['AND', 'OR'] as const;
+
+/** Action group execution modes */
+export const EXECUTION_MODES = ['ALL', 'EITHER', 'SEQUENCE'] as const;
+
 export type ComparisonOperator =
   | 'EQ' | '=='    // Equal
   | 'NEQ' | '!='   // Not Equal

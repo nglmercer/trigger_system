@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { ConditionBuilder, ActionBuilder, RuleBuilder } from "../../src/sdk/builder";
-import { RuleExporter } from "../../src/sdk/exporter";
+import { ConditionBuilder, ActionBuilder, RuleBuilder } from "../../../src/sdk/builder";
+import { RuleExporter } from "../../../src/sdk/exporter";
 
 describe("SDK Builder Tests", () => {
   describe("ConditionBuilder", () => {

@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { getDiagnosticsForText } from "../../src/lsp/diagnostics";
+import { getDiagnosticsForText } from "../../../src/lsp/diagnostics";
 
 describe("LSP Best Practices Hints", () => {
     test("Should suggest list format for multi-document YAML", async () => {

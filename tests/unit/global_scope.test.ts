@@ -188,7 +188,7 @@ describe("Global Scope & StateManager Access", () => {
             }
         };
 
-        (engine as any).rules = [rule];
+        engine.rules = [rule];
 
         const context = ContextAdapter.create(
             "TEST_EVENT", 

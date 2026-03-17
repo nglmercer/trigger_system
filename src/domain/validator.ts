@@ -1,6 +1,11 @@
 // src/domain/validator.ts
 import { type, scope } from "arktype";
 import type { TriggerRule } from "../types";
+import {
+  COMPARISON_OPERATORS,
+  LIST_OPERATORS,
+  STRING_OPERATORS
+} from "../types";
 
 // --- ArkType Scope & Schemas ---
 
@@ -8,7 +13,7 @@ import type { TriggerRule } from "../types";
 const types = scope({
 
     // List of allowed operators
-    Operator: "'EQ' | '==' | 'NEQ' | '!=' | 'GT' | '>' | 'GTE' | '>=' | 'LT' | '<' | 'LTE' | '<=' | 'IN' | 'NOT_IN' | 'CONTAINS' | 'MATCHES' | 'RANGE' | 'SINCE' | 'AFTER' | 'BEFORE' | 'UNTIL'",
+    Operator: "'EQ' | '==' | 'NEQ' | '!=' | 'GT' | '>' | 'GTE' | '>=' | 'LT' | '<' | 'LTE' | '<=' | 'IN' | 'NOT_IN' | 'CONTAINS' | 'NOT_CONTAINS' | 'STARTS_WITH' | 'ENDS_WITH' | 'MATCHES' | 'RANGE' | 'SINCE' | 'AFTER' | 'BEFORE' | 'UNTIL'",
     
     // Discriminated union for better value validation based on operator
     Condition: "RangeCondition | ListCondition | ContainsCondition | NumericCondition | RegexCondition | StringOperatorCondition | HasKeyCondition | NullCondition | EmptyCondition | BasicCondition",
@@ -239,9 +244,11 @@ export class TriggerValidator {
   ): void {
       const { operator, value } = condition as Record<string, unknown>;
       
-      // 1. List/Collection Operators (IN, NOT_IN, RANGE, CONTAINS)
-      if (typeof operator === 'string' && ['IN', 'NOT_IN', 'RANGE', 'CONTAINS', 'NOT_CONTAINS'].includes(operator)) {
-          if (operator === 'CONTAINS') {
+      // 1. List/Collection Operators (IN, NOT_IN, RANGE, CONTAINS, NOT_CONTAINS)
+      const listOps = LIST_OPERATORS as readonly string[];
+      const strOps = STRING_OPERATORS as readonly string[];
+      if (typeof operator === 'string' && (listOps.includes(operator) || strOps.includes(operator))) {
+          if (operator === 'CONTAINS' || operator === 'NOT_CONTAINS') {
               if (typeof value !== 'string' && !Array.isArray(value)) {
                   issues.push({
                       path: `${path}.value`,
@@ -301,7 +308,7 @@ export class TriggerValidator {
           }
       }
       // 3. Numeric Comparisons (GT, LT, etc)
-      else if (typeof operator === 'string' && ['GT', 'GTE', 'LT', 'LTE', '>', '>=', '<', '<='].includes(operator)) {
+      else if (typeof operator === 'string' && (COMPARISON_OPERATORS as readonly string[]).includes(operator)) {
            if (typeof value !== 'number' && typeof value !== 'string') {
                issues.push({
                    path: `${path}.value`,
@@ -311,7 +318,7 @@ export class TriggerValidator {
            }
       }
       // 4. String prefix/suffix operators (STARTS_WITH, ENDS_WITH)
-      else if (typeof operator === 'string' && ['STARTS_WITH', 'ENDS_WITH'].includes(operator)) {
+      else if (typeof operator === 'string' && (STRING_OPERATORS as readonly string[]).includes(operator)) {
            if (typeof value !== 'string') {
                issues.push({
                    path: `${path}.value`,

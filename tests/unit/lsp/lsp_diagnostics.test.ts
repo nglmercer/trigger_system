@@ -1,6 +1,6 @@
 
 import { describe, expect, test } from "bun:test";
-import { getDiagnosticsForText } from "../../src/lsp/diagnostics";
+import { getDiagnosticsForText } from "../../../src/lsp/diagnostics";
 
 describe("LSP Diagnostics", () => {
     

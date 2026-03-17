@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import { TriggerUtils } from "../../src/utils/utils";
-import { uriToPath, pathToUri, resolveImportPath } from "../../src/lsp/path-utils";
-import type { TriggerContext } from "../../src/types";
+import { TriggerUtils } from "../../../src/utils/utils";
+import { uriToPath, pathToUri, resolveImportPath } from "../../../src/lsp/path-utils";
+import type { TriggerContext } from "../../../src/types";
 
 describe("TriggerUtils Tests", () => {
   const mockContext: TriggerContext = {
