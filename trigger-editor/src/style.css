@@ -11,17 +11,17 @@
   --text-muted: #484f58;
 
   /* Node Colors - Distinct palette for each type */
-  --event-color: #f59e0b;
-  --event-color-light: #fbbf24;
-  --event-color-dark: #d97706;
+  --event-color: #0f0bf5;
+  --event-color-light: #2452fb;
+  --event-color-dark: #150791;
 
-  --condition-color: #10b981;
+  --condition-color: #10b98f;
   --condition-color-light: #34d399;
   --condition-color-dark: #059669;
 
-  --condition-group-color: #06b6d4;
+  --condition-group-color: #069ad4;
   --condition-group-color-light: #22d3ee;
-  --condition-group-color-dark: #0891b2;
+  --condition-group-color-dark: #085db2;
 
   --action-color: #ef4444;
   --action-color-light: #f87171;
@@ -137,10 +137,15 @@ body {
 .drag-icon--condition {
   color: var(--condition-color);
 }
+.drag-icon--condition-group {
+  color: var(--condition-group-color);
+}
 .drag-icon--action {
   color: var(--action-color);
 }
-
+.drag-icon--action-group {
+  color: var(--action-group-color);
+}
 .drag-info {
   display: flex;
   flex-direction: column;

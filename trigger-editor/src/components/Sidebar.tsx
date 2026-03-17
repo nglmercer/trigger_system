@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
-import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon } from './Icons.tsx';
+import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon, ShareIcon } from './Icons.tsx';
+import { IfIcon,StarIcon } from './Icons.tsx';
 import { Modal } from './Modal.tsx';
 import { ImportList } from './ImportList.tsx';
 
@@ -10,10 +11,11 @@ interface SidebarProps {
   onExportJson: () => void;
   onExportYaml: () => void;
   onImport: () => void;
+  onShare: () => void;
   hasNodes: boolean;
 }
 
-export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, hasNodes }: SidebarProps) {
+export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onShare, hasNodes }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -88,26 +90,34 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
           <>
             <div className="drag-group">
               <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.EVENT)}>
-                <span className="drag-icon drag-icon--event"><EventIcon /></span>
+                <span className="drag-icon drag-icon--event"><StarIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">Event Trigger</span>
                   <span className="drag-desc">Starts the rule</span>
                 </div>
               </div>
 
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION_GROUP)}>
+                <span className="drag-icon drag-icon--condition-group"><ConditionGroupIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">Condition Group</span>
+                  <span className="drag-desc">AND / OR logical group</span>
+                </div>
+              </div>
+
               <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION)}>
-                <span className="drag-icon drag-icon--condition"><ConditionIcon /></span>
+                <span className="drag-icon drag-icon--condition"><IfIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">Condition</span>
                   <span className="drag-desc">Filter by field value</span>
                 </div>
               </div>
 
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION_GROUP)}>
-                <span className="drag-icon drag-icon--condition"><ConditionGroupIcon /></span>
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}>
+                <span className="drag-icon drag-icon--action-group"><ActionGroupIcon /></span>
                 <div className="drag-info">
-                  <span className="drag-name">Condition Group</span>
-                  <span className="drag-desc">AND / OR logical group</span>
+                  <span className="drag-name">Action Group</span>
+                  <span className="drag-desc">Group of actions</span>
                 </div>
               </div>
 
@@ -119,13 +129,6 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 </div>
               </div>
 
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}>
-                <span className="drag-icon drag-icon--action"><ActionGroupIcon /></span>
-                <div className="drag-info">
-                  <span className="drag-name">Action Group</span>
-                  <span className="drag-desc">Group of actions</span>
-                </div>
-              </div>
             </div>
 
             <div className="sidebar-divider"></div>
@@ -204,7 +207,26 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
 
             <div className="sidebar-footer">
             
-              {/* Export/Import Section */}
+              {/* Export/Import/Share Section */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                marginBottom: '8px',
+                paddingTop: '8px',
+                borderTop: '1px solid var(--border)'
+              }}>
+
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onShare}
+                  disabled={!hasNodes}
+                  style={{ width: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  title="Share project via link"
+                >
+                  <ShareIcon size={14} />Share
+                </button>
+              </div>
+
               <div style={{ 
                 display: 'flex', 
                 gap: '8px', 

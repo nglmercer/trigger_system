@@ -39,10 +39,10 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
         position={Position.Left}
         id="action-group-input"
         className="node-input-handle"
-        style={{ background: 'var(--action-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
+        style={{ background: 'var(--action-group-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
         title="Connect from condition"
       />
-      <div className="node-title node-title--action">
+      <div className="node-title node-title--action-group">
         <span className="node-icon"><ActionGroupIcon /></span> Action Group
         <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
           <ClearIcon size={14} />

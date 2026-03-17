@@ -33,7 +33,7 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
         position={Position.Left}
         id="input"
         className="node-input-handle"
-        style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
+        style={{ background: 'var(--condition-group-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
         title="Connect from event or condition"
       />
       {/* Right handle for connecting to conditions (always visible) */}
@@ -43,14 +43,14 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
         id="cond-output"
         className="node-output-handle"
         style={{ 
-          background: 'var(--condition-color)', 
+          background: 'var(--condition-group-color)', 
           border: '2px solid var(--bg-color)', 
           width: '12px', 
           height: '12px'
         }}
         title="Connect to condition"
       />
-      <div className="node-title node-title--condition">
+      <div className="node-title node-title--condition-group">
         <span className="node-icon"><ConditionGroupIcon /></span> Condition Group
         <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
           <ClearIcon size={14} />

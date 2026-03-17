@@ -2,7 +2,7 @@ import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionNodeData } from '../types.ts';
 import { NodeField, NodeType } from '../constants.ts';
 import { getOperatorOptions, getOperatorDescription, getFieldTooltip } from '../shared-constants.ts';
-import { ClearIcon, ConditionIcon } from './Icons.tsx';
+import { ClearIcon, IfIcon } from './Icons.tsx';
 import { TextInput, SelectInput, FormField } from './FormFields.tsx';
 import type { ComparisonOperator } from '../../../src/types';
 
@@ -35,7 +35,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
       />
       <div className="node-title node-title--condition">
-        <span className="node-icon"><ConditionIcon /></span> Condition
+        <span className="node-icon"><IfIcon /></span> Condition
         <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
           <ClearIcon size={14} />
         </button>

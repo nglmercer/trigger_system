@@ -1,5 +1,39 @@
-import * as React from 'react';
+export const IfIcon = () => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    width="24" 
+    height="24"
+  >
+    <path d="M12 2L20 12L12 22L4 12L12 2Z" />
+    <path d="M12 12V7" />
+    <path d="M12 12L15 15" />
+    <path d="M12 12L9 15" />
+  </svg>
+);
 
+export const StarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="36" height="36">
+  <defs>
+    <linearGradient id="blueGradient" x1="20%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stopColor="#70b3ff" />
+      <stop offset="50%" stopColor="#3b82f6" />
+      <stop offset="100%" stopColor="#1d4ed8" />
+    </linearGradient>
+  </defs>
+  
+  <path d="M 50 10 
+           C 50 40, 60 50, 90 50 
+           C 60 50, 50 60, 50 90 
+           C 50 60, 40 50, 10 50 
+           C 40 50, 50 40, 50 10 Z" 
+        fill="url(#blueGradient)" />
+</svg>
+);
 // Event Trigger Icon - lightning/zap with circle
 export const EventIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -259,5 +293,16 @@ export const UploadIcon = ({ size = 16 }: { size?: number }) => (
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
     <polyline points="17 8 12 3 7 8"></polyline>
     <line x1="12" y1="3" x2="12" y2="15"></line>
+  </svg>
+);
+
+// Share/Link Icon
+export const ShareIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="18" cy="5" r="3"></circle>
+    <circle cx="6" cy="12" r="3"></circle>
+    <circle cx="18" cy="19" r="3"></circle>
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
   </svg>
 );

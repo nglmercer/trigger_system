@@ -176,3 +176,104 @@ export function sanitizeNodesForImport(
 export function exportToYamlOnly(yaml: string): string {
   return yaml;
 }
+
+/**
+ * URL parameter name for sharing
+ */
+export const SHARE_PARAM_NAME = 'share';
+
+/**
+ * Encode project data to a URL-safe string for sharing
+ * Uses base64 encoding with compression for shorter URLs
+ */
+export function encodeShareData(nodes: AppNode[], edges: Edge[]): string {
+  try {
+    // Create minimal export data (without metadata to reduce size)
+    const shareData = {
+      v: EXPORT_VERSION,
+      n: nodes,
+      e: edges,
+    };
+    
+    // Serialize to JSON
+    const jsonStr = JSON.stringify(shareData);
+    
+    // Use base64 encoding and make URL-safe
+    const base64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g,
+      (match, p1) => String.fromCharCode(parseInt(p1, 16))));
+    
+    // Replace URL-unsafe characters
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  } catch (error) {
+    console.error('Failed to encode share data:', error);
+    return '';
+  }
+}
+
+/**
+ * Decode project data from a URL-safe string
+ */
+export function decodeShareData(encoded: string): { nodes: AppNode[]; edges: Edge[] } | null {
+  try {
+    // Restore base64 padding and URL-safe characters
+    let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    
+    // Add padding if needed
+    const padding = base64.length % 4;
+    if (padding) {
+      base64 += '='.repeat(4 - padding);
+    }
+    
+    // Decode base64
+    const jsonStr = decodeURIComponent(Array.prototype.map.call(
+      atob(base64),
+      (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
+    
+    // Parse JSON
+    const data = JSON.parse(jsonStr);
+    
+    if (!data.n || !Array.isArray(data.n) || !data.e || !Array.isArray(data.e)) {
+      console.error('Invalid share data structure');
+      return null;
+    }
+    
+    return { nodes: data.n, edges: data.e };
+  } catch (error) {
+    console.error('Failed to decode share data:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate a shareable URL with the project data
+ */
+export function generateShareUrl(nodes: AppNode[], edges: Edge[]): string {
+  const encoded = encodeShareData(nodes, edges);
+  if (!encoded) return '';
+  
+  const url = new URL(window.location.href);
+  url.searchParams.set(SHARE_PARAM_NAME, encoded);
+  return url.toString();
+}
+
+/**
+ * Check if URL has shared data and extract it
+ */
+export function getSharedDataFromUrl(): { nodes: AppNode[]; edges: Edge[] } | null {
+  const url = new URL(window.location.href);
+  const encoded = url.searchParams.get(SHARE_PARAM_NAME);
+  
+  if (!encoded) return null;
+  
+  return decodeShareData(encoded);
+}
+
+/**
+ * Clear share data from URL (clean up after loading)
+ */
+export function clearShareDataFromUrl(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete(SHARE_PARAM_NAME);
+  window.history.replaceState({}, '', url.toString());
+}

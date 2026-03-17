@@ -3,7 +3,7 @@ import { Handle, Position, useReactFlow } from '@xyflow/react';
 import type { EventNodeData } from '../types.ts';
 import { NodeField } from '../constants.ts';
 import { getFieldTooltip } from '../shared-constants.ts';
-import { ClearIcon, SettingsIcon } from './Icons.tsx';
+import { ClearIcon, SettingsIcon, StarIcon } from './Icons.tsx';
 import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from './FormFields.tsx';
 
 export default function EventNode({ id, data }: { id: string, data: EventNodeData }) {
@@ -12,7 +12,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
   return (
     <div className="drawflow-node event">
       <div className="node-title node-title--event">
-        <span className="node-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span> Event Trigger
+        <StarIcon /> Event Trigger
         <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
           <ClearIcon size={14} />
         </button>

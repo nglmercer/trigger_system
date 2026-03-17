@@ -49,6 +49,9 @@ import {
   downloadYaml, 
   createImportPicker, 
   sanitizeNodesForImport,
+  generateShareUrl,
+  getSharedDataFromUrl,
+  clearShareDataFromUrl,
   type ExportData 
 } from './utils/exportImport.ts';
 
@@ -93,6 +96,21 @@ function NodeEditor() {
       }
     }
   }, []);
+
+  // Load shared data from URL - runs after initial render
+  // The existing useEffect for ensuring onChange handlers will handle sanitization
+  useEffect(() => {
+    const sharedData = getSharedDataFromUrl();
+    if (sharedData && sharedData.nodes.length > 0) {
+      setNodes(sharedData.nodes);
+      setEdges(sharedData.edges || []);
+      
+      // Clear the share data from URL to clean up
+      clearShareDataFromUrl();
+      
+      console.log('Loaded shared project with', sharedData.nodes.length, 'nodes');
+    }
+  }, []);
   
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as AppNode[]),
@@ -111,6 +129,29 @@ function NodeEditor() {
   
   // Compute rule, yaml and errors in real-time
   const { rule, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
+
+  // ============================================================
+  // Share Handler - Generate shareable URL
+  // ============================================================
+  const handleShare = useCallback(() => {
+    if (nodes.length === 0) return;
+    
+    const shareUrl = generateShareUrl(nodes, edges);
+    if (!shareUrl) {
+      console.error('Failed to generate share URL');
+      return;
+    }
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      // Show success feedback via alert or toast
+      alert('Share link copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy to clipboard:', err);
+      // Fallback: open in new tab
+      window.open(shareUrl, '_blank');
+    });
+  }, [nodes, edges]);
 
   const onNodeDataChange = useCallback((id: string, value: any, field: string) => {
     setNodes((nds) =>
@@ -430,6 +471,7 @@ function NodeEditor() {
         onExportJson={handleExportJson}
         onExportYaml={handleExportYaml}
         onImport={handleImport}
+        onShare={handleShare}
         hasNodes={nodes.length > 0}
       />
 
