@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
-import { RuleBuilder, optimizeCondition, optimizeAction, type OptimizeOptions } from "./builder";
-import { RuleExporter } from "./exporter";
-import type { ConditionGroup, ActionGroup, RuleCondition, Action, Condition } from "../types";
+import { RuleBuilder, optimizeCondition, optimizeAction, type OptimizeOptions } from "../../../src/sdk/builder";
+import { RuleExporter } from "../../../src/sdk/exporter";
+import type { ConditionGroup, ActionGroup, RuleCondition, Action, Condition } from "../../../src/types";
 
 describe("RuleBuilder SDK", () => {
   test("should create a basic rule with correct key order", () => {

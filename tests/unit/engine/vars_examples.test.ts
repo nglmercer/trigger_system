@@ -8,7 +8,7 @@ import { RuleEngine } from "../../../src/core/rule-engine";
 import { StateManager } from "../../../src/core/state-manager";
 import { TriggerLoader } from "../../../src/io/loader.node";
 import type { TriggerContext } from "../../../src/types";
-import { rulesPath } from "../../fixtures/rulesPath";
+import { rulesPath, varsExamplesPath } from "../../fixtures/rulesPath";
 
 describe("Vars Examples Tests", () => {
     let engine: RuleEngine;
@@ -18,7 +18,7 @@ describe("Vars Examples Tests", () => {
         StateManager.getInstance().clear();
 
         // Load rules from vars_examples.yaml
-        const rules = await TriggerLoader.loadRule(rulesPath);
+        const rules = await TriggerLoader.loadRule(varsExamplesPath);
         
         engine = new RuleEngine({
             rules,
