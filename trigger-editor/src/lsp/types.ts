@@ -10,6 +10,7 @@ export interface CompletionItem {
   kind: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
   detail?: string;       // Short type description
   documentation?: string; // Preview of the value
+  value?: JsonValue;     // The actual value (for value-mode completions)
 }
 
 /** Hover info for a resolved variable */

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useCompletions, useApplyCompletion } from '../lsp/hooks.ts';
+import { useCompletions, useApplyCompletion, useApplyValueCompletion, usePrimitiveCompletions } from '../lsp/hooks.ts';
 import { getHoverInfo } from '../lsp/engine.ts';
 import type { CompletionItem, HoverInfo } from '../lsp/types.ts';
 
@@ -76,12 +76,28 @@ interface AutocompletePopupProps {
   onSelect: (newValue: string) => void;
   anchorRef: React.RefObject<HTMLElement | null>;
   isFocused: boolean;
+  /** Autocomplete mode: 'variable' (default), 'value', or 'none' */
+  mode?: 'variable' | 'value' | 'none';
+  /** Show only primitive values (string, number, boolean) in autocomplete */
+  primitiveOnly?: boolean;
 }
 
-export function AutocompletePopup({ value, onSelect, anchorRef, isFocused }: AutocompletePopupProps) {
+export function AutocompletePopup({ value, onSelect, anchorRef, isFocused, mode = 'variable', primitiveOnly = false }: AutocompletePopupProps) {
   const valStr = String(value);
-  const { items, isOpen } = useCompletions(valStr);
-  const applyCompletion = useApplyCompletion(valStr, onSelect);
+  
+  // Handle completions based on mode
+  const completionData = mode === 'none'
+    ? { items: [], isOpen: false }
+    : primitiveOnly
+      ? usePrimitiveCompletions(valStr)
+      : useCompletions(valStr);
+  
+  const { items, isOpen } = completionData;
+  
+  // Use the appropriate completion function based on mode
+  const applyCompletion = mode === 'value'
+    ? useApplyValueCompletion(valStr, onSelect)
+    : useApplyCompletion(valStr, onSelect);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
   const menuRef = useRef<HTMLDivElement>(null);

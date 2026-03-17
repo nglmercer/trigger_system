@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
-import { setGlobalContextData } from './AutocompleteContext.ts';
 import { useAlert } from './Alert.tsx';
-import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon } from './Icons.tsx';
+import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon, SettingsIcon, DatabaseIcon } from './Icons.tsx';
+import { ContextConfigPanel } from './ContextConfigPanel.tsx';
 
 interface SidebarProps {
   onPlay: () => void;
@@ -12,25 +12,8 @@ interface SidebarProps {
 
 export default function Sidebar({ onPlay, onClear }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { success, error } = useAlert();
-  
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const json = JSON.parse(event.target?.result as string);
-          setGlobalContextData(json);
-          success('Autocompletion logic loaded successfully!');
-        } catch (err) {
-          error('Invalid JSON file.');
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
   
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData(DRAG_DATA_FORMAT, nodeType);
@@ -144,35 +127,46 @@ export default function Sidebar({ onPlay, onClear }: SidebarProps) {
             </div>
 
             <div className="sidebar-divider"></div>
-            <div className="sidebar-footer">
-              <button 
-                className="btn btn-primary" 
-                onClick={onPlay} 
-                style={{ marginBottom: '8px', background: 'var(--condition-color)' }}
-              >
-                <PlayIcon /> Play / Test
-              </button>
-              <input 
-                type="file" 
-                accept=".json" 
-                style={{ display: 'none' }} 
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-              />
-              <button 
-                className="btn btn-secondary" 
-                onClick={() => fileInputRef.current?.click()} 
-                style={{ marginBottom: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
-              >
-                Upload Variables JSON
-              </button>
-              <button id="btn-clear" className="btn btn-secondary" onClick={onClear}>
-                <ClearIcon /> Clear
-              </button>
-            </div>
-          </>
-        )}
-      </aside>
-    </>
-  );
-}
+            
+            {/* Compact Context Info Section */}
+            <div style={{ padding: '0 20px', marginBottom: '16px' }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                marginBottom: '8px'
+              }}>
+                <span style={{ 
+                  fontSize: '12px', 
+                  fontWeight: 600, 
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Autocomplete Data
+                </span>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '12px',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)'
+                  }}
+                >
+                  <SettingsIcon size={12} /> Config
+                </button>
+              </div>
+              
+              <div style={{
+                fontSize: '11px',
+                color: 'var(--text-secondary)',
+                lineHeight: '1.5'

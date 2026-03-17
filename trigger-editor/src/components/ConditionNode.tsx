@@ -71,6 +71,8 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
             value={data.value || ''}
             onChange={(val) => data.onChange(val as string, NodeField.VALUE)}
             placeholder="100"
+            autocompleteMode="value"
+            primitiveOnly={true}
           />
         </FormField>
       </div>

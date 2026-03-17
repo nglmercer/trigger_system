@@ -38,6 +38,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
             value={data.type || ''}
             onChange={(val) => data.onChange(val as string, NodeField.TYPE)}
             placeholder="log_event"
+            autocompleteMode="variable"
           />
         </FormField>
         <FormField label="Params">

@@ -34,7 +34,8 @@ function buildPaths(obj: JsonValue, prefix: string, out: CompletionItem[], seen:
     detail: kind,
     documentation: typeof obj === 'object' && obj !== null
       ? JSON.stringify(obj, null, 2).slice(0, 200)
-      : String(obj)
+      : String(obj),
+    value: obj // Include the actual value for value-mode completions
   });
 
   if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
@@ -209,6 +210,7 @@ export function getCompletionTrigger(text: string): string | null | undefined {
 
 /**
  * Build the completed text after a user selects a completion item.
+ * This inserts the variable reference in ${variable} format.
  */
 export function applyCompletion(text: string, item: CompletionItem): string {
   const trigger = getCompletionTrigger(text);
@@ -219,4 +221,54 @@ export function applyCompletion(text: string, item: CompletionItem): string {
 
   const prefix = text.substring(0, text.length - match[0].length);
   return `${prefix}\${${item.label}}`;
+}
+
+/**
+ * Apply completion by inserting the raw VALUE instead of ${} reference.
+ * This is useful for fields like Condition Value where you want to insert
+ * the actual value (string, number, boolean) directly.
+ * 
+ * For strings: inserts "value"
+ * For numbers: inserts the number
+ * For booleans: inserts true/false
+ * For arrays/objects: inserts JSON stringified
+ */
+export function applyValueCompletion(text: string, item: CompletionItem): string {
+  const trigger = getCompletionTrigger(text);
+  if (trigger === null) return text;
+
+  const match = text.match(/\$\{?([a-zA-Z0-9_.]*)$/);
+  if (!match) return text;
+
+  const prefix = text.substring(0, text.length - match[0].length);
+  
+  // Get the actual value from the item
+  const value = item.value;
+  
+  if (value === undefined || value === null) {
+    // If no value, fall back to variable reference
+    return `${prefix}\${${item.label}}`;
+  }
+  
+  // Format the value based on its type
+  let formattedValue: string;
+  
+  if (typeof value === 'string') {
+    // Wrap strings in quotes
+    formattedValue = `"${value}"`;
+  } else if (typeof value === 'number' || typeof value === 'boolean') {
+    // Numbers and booleans don't need quotes
+    formattedValue = String(value);
+  } else if (Array.isArray(value)) {
+    // Arrays -> JSON string
+    formattedValue = JSON.stringify(value);
+  } else if (typeof value === 'object') {
+    // Objects -> JSON string
+    formattedValue = JSON.stringify(value);
+  } else {
+    // Fallback to variable reference
+    return `${prefix}\${${item.label}}`;
+  }
+  
+  return `${prefix}${formattedValue}`;
 }

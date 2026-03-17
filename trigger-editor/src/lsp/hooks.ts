@@ -8,7 +8,8 @@ import {
   getCompletions,
   getHoverInfo,
   getCompletionTrigger,
-  applyCompletion
+  applyCompletion,
+  applyValueCompletion
 } from './engine.ts';
 import type { CompletionItem, HoverInfo } from './types.ts';
 
@@ -60,6 +61,7 @@ export function useHoverInfo(variable: string | undefined): HoverInfo | undefine
 
 /**
  * Provides a handler to apply a completion item to a current text value.
+ * Uses variable reference mode (${variable}).
  */
 export function useApplyCompletion(
   value: string,
@@ -71,4 +73,44 @@ export function useApplyCompletion(
     },
     [value, onChange]
   );
+}
+
+/**
+ * Provides a handler to apply a completion item by inserting the RAW VALUE
+ * instead of ${} reference. Useful for fields like Condition Value.
+ * 
+ * - Strings are inserted as "value"
+ * - Numbers are inserted as 123
+ * - Booleans as true/false
+ * - Arrays/Objects as JSON
+ */
+export function useApplyValueCompletion(
+  value: string,
+  onChange: (newValue: string) => void
+): (item: CompletionItem) => void {
+  return useCallback(
+    (item: CompletionItem) => {
+      onChange(applyValueCompletion(value, item));
+    },
+    [value, onChange]
+  );
+}
+
+/**
+ * Filter completion items to only include primitive types (string, number, boolean).
+ * Useful for value fields where you want to insert actual values.
+ */
+export function usePrimitiveCompletions(value: string): {
+  items: CompletionItem[];
+  term: string | null;
+  isOpen: boolean;
+} {
+  const { items, term, isOpen } = useCompletions(value);
+  
+  // Filter to only show primitive types
+  const primitiveItems = items.filter(
+    item => item.kind === 'string' || item.kind === 'number' || item.kind === 'boolean'
+  );
+  
+  return { items: primitiveItems, term, isOpen };
 }

@@ -56,6 +56,10 @@ interface TextInputProps {
   type?: 'text' | 'number';
   disabled?: boolean;
   className?: string;
+  /** Autocomplete mode: 'variable' (default) or 'value' or 'none' */
+  autocompleteMode?: 'variable' | 'value' | 'none';
+  /** Show only primitive values (string, number, boolean) in autocomplete */
+  primitiveOnly?: boolean;
 }
 
 export function TextInput({ 
@@ -64,7 +68,9 @@ export function TextInput({
   placeholder = '', 
   type = 'text',
   disabled = false,
-  className = 'node-input'
+  className = 'node-input',
+  autocompleteMode = 'variable',
+  primitiveOnly = false
 }: TextInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,12 +113,14 @@ export function TextInput({
           mousePos={!isFocused ? mousePos : undefined}
         />
       )}
-      {type === 'text' && !disabled && (
+      {type === 'text' && !disabled && autocompleteMode !== 'none' && (
         <AutocompletePopup
           value={value}
           onSelect={handleChange}
           anchorRef={containerRef}
           isFocused={isFocused}
+          mode={autocompleteMode}
+          primitiveOnly={primitiveOnly}
         />
       )}
       <input
