@@ -3,7 +3,7 @@ import { ActionRegistry } from '../../src/core/action-registry';
 import { TriggerEngine } from '../../src/core/engine';
 import { ExpressionEngine } from '../../src/core/expression-engine';
 import { StateManager } from '../../src/core/state-manager';
-import type { TriggerContext } from '../../src/types';
+import type { TriggerContext, ComparisonOperator } from '../../src/types';
 
 describe('Coverage Boost - ActionRegistry', () => {
     const registry = ActionRegistry.getInstance();
@@ -179,7 +179,7 @@ describe('Coverage Boost - TriggerEngine', () => {
             on: 'test',
             do: [
                 {
-                    if: { field: 'data.ok', operator: 'EQ', value: true },
+                    if: { field: 'data.ok', operator: 'EQ' as ComparisonOperator, value: true },
                     then: { type: 'a1' },
                     else: { type: 'a2' }
                 }

@@ -11,6 +11,7 @@ describe("RuleBuilder SDK", () => {
       .name("New Rule")
       .on("123")
       .ifComplex(c => c.where("data", "EQ", "100"))
+      .withEnabled(true)
       .do("data", {})
       .build();
 
@@ -19,6 +20,7 @@ describe("RuleBuilder SDK", () => {
     // The keys should appear in this logical order
     expect(yaml.indexOf("id: rule-xn7i5")).toBeLessThan(yaml.indexOf("name: New Rule"));
     expect(yaml.indexOf("name: New Rule")).toBeLessThan(yaml.indexOf("on: \"123\""));
+    expect(yaml.indexOf("enabled: true")).toBeLessThan(yaml.indexOf("if:"));
     expect(yaml.indexOf("on: \"123\"")).toBeLessThan(yaml.indexOf("if:"));
     expect(yaml.indexOf("if:")).toBeLessThan(yaml.indexOf("do:"));
   });
