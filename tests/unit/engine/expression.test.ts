@@ -1,7 +1,7 @@
 
 import { describe, expect, test } from "bun:test";
-import { ExpressionEngine } from "../../src/core/expression-engine";
-import type { TriggerContext } from "../../src/types";
+import { ExpressionEngine } from "../../../src/core/expression-engine";
+import type { TriggerContext } from "../../../src/types";
 
 describe("Expression Engine Unit Tests", () => {
     

@@ -4,8 +4,11 @@ import type { TriggerRule } from "../types";
 import {
   COMPARISON_OPERATORS,
   LIST_OPERATORS,
-  STRING_OPERATORS
-} from "../types";
+  STRING_OPERATORS,
+  isListOperator,
+  isStringOperator,
+  isComparisonOperator
+} from "../core/operators";
 
 // --- ArkType Scope & Schemas ---
 
@@ -243,34 +246,21 @@ export class TriggerValidator {
       path: string
   ): void {
       const { operator, value } = condition as Record<string, unknown>;
+      const op = operator as string;
       
-      // 1. List/Collection Operators (IN, NOT_IN, RANGE, CONTAINS, NOT_CONTAINS)
-      const listOps = LIST_OPERATORS as readonly string[];
-      const strOps = STRING_OPERATORS as readonly string[];
-      if (typeof operator === 'string' && (listOps.includes(operator) || strOps.includes(operator))) {
-          if (operator === 'CONTAINS' || operator === 'NOT_CONTAINS') {
-              if (typeof value !== 'string' && !Array.isArray(value)) {
-                  issues.push({
-                      path: `${path}.value`,
-                      message: `Incorrect value type: Operator 'CONTAINS' expects a String or List (Array), but received ${typeof value}.`,
-                      suggestion: "Use a substring or a list of items.",
-                      severity: "error"
-                  });
-              }
-              return;
-          }
-
+      // 1. List/Collection Operators (IN, NOT_IN, RANGE)
+      if (isListOperator(op)) {
           if (!Array.isArray(value)) {
               issues.push({
                   path: `${path}.value`,
-                  message: `Incorrect value type: Operator '${operator}' expects a List (Array), but received ${typeof value}.`,
-                  suggestion: operator === 'RANGE' ? "Use format [min, max]" : "Use format [item1, item2]",
+                  message: `Incorrect value type: Operator '${op}' expects a List (Array), but received ${typeof value}.`,
+                  suggestion: op === 'RANGE' ? "Use format [min, max]" : "Use format [item1, item2]",
                   severity: "error"
               });
               return;
           }
 
-          if (operator === 'RANGE') {
+          if (op === 'RANGE') {
               if (value.length !== 2) {
                   issues.push({
                       path: `${path}.value`,
@@ -286,9 +276,31 @@ export class TriggerValidator {
                     });
               }
           }
+      }
+      // 2. CONTAINS/NOT_CONTAINS - can be string or array
+      else if (op === 'CONTAINS' || op === 'NOT_CONTAINS') {
+          if (typeof value !== 'string' && !Array.isArray(value)) {
+              issues.push({
+                  path: `${path}.value`,
+                  message: `Incorrect value type: Operator 'CONTAINS' expects a String or List (Array), but received ${typeof value}.`,
+                  suggestion: "Use a substring or a list of items.",
+                  severity: "error"
+              });
+          }
+      }
+      // 3. STARTS_WITH/ENDS_WITH - can be string OR array of strings
+      else if (isStringOperator(op)) {
+          if (typeof value !== 'string' && !Array.isArray(value)) {
+              issues.push({
+                  path: `${path}.value`,
+                  message: `Incorrect value type: Operator '${op}' expects a String or List (Array), but received ${typeof value}.`,
+                  suggestion: "Use a string prefix/suffix or a list of prefixes/suffixes.",
+                  severity: "error"
+              });
+          }
       } 
       // 2. Regex
-      else if (operator === 'MATCHES') {
+      else if (op === 'MATCHES') {
           if (typeof value !== 'string') {
                issues.push({
                   path: `${path}.value`,
@@ -308,34 +320,24 @@ export class TriggerValidator {
           }
       }
       // 3. Numeric Comparisons (GT, LT, etc)
-      else if (typeof operator === 'string' && (COMPARISON_OPERATORS as readonly string[]).includes(operator)) {
+      else if (isComparisonOperator(op)) {
            if (typeof value !== 'number' && typeof value !== 'string') {
                issues.push({
-                   path: `${path}.value`,
-                   message: `Incorrect value type: Operator '${operator}' expects a number or expression string, but received ${typeof value}.`,
-                   severity: "error"
-               });
-           }
+                  path: `${path}.value`,
+                  message: `Incorrect value type: Operator '${op}' expects a number or expression string, but received ${typeof value}.`,
+                  severity: "error"
+              });
+          }
       }
-      // 4. String prefix/suffix operators (STARTS_WITH, ENDS_WITH)
-      else if (typeof operator === 'string' && (STRING_OPERATORS as readonly string[]).includes(operator)) {
+      // 4. HAS_KEY operator
+      else if (op === 'HAS_KEY') {
            if (typeof value !== 'string') {
                issues.push({
-                   path: `${path}.value`,
-                   message: `Incorrect value type: Operator '${operator}' expects a string, but received ${typeof value}.`,
-                   severity: "error"
-               });
-           }
-      }
-      // 5. HAS_KEY operator
-      else if (operator === 'HAS_KEY') {
-           if (typeof value !== 'string') {
-               issues.push({
-                   path: `${path}.value`,
-                   message: `Incorrect value type: Operator 'HAS_KEY' expects a string (key name), but received ${typeof value}.`,
-                   severity: "error"
-               });
-           }
+                  path: `${path}.value`,
+                  message: `Incorrect value type: Operator 'HAS_KEY' expects a string (key name), but received ${typeof value}.`,
+                  severity: "error"
+              });
+          }
       }
   }
 }

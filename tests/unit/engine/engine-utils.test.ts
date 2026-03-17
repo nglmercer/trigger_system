@@ -1,7 +1,7 @@
 import { describe, expect, test, beforeEach, mock } from "bun:test";
-import { EngineUtils } from "../../src/core/engine-utils";
-import { ExpressionEngine } from "../../src/core/expression-engine";
-import type { TriggerContext, Action, ActionGroup, RuleCondition } from "../../src/types";
+import { EngineUtils } from "../../../src/core/engine-utils";
+import { ExpressionEngine } from "../../../src/core/expression-engine";
+import type { TriggerContext, Action, ActionGroup, RuleCondition } from "../../../src/types";
 
 describe("EngineUtils - evaluateConditions", () => {
     let context: TriggerContext;
@@ -150,7 +150,9 @@ describe("EngineUtils - selectActions", () => {
         const action: Action = { type: "LOG", params: { message: "test" } };
         const result = EngineUtils.selectActions(action);
         expect(result.actionsToExecute).toHaveLength(1);
-        expect(result.actionsToExecute[0]!.type).toBe("LOG");
+        const actionResult = result.actionsToExecute[0] as Action;
+        expect(actionResult).toBe(action);
+        expect(actionResult.type).toBe("LOG");
         expect(result.mode).toBe("ALL");
     });
 
@@ -190,7 +192,8 @@ describe("EngineUtils - selectActions", () => {
         let selectedB = false;
         for (let i = 0; i < 10; i++) {
             const result = EngineUtils.selectActions(group);
-            if (result.actionsToExecute[0]?.type === "B") {
+            const actionResult = result.actionsToExecute[0] as Action;
+            if (actionResult.type === "B") {
                 selectedB = true;
             }
         }

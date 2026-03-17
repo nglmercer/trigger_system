@@ -1,9 +1,9 @@
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { RuleEngine } from "../../src/core/rule-engine";
-import { TriggerLoader } from "../../src/io/loader.node";
-import { StateManager } from "../../src/core/state-manager";
-import path from "path";
+import { RuleEngine } from "../../../src/core/rule-engine";
+import { TriggerLoader } from "../../../src/io/loader.node";
+import { StateManager } from "../../../src/core/state-manager";
+import { rulesPath } from "../../fixtures/rulesPath";
 
 describe("Comprehensive Rule Engine Tests", () => {
     let engine: RuleEngine;
@@ -17,7 +17,6 @@ describe("Comprehensive Rule Engine Tests", () => {
         stateManager.set("neq_result", false);
         
         // Load rules
-        const rulesPath = path.join(import.meta.dir, "../rules/examples/all_operators.yaml");
         const rules = await TriggerLoader.loadRule(rulesPath);
         
         console.log(`[Test] Loaded ${rules.length} rules from ${rulesPath}`);

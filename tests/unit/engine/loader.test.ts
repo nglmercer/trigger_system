@@ -1,13 +1,13 @@
 
 import { describe, expect, test } from "bun:test";
-import { TriggerLoader } from "../../src/io/loader.node";
+import { TriggerLoader } from "../../../src/io/loader.node";
 import * as path from "path";
 import * as fs from "fs";
 
 describe("TriggerLoader Unit Test", () => {
     
     test("Should load rules from directory", async () => {
-        const rulesDir = path.resolve(import.meta.dir, "../rules");
+        const rulesDir = path.resolve(import.meta.dir, "../../rules");
         console.log("Checking dir:", rulesDir);
         
         if (!fs.existsSync(rulesDir)) {

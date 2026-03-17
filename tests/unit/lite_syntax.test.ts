@@ -31,8 +31,6 @@ describe("Lite Syntax & Direct State Access", () => {
     });
 
     test("Should support shorthand action syntax", async () => {
-        let notified = false;
-        let msg = "";
 
         // Register a mock notify action if not already there (it should be)
 

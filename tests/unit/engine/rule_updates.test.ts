@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { RuleEngine } from "../../src/node";
-import { triggerEmitter, EngineEvent,ruleEvents } from "../../src/node";
+import { RuleEngine } from "../../../src/node";
+import { triggerEmitter, EngineEvent,ruleEvents } from "../../../src/node";
 
 describe("Rule Updates with Emitter Verification", () => {
   let engine: RuleEngine;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TriggerValidator } from "../../src/domain/validator";
+import { TriggerValidator } from "../../../src/domain/validator";
 
 describe("ArkType Validator Tests", () => {
     

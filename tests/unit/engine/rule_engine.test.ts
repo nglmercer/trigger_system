@@ -1,9 +1,9 @@
 
 import { describe, expect, test } from "bun:test";
-import { RuleEngine } from "../../src/core/rule-engine";
-import { ActionRegistry } from "../../src/core/action-registry";
-import type { TriggerRule, TriggerContext } from "../../src/types";
-import { ErrorMessages } from "../../src/core/constants";
+import { RuleEngine } from "../../../src/core/rule-engine";
+import { ActionRegistry } from "../../../src/core/action-registry";
+import type { TriggerRule, TriggerContext } from "../../../src/types";
+import { ErrorMessages } from "../../../src/core/constants";
 
 describe("Rule Engine Unit Tests", () => {
 

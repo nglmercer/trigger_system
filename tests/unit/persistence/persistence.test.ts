@@ -1,7 +1,7 @@
 
 import { describe, expect, test } from "bun:test";
-import { FilePersistence } from "../../src/core/persistence.node";
-import { StateManager } from "../../src/core/state-manager";
+import { FilePersistence } from "../../../src/core/persistence.node";
+import { StateManager } from "../../../src/core/state-manager";
 import { unlinkSync, existsSync } from "node:fs";
 import * as path from "path";
 

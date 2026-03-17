@@ -1,7 +1,6 @@
 
 import { describe, expect, test, beforeAll } from "bun:test";
-import { BrowserPersistence } from "../../src/core/persistence-browser";
-
+import { BrowserPersistence } from "../../../src";
 // Mock global window and localStorage
 const mockStorage = new Map<string, string>();
 const mockWindow = {

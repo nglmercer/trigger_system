@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach } from "bun:test";
-import { TriggerEngine } from "../../src/core/trigger-engine";
-import { StateManager } from "../../src/core/state-manager";
+import { TriggerEngine } from "../../../src/core/trigger-engine";
+import { StateManager } from "../../../src/core/state-manager";
 
 describe("Break functionality", () => {
     let engine: TriggerEngine;
