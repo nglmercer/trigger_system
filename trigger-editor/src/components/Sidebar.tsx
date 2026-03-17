@@ -212,6 +212,18 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 paddingTop: '8px',
                 borderTop: '1px solid var(--border)'
               }}>
+
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onExportJson}
+                  disabled={!hasNodes}
+                  style={{ width: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  title="Export as JSON (for re-import)"
+                >
+                  <DownloadIcon size={14} />Export
+                </button>
+              
+
                 <button 
                   className="btn btn-secondary" 
                   onClick={onImport}
@@ -220,26 +232,17 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 >
                   <UploadIcon size={14} /> Import
                 </button>
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={onExportJson}
-                  disabled={!hasNodes}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  title="Export as JSON (for re-import)"
-                >
-                  <DownloadIcon size={14} /> JSON
-                </button>
               </div>
-              
-              <button 
+             <button 
                 className="btn btn-secondary" 
                 onClick={onExportYaml}
                 disabled={!hasNodes}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 title="Export as YAML (configuration only)"
               >
-                <DownloadIcon size={14} /> Export YAML
+                <DownloadIcon size={14} />  Download YAML
               </button>
+
               
               <button id="btn-clear" className="btn btn-secondary" onClick={onClear} style={{ marginTop: '8px' }}>
                 <ClearIcon /> Clear
