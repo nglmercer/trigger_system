@@ -1,8 +1,12 @@
-import { loadContext, getContext } from '../lsp/engine.ts';
-import type { LSPContext } from '../lsp/types.ts';
+import { loadContext, loadImports, getImports, getContext } from '../lsp/engine.ts';
+import type { LSPContext, ImportConfig, ImportMode } from '../lsp/types.ts';
+
+// Re-export for convenience
+export { loadImports };
+export type { ImportConfig, ImportMode };
 
 /**
- * Configuration for a JSON data source
+ * Configuration for a JSON data source with import settings
  */
 export interface DataSourceConfig {
   /** Unique identifier for this data source */
@@ -21,6 +25,19 @@ export interface DataSourceConfig {
   queryParams?: Record<string, string>;
   /** Optional headers for API requests */
   headers?: Record<string, string>;
+  /**
+   * Import mode for this data source:
+   * - 'path': Use path reference like ${alias.path} (default)
+   * - 'value': Use raw value directly (e.g., 1, "text", true)
+   */
+  importMode?: ImportMode;
+  /**
+   * Custom alias/prefix for this import. If not provided, defaults to:
+   * - 'data' for contextType 'all'
+   * - 'values' for contextType 'values'
+   * - 'actions' for contextType 'actionTypes'
+   */
+  alias?: string;
 }
 
 /**
@@ -149,6 +166,34 @@ const contextStorage: Record<ContextType, LSPContext> = {
   all: {}
 };
 
+// Storage for import configurations (alias and mode)
+const importConfigs: Record<ContextType, { alias: string; mode: ImportMode }> = {
+  values: { alias: 'values', mode: 'value' },
+  actionTypes: { alias: 'actions', mode: 'value' },
+  all: { alias: 'data', mode: 'path' }
+};
+
+/**
+ * Get the default alias for a context type
+ */
+export function getDefaultAlias(contextType: ContextType): string {
+  return importConfigs[contextType].alias;
+}
+
+/**
+ * Get the default import mode for a context type
+ */
+export function getDefaultImportMode(contextType: ContextType): ImportMode {
+  return importConfigs[contextType].mode;
+}
+
+/**
+ * Set the import configuration for a context type
+ */
+export function setImportConfig(contextType: ContextType, alias: string, mode: ImportMode): void {
+  importConfigs[contextType] = { alias, mode };
+}
+
 /**
  * Set the context data for a specific type and optionally load into LSP engine
  */
@@ -156,19 +201,45 @@ export function setContextData(data: LSPContext, contextType: ContextType = 'all
   contextStorage[contextType] = data;
   
   if (loadToEngine) {
-    // Merge contexts based on type
-    let mergedContext: LSPContext = {};
+    // Build import configs for all active context types
+    const imports: ImportConfig[] = [];
     
-    if (contextType === 'all') {
-      mergedContext = data;
-    } else if (contextType === 'values') {
-      mergedContext = { ...contextStorage.actionTypes, ...data };
-    } else if (contextType === 'actionTypes') {
-      mergedContext = { ...contextStorage.values, ...data };
+    // Add 'all' context if it has data
+    if (Object.keys(contextStorage.all).length > 0) {
+      imports.push({
+        id: 'all',
+        alias: importConfigs.all.alias,
+        data: contextStorage.all,
+        mode: importConfigs.all.mode
+      });
     }
     
-    // Load to LSP engine
-    loadContext(mergedContext);
+    // Add 'values' context if it has data
+    if (Object.keys(contextStorage.values).length > 0) {
+      imports.push({
+        id: 'values',
+        alias: importConfigs.values.alias,
+        data: contextStorage.values,
+        mode: importConfigs.values.mode
+      });
+    }
+    
+    // Add 'actionTypes' context if it has data
+    if (Object.keys(contextStorage.actionTypes).length > 0) {
+      imports.push({
+        id: 'actionTypes',
+        alias: importConfigs.actionTypes.alias,
+        data: contextStorage.actionTypes,
+        mode: importConfigs.actionTypes.mode
+      });
+    }
+    
+    // Load to LSP engine with imports
+    if (imports.length > 0) {
+      loadImports(imports);
+    } else {
+      loadContext({});
+    }
   }
 }
 

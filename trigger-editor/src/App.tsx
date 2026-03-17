@@ -42,6 +42,8 @@ import type {
   ActionNodeData, 
   ActionGroupNodeData 
 } from './types.ts';
+import { loadImports } from './lsp/engine.ts';
+import type { ImportConfig } from './lsp/types.ts';
 
 const nodeTypes = {
   [NodeType.EVENT]: EventNode,
@@ -63,6 +65,27 @@ const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
 
 function NodeEditor() {
   const [nodes, setNodes] = useState<AppNode[]>([]);
+  
+  // Initialize imports from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('trigger-editor-imports');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const configs: ImportConfig[] = parsed.map((p: any) => ({
+          id: p.id,
+          alias: p.alias,
+          data: p.data,
+          mode: p.mode
+        }));
+        if (configs.length > 0) {
+          loadImports(configs);
+        }
+      } catch (e) {
+        console.warn('Failed to load imports:', e);
+      }
+    }
+  }, []);
   
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as AppNode[]),

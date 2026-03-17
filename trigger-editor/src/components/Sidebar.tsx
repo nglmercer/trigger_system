@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
-import { useAlert } from './Alert.tsx';
-import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon, SettingsIcon, DatabaseIcon } from './Icons.tsx';
-import { ContextConfigPanel } from './ContextConfigPanel.tsx';
+import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, PlayIcon, ClearIcon, DatabaseIcon, SettingsIcon } from './Icons.tsx';
+import { Modal } from './Modal.tsx';
+import { ImportList } from './ImportList.tsx';
 
 interface SidebarProps {
   onPlay: () => void;
@@ -13,7 +13,6 @@ interface SidebarProps {
 export default function Sidebar({ onPlay, onClear }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { success, error } = useAlert();
   
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData(DRAG_DATA_FORMAT, nodeType);
@@ -128,7 +127,7 @@ export default function Sidebar({ onPlay, onClear }: SidebarProps) {
 
             <div className="sidebar-divider"></div>
             
-            {/* Compact Context Info Section */}
+            {/* Data Imports Section - Opens Modal */}
             <div style={{ padding: '0 20px', marginBottom: '16px' }}>
               <div style={{ 
                 display: 'flex', 
@@ -141,32 +140,89 @@ export default function Sidebar({ onPlay, onClear }: SidebarProps) {
                   fontWeight: 600, 
                   color: 'var(--text-secondary)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}>
-                  Autocomplete Data
+                  <DatabaseIcon size={14} />
+                  Data Imports
                 </span>
                 <button
                   onClick={() => setIsModalOpen(true)}
                   style={{
-                    background: 'transparent',
-                    border: 'none',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
                     color: 'var(--text-primary)',
                     cursor: 'pointer',
-                    padding: '4px 8px',
+                    padding: '4px 10px',
                     borderRadius: '4px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    fontSize: '12px',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border)'
+                    fontSize: '12px'
                   }}
                 >
                   <SettingsIcon size={12} /> Config
                 </button>
               </div>
               
+              {/* Quick info card */}
               <div style={{
-                fontSize: '11px',
-                color: 'var(--text-secondary)',
-                lineHeight: '1.5'
+                background: 'var(--bg-tertiary)',
+                borderRadius: '8px',
+                padding: '12px',
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <DatabaseIcon size={16} />
+                  <span style={{ 
+                    fontSize: '13px', 
+                    fontWeight: 500, 
+                    color: 'var(--text-primary)'
+                  }}>
+                    Configure JSON Data
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--text-secondary)',
+                  lineHeight: '1.5'
+                }}>
+                  Load unlimited JSON files to use in condition values and action types with autocomplete.
+                </div>
+              </div>
+            </div>
+
+            <div className="sidebar-footer">
+              <button 
+                className="btn btn-primary" 
+                onClick={onPlay} 
+                style={{ marginBottom: '8px', background: 'var(--condition-color)' }}
+              >
+                <PlayIcon /> Play / Test
+              </button>
+              <button id="btn-clear" className="btn btn-secondary" onClick={onClear} style={{ marginTop: '8px' }}>
+                <ClearIcon /> Clear
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+
+      {/* Import Configuration Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Data Imports"
+      >
+        <ImportList />
+      </Modal>
+    </>
+  );
+}

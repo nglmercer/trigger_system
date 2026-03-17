@@ -1,7 +1,8 @@
-import type { JsonValue, LSPContext, CompletionItem, HoverInfo } from './types.ts';
+import type { JsonValue, LSPContext, CompletionItem, HoverInfo, ImportConfig, ImportMode } from './types.ts';
 
 // ─── Internal state ───────────────────────────────────────────────────────────
 let _context: LSPContext = {};
+let _imports: ImportConfig[] = []; // Track all imports with their modes
 const _listeners = new Set<() => void>();
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -21,9 +22,9 @@ function formatDisplay(val: JsonValue): string {
 
 /**
  * Recursively builds a flat list of dot-notation paths from an object.
- * Forces all paths to be prefixed under "data.*".
+ * Uses the import's alias as prefix and includes import mode info.
  */
-function buildPaths(obj: JsonValue, prefix: string, out: CompletionItem[], seen: Set<string>): void {
+function buildPaths(obj: JsonValue, prefix: string, out: CompletionItem[], seen: Set<string>, importId?: string, importMode?: ImportMode): void {
   if (seen.has(prefix)) return;
   seen.add(prefix);
 
@@ -35,33 +36,46 @@ function buildPaths(obj: JsonValue, prefix: string, out: CompletionItem[], seen:
     documentation: typeof obj === 'object' && obj !== null
       ? JSON.stringify(obj, null, 2).slice(0, 200)
       : String(obj),
-    value: obj // Include the actual value for value-mode completions
+    value: obj, // Include the actual value for value-mode completions
+    importId,
+    importMode
   });
 
   if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
     for (const [key, child] of Object.entries(obj)) {
-      buildPaths(child as JsonValue, `${prefix}.${key}`, out, seen);
+      buildPaths(child as JsonValue, `${prefix}.${key}`, out, seen, importId, importMode);
     }
   }
 }
 
 /**
  * Resolves a dot-notation path like "data.user.name" against the current context.
- * Handles the case where context is already wrapped under "data" key.
+ * Handles both legacy behavior (single "data" key) and import-based contexts.
  */
 function resolvePath(path: string): JsonValue | undefined {
   const keys = path.split('.');
 
   // Determine which root to walk from
-  // If context has a single "data" key, and path starts with "data", unwrap it
-  const hasNativeData =
-    _context &&
-    'data' in _context &&
-    Object.keys(_context).length === 1;
-
-  let current: JsonValue = hasNativeData
-    ? (_context as Record<string, JsonValue>)
-    : ({ data: _context } as Record<string, JsonValue>);
+  // If we have imports, use them directly - the context IS the imports object
+  // Each key in _context is an import alias
+  let current: JsonValue;
+  
+  // Check if this looks like an import-based context (multiple keys or non-standard)
+  const contextKeys = Object.keys(_context || {});
+  const hasNativeData = contextKeys.length === 1 && contextKeys[0] === 'data';
+  
+  // If context has a single "data" key, use legacy unwrapping
+  // Otherwise, treat each key as a potential import root
+  if (hasNativeData) {
+    // Legacy: context = { data: {...} }
+    current = (_context as Record<string, JsonValue>);
+  } else if (contextKeys.length > 0) {
+    // Import-based: context = { alias1: {...}, alias2: {...} }
+    // We need to find which import the path starts with
+    current = _context as Record<string, JsonValue>;
+  } else {
+    return undefined;
+  }
 
   for (const key of keys) {
     if (current !== null && typeof current === 'object' && !Array.isArray(current)) {
@@ -79,9 +93,41 @@ function resolvePath(path: string): JsonValue | undefined {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/** Load a new JSON context into the LSP engine */
+/** 
+ * Load import configurations with their modes
+ * This allows different imports to have different completion behaviors
+ * @param imports - Array of import configurations with alias, data, and mode
+ */
+export function loadImports(imports: ImportConfig[]): void {
+  _imports = imports;
+  
+  // Build the context from all imports
+  const newContext: LSPContext = {};
+  for (const imp of imports) {
+    newContext[imp.alias] = imp.data;
+  }
+  
+  _context = newContext;
+  _listeners.forEach(fn => fn());
+}
+
+/**
+ * Get the current import configurations
+ */
+export function getImports(): ImportConfig[] {
+  return _imports;
+}
+
+/** Load a new JSON context into the LSP engine (legacy compatibility) */
 export function loadContext(data: LSPContext): void {
-  _context = data;
+  // Wrap single data object in default import with path mode
+  _imports = [{
+    id: 'default',
+    alias: 'data',
+    data,
+    mode: 'path'
+  }];
+  _context = { data };
   _listeners.forEach(fn => fn());
 }
 
@@ -106,18 +152,27 @@ export function getCompletions(term: string): CompletionItem[] {
   const all: CompletionItem[] = [];
   const seen = new Set<string>();
 
-  // Determine if the context is already wrapped in a "data" key
-  const contextKeys = Object.keys(_context);
-  const hasNativeData =
-    contextKeys.length === 1 && contextKeys[0] === 'data';
-
-  if (hasNativeData) {
-    // Context = { data: { ... } } — build from context.data under "data" prefix
-    const dataVal = (_context as Record<string, JsonValue>)['data'];
-    if (dataVal !== undefined) buildPaths(dataVal, 'data', all, seen);
+  // If we have imports configured, use them
+  if (_imports.length > 0) {
+    for (const imp of _imports) {
+      if (imp.data && typeof imp.data === 'object') {
+        buildPaths(imp.data as JsonValue, imp.alias, all, seen, imp.id, imp.mode);
+      }
+    }
   } else {
-    // Context is flat — treat entire context as the "data" root
-    buildPaths(_context as JsonValue, 'data', all, seen);
+    // Legacy behavior: check for single "data" key
+    const contextKeys = Object.keys(_context);
+    const hasNativeData =
+      contextKeys.length === 1 && contextKeys[0] === 'data';
+
+    if (hasNativeData) {
+      // Context = { data: { ... } } — build from context.data under "data" prefix
+      const dataVal = (_context as Record<string, JsonValue>)['data'];
+      if (dataVal !== undefined) buildPaths(dataVal, 'data', all, seen);
+    } else {
+      // Context is flat — treat entire context as the "data" root
+      buildPaths(_context as JsonValue, 'data', all, seen);
+    }
   }
 
   // Output is already deduplicated by seen Set — no extra filter needed
@@ -210,7 +265,9 @@ export function getCompletionTrigger(text: string): string | null | undefined {
 
 /**
  * Build the completed text after a user selects a completion item.
- * This inserts the variable reference in ${variable} format.
+ * Automatically detects import mode from the item and applies:
+ * - For 'path' mode: inserts ${variable} format
+ * - For 'value' mode: inserts raw value directly
  */
 export function applyCompletion(text: string, item: CompletionItem): string {
   const trigger = getCompletionTrigger(text);
@@ -220,6 +277,16 @@ export function applyCompletion(text: string, item: CompletionItem): string {
   if (!match) return text;
 
   const prefix = text.substring(0, text.length - match[0].length);
+  
+  // Check if this item has value mode
+  const importMode = item.importMode || 'path';
+  
+  if (importMode === 'value' && item.value !== undefined) {
+    // Value mode: insert raw value
+    return applyValueCompletion(text, item);
+  }
+  
+  // Path mode: insert ${variable} format
   return `${prefix}\${${item.label}}`;
 }
 
