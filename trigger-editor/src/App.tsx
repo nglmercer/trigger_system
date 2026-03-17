@@ -23,7 +23,7 @@ import '@xyflow/react/dist/style.css';
 import Sidebar from './components/Sidebar.tsx';
 import OutputPanel from './components/OutputPanel.tsx';
 import { ParamsModal } from './components/ParamsModal.tsx';
-import { AlertProvider } from './components/Alert.tsx';
+import { AlertProvider, useAlert } from './components/Alert.tsx';
 
 import EventNode from './components/EventNode.tsx';
 import ConditionNode from './components/ConditionNode.tsx';
@@ -54,6 +54,7 @@ import {
   clearShareDataFromUrl,
   type ExportData 
 } from './utils/exportImport.ts';
+import { createYamlImportPicker } from './utils/yamlImport.ts';
 
 const nodeTypes = {
   [NodeType.EVENT]: EventNode,
@@ -75,6 +76,7 @@ const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
 
 function NodeEditor() {
   const [nodes, setNodes] = useState<AppNode[]>([]);
+  const { success } = useAlert();
   
   // Initialize imports from localStorage on mount
   useEffect(() => {
@@ -144,8 +146,8 @@ function NodeEditor() {
     
     // Copy to clipboard
     navigator.clipboard.writeText(shareUrl).then(() => {
-      // Show success feedback via alert or toast
-      alert('Share link copied to clipboard!');
+      // Show success feedback
+      success('Share link copied to clipboard!', { title: 'Link Shared' });
     }).catch(err => {
       console.error('Failed to copy to clipboard:', err);
       // Fallback: open in new tab
@@ -241,7 +243,7 @@ function NodeEditor() {
   }, [yaml]);
 
   // ============================================================
-  // Import Handler
+  // Import Handler (JSON)
   // ============================================================
   const handleImport = useCallback(async () => {
     const data = await createImportPicker();
@@ -252,6 +254,22 @@ function NodeEditor() {
     
     setNodes(sanitizedNodes);
     setEdges(data.edges || []);
+  }, [onNodeDataChange]);
+
+  // ============================================================
+  // Import Handler (YAML)
+  // ============================================================
+  const handleImportYaml = useCallback(async () => {
+    const data = await createYamlImportPicker();
+    if (!data) return;
+    
+    // Sanitize nodes to ensure they have proper onChange handlers
+    const sanitizedNodes = sanitizeNodesForImport(data.nodes, onNodeDataChange);
+    
+    setNodes(sanitizedNodes);
+    setEdges(data.edges || []);
+    
+    success('YAML imported successfully!', { title: 'Import Complete' });
   }, [onNodeDataChange]);
 
   const isValidConnection = useCallback((connection: Connection | Edge) => {
@@ -471,6 +489,7 @@ function NodeEditor() {
         onExportJson={handleExportJson}
         onExportYaml={handleExportYaml}
         onImport={handleImport}
+        onImportYaml={handleImportYaml}
         onShare={handleShare}
         hasNodes={nodes.length > 0}
       />

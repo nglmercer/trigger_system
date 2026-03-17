@@ -33,47 +33,7 @@ const server = serve({
   async fetch(req) {
     const url = new URL(req.url);
     const pathname = url.pathname;
-
-    // GET /api/rules
-    if (pathname === "/api/rules" && req.method === "GET") {
-      return Response.json([
-        {
-          id: "api-example-rule",
-          name: "API Example Rule",
-          on: "user.login",
-          enabled: true,
-          priority: 5,
-          do: { type: "log", params: { message: "User logged in via API" } }
-        }
-      ]);
-    }
-
-    // POST /api/rules
-    if (pathname === "/api/rules" && req.method === "POST") {
-      const rule = await req.json();
-      console.log("Created rule:", rule.id);
-      return Response.json({ success: true, rule }, { status: 201 });
-    }
-
-    // GET /api/rules/:id
-    const rulesMatch = pathname.match(/^\/api\/rules\/(.+)$/);
-    if (rulesMatch && req.method === "GET") {
-      const id = rulesMatch[1];
-      return Response.json({
-        id,
-        name: "Example Rule",
-        on: "user.login",
-        do: { type: "log", params: { message: "Example" } }
-      });
-    }
-
-    // DELETE /api/rules/:id
-    if (rulesMatch && req.method === "DELETE") {
-      const id = rulesMatch[1];
-      console.log("Deleted rule:", id);
-      return Response.json({ success: true });
-    }
-
+    console.log("pathname",pathname)
     return new Response("Not Found", { status: 404 });
   }
 });

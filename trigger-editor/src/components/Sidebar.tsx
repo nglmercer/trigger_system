@@ -11,11 +11,12 @@ interface SidebarProps {
   onExportJson: () => void;
   onExportYaml: () => void;
   onImport: () => void;
+  onImportYaml: () => void;
   onShare: () => void;
   hasNodes: boolean;
 }
 
-export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onShare, hasNodes }: SidebarProps) {
+export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onImportYaml, onShare, hasNodes }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
@@ -253,6 +254,16 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                   title="Import from JSON file"
                 >
                   <UploadIcon size={14} /> Import
+                </button>
+
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onImportYaml}
+                  disabled={!hasNodes}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  title="Import from YAML file"
+                >
+                  <UploadIcon size={14} /> YAML
                 </button>
               </div>
              <button 

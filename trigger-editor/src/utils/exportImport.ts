@@ -184,7 +184,7 @@ export const SHARE_PARAM_NAME = 'share';
 
 /**
  * Encode project data to a URL-safe string for sharing
- * Uses base64 encoding with compression for shorter URLs
+ * Uses base64 encoding for URL-safe string
  */
 export function encodeShareData(nodes: AppNode[], edges: Edge[]): string {
   try {
