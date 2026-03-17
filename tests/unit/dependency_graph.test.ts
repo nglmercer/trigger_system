@@ -392,3 +392,418 @@ describe("DependencyAnalyzer - Raw Data Export", () => {
     expect(result.raw.eventToRules["EVENT_B"]).toContain("rule-b");
   });
 });
+
+// ============================================================
+// Additional Tests for Coverage - Builder Wrapper Functions
+// ============================================================
+
+describe("DependencyGraph Builder Functions", () => {
+  
+  test("Should build adjacency list separately", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_C" } }
+      },
+      {
+        id: "rule-c",
+        on: "EVENT_C",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    // Import directly from the module
+    const { buildAdjacencyList } = require("../../src/core/dependency-graph/builder");
+    const adjacencyList = buildAdjacencyList(rules);
+    
+    expect(adjacencyList).toBeDefined();
+    expect(adjacencyList["rule-a"]).toContain("rule-b");
+    expect(adjacencyList["rule-b"]).toContain("rule-c");
+    expect(adjacencyList["rule-c"]).toHaveLength(0);
+  });
+  
+  test("Should build reverse adjacency list separately", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_C" } }
+      }
+    ];
+    
+    const { buildReverseAdjacencyList } = require("../../src/core/dependency-graph/builder");
+    const reverseAdjacencyList = buildReverseAdjacencyList(rules);
+    
+    // rule-a emits EVENT_B which rule-b listens to, so rule-b has reverse edge from rule-a
+    expect(reverseAdjacencyList).toBeDefined();
+    expect(reverseAdjacencyList["rule-b"]).toContain("rule-a");
+    // rule-b emits EVENT_C which no one listens to, so rule-a has no incoming edges
+    expect(reverseAdjacencyList["rule-a"]).toBeUndefined();
+  });
+  
+  test("Should get all edges separately", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const { getAllEdges } = require("../../src/core/dependency-graph/builder");
+    const edges = getAllEdges(rules);
+    
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.sourceRuleId).toBe("rule-a");
+    expect(edges[0]!.targetRuleId).toBe("rule-b");
+    expect(edges[0]!.emittedEvent).toBe("EVENT_B");
+  });
+  
+  test("Should get all nodes separately", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const { getAllNodes } = require("../../src/core/dependency-graph/builder");
+    const nodes = getAllNodes(rules);
+    
+    expect(nodes).toHaveLength(2);
+    expect(nodes[0]!.ruleId).toBe("rule-a");
+    expect(nodes[1]!.ruleId).toBe("rule-b");
+  });
+});
+
+// ============================================================
+// Additional Tests for Coverage - Cycles Functions
+// ============================================================
+
+describe("DependencyGraph Cycle Utility Functions", () => {
+  
+  test("Would create cycle detection", () => {
+    const existingRules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const newRule: TriggerRule = {
+      id: "rule-c",
+      on: "EVENT_C",
+      do: { type: "EMIT_EVENT", params: { event: "EVENT_A" } }
+    };
+    
+    const { wouldCreateCycle } = require("../../src/core/dependency-graph/cycles");
+    
+    // Adding this rule should not create a cycle
+    expect(wouldCreateCycle(existingRules, newRule)).toBe(false);
+    
+    // Now add a rule that would create a cycle
+    const cyclingRule: TriggerRule = {
+      id: "rule-cycling",
+      on: "EVENT_A",
+      do: { type: "EMIT_EVENT", params: { event: "EVENT_A" } }
+    };
+    
+    expect(wouldCreateCycle(existingRules, cyclingRule)).toBe(true);
+  });
+  
+  test("Should get rules in cycles", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_A" } }
+      },
+      {
+        id: "rule-c",
+        on: "EVENT_C",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const { getRulesInCycles } = require("../../src/core/dependency-graph/cycles");
+    const rulesInCycles = getRulesInCycles(rules);
+    
+    expect(rulesInCycles.has("rule-a")).toBe(true);
+    expect(rulesInCycles.has("rule-b")).toBe(true);
+    expect(rulesInCycles.has("rule-c")).toBe(false);
+  });
+  
+  test("Should get max cycle length", () => {
+    // No cycles
+    const rulesNoCycle: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      }
+    ];
+    
+    const { getMaxCycleLength } = require("../../src/core/dependency-graph/cycles");
+    
+    expect(getMaxCycleLength(rulesNoCycle)).toBe(0);
+    
+    // With cycle
+    const rulesWithCycle: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_A" } }
+      }
+    ];
+    
+    expect(getMaxCycleLength(rulesWithCycle)).toBeGreaterThan(0);
+  });
+  
+  test("Should detect self-loop with full info", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-self",
+        on: "SELF_EVENT",
+        do: { type: "EMIT_EVENT", params: { event: "SELF_EVENT" } }
+      }
+    ];
+    
+    const result = DependencyAnalyzer.analyze(rules);
+    
+    // Self-loop should be detected
+    expect(result.cycles.length).toBeGreaterThan(0);
+    const selfCycle = result.cycles[0];
+    expect(selfCycle?.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ============================================================
+// Additional Tests for Coverage - Validator Functions
+// ============================================================
+
+describe("DependencyGraph Validator Utility Functions", () => {
+  
+  test("IsValid should check for cycles", () => {
+    const rulesWithCycle: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_A" } }
+      }
+    ];
+    
+    const { isValid } = require("../../src/core/dependency-graph/validator");
+    
+    expect(isValid(rulesWithCycle)).toBe(false);
+    
+    const validRules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    expect(isValid(validRules)).toBe(true);
+  });
+  
+  test("GetErrors should return error messages", () => {
+    const rulesWithError: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_A" } }
+      }
+    ];
+    
+    const { getErrors } = require("../../src/core/dependency-graph/validator");
+    const errors = getErrors(rulesWithError);
+    
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]).toContain("Circular dependency");
+    
+    const validRules: TriggerRule[] = [
+      {
+        id: "rule-valid",
+        on: "EVENT_VALID",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    expect(getErrors(validRules)).toHaveLength(0);
+  });
+  
+  test("GetWarnings should return warnings for orphaned rules", () => {
+    const rulesWithOrphans: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "LOG" }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const { getWarnings } = require("../../src/core/dependency-graph/validator");
+    const warnings = getWarnings(rulesWithOrphans);
+    
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toContain("Orphaned");
+  });
+  
+  test("GetWarnings should return empty for connected rules", () => {
+    const connectedRules: TriggerRule[] = [
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "EMIT_EVENT", params: { event: "EVENT_B" } }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const { getWarnings } = require("../../src/core/dependency-graph/validator");
+    
+    expect(getWarnings(connectedRules)).toHaveLength(0);
+  });
+});
+
+// ============================================================
+// Additional Tests for Coverage - Edge Cases
+// ============================================================
+
+describe("DependencyGraph Edge Cases", () => {
+  
+  test("Should handle empty rules array", () => {
+    const result = DependencyAnalyzer.analyze([]);
+    
+    expect(result.graph.nodes).toHaveLength(0);
+    expect(result.graph.edges).toHaveLength(0);
+    expect(result.cycles).toHaveLength(0);
+    expect(result.orphanedRules).toHaveLength(0);
+    expect(result.summary.totalRules).toBe(0);
+  });
+  
+  test("Should handle multiple events emitted by single rule", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-multi",
+        on: "START",
+        do: [
+          { type: "EMIT_EVENT", params: { event: "EVENT_A" } },
+          { type: "EMIT_EVENT", params: { event: "EVENT_B" } },
+          { type: "EMIT_EVENT", params: { event: "EVENT_C" } }
+        ]
+      },
+      {
+        id: "rule-a",
+        on: "EVENT_A",
+        do: { type: "LOG" }
+      },
+      {
+        id: "rule-b",
+        on: "EVENT_B",
+        do: { type: "LOG" }
+      },
+      {
+        id: "rule-c",
+        on: "EVENT_C",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const graph = DependencyAnalyzer.buildGraph(rules);
+    
+    expect(graph.adjacencyList["rule-multi"]).toHaveLength(3);
+    expect(graph.edges).toHaveLength(3);
+  });
+  
+  test("Should handle action groups with emit events", () => {
+    const rules: TriggerRule[] = [
+      {
+        id: "rule-with-group",
+        on: "START",
+        do: {
+          mode: "all",
+          actions: [
+            { type: "EMIT_EVENT", params: { event: "EVENT_FROM_GROUP" } }
+          ]
+        }
+      },
+      {
+        id: "rule-listener",
+        on: "EVENT_FROM_GROUP",
+        do: { type: "LOG" }
+      }
+    ];
+    
+    const graph = DependencyAnalyzer.buildGraph(rules);
+    
+    expect(graph.adjacencyList["rule-with-group"]).toContain("rule-listener");
+    expect(graph.edges).toHaveLength(1);
+  });
+  
+  test("Should detect long chain cycles", () => {
+    const rules: TriggerRule[] = [
+      { id: "a", on: "e1", do: { type: "EMIT_EVENT", params: { event: "e2" } } },
+      { id: "b", on: "e2", do: { type: "EMIT_EVENT", params: { event: "e3" } } },
+      { id: "c", on: "e3", do: { type: "EMIT_EVENT", params: { event: "e4" } } },
+      { id: "d", on: "e4", do: { type: "EMIT_EVENT", params: { event: "e5" } } },
+      { id: "e", on: "e5", do: { type: "EMIT_EVENT", params: { event: "e1" } } }
+    ];
+    
+    const result = DependencyAnalyzer.analyze(rules);
+    
+    expect(result.cycles.length).toBeGreaterThan(0);
+    expect(result.summary.maxCycleLength).toBeGreaterThanOrEqual(5);
+  });
+});

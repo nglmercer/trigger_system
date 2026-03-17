@@ -59,9 +59,9 @@ export class DataContext {
     /**
      * Get value at a path (e.g., "data.username")
      */
-    getValue(path: string) {
+    getValue<T=Record<string, any>>(path: string): T | undefined{
         if (!path) {
-            return this.data; // Return all data if path is empty
+            return this.data as T; // Return all data if path is empty
         }
         
         const parts = path.split('.');
@@ -75,7 +75,7 @@ export class DataContext {
             }
         }
         
-        return current;
+        return current as T;
     }
 
     /**
