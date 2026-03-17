@@ -91,12 +91,23 @@ export class TriggerEngine {
       }
 
       // Evaluate conditions using centralized utilities
-      if (EngineUtils.evaluateConditions(rule.if, context)) {
+      const conditionMet = EngineUtils.evaluateConditions(rule.if, context);
+      
+      // Determine which actions to execute based on condition
+      let actionsToExecute: Action | Action[] | ActionGroup | (Action | ActionGroup)[] | undefined;
+      
+      if (conditionMet) {
         // Emit match event
         triggerEmitter.emit(EngineEvent.RULE_MATCH, { rule, context });
+        actionsToExecute = rule.do;
+      } else if (rule.else) {
+        // Rule's if condition was false, execute else actions
+        actionsToExecute = rule.else;
+      }
 
-        // Execute actions using centralized utilities
-        const execResult = await this.executeRuleActions(rule.do, context);
+      if (actionsToExecute) {
+        // Execute actions
+        const execResult = await this.executeRuleActions(actionsToExecute, context);
 
         // Update cooldown
         this.lastExecution.set(rule.id, Date.now());
@@ -106,11 +117,15 @@ export class TriggerEngine {
           success: true,
           executedActions: execResult
         });
+      }
 
-        // If not all rules should be evaluated, exit after first match
-        if (!this.shouldEvaluateAll()) {
-          break;
-        }
+      // If not all rules should be evaluated, exit after first match
+      if (!conditionMet && !rule.else && !this.shouldEvaluateAll()) {
+        break;
+      }
+      
+      if (conditionMet && !this.shouldEvaluateAll()) {
+        break;
       }
     }
 

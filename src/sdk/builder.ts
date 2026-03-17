@@ -161,6 +161,207 @@ export class RuleBuilder {
   }
 
   /**
+   * Add an else clause at the rule level (when rule's 'if' condition is false).
+   * This is different from action-level else - it's for when the entire rule's condition fails.
+   * 
+   * @example
+   * builder
+   *   .id("rule-1")
+   *   .on("event")
+   *   .if("data.status", "EQ", "active")
+   *   .do("notify", { message: "Active!" })
+   *   .elseRule("log", { message: "Not active" })
+   */
+  elseRule(action: Action | Action[] | ActionGroup): this {
+    this.rule.else = action;
+    return this;
+  }
+
+  /**
+   * Alias for do() - provided for compatibility with then/else syntax.
+   * Note: Using 'do' is recommended, 'then' is allowed for compatibility.
+   */
+  then(type: string, params?: ActionParams, options?: { delay?: number, probability?: number }): this {
+    return this.do(type, params, options);
+  }
+
+  /**
+   * Add a condition to the last action in the rule.
+   * This allows for conditional action execution: if condition is true, execute then actions, else execute else actions.
+   * Use with then() and else() methods for full conditional support.
+   * 
+   * @example
+   * builder
+   *   .ifAction("data.status", "EQ", "active")
+   *   .then("notify", { message: "Active!" })
+   *   .else("notify", { message: "Not active" })
+   */
+  ifAction(field: string, operator: ComparisonOperator, value?: ConditionValue): this {
+    const currentDo = this.rule.do;
+    
+    if (!currentDo) {
+      throw new Error("Cannot add condition: no action defined. Use do() or then() first.");
+    }
+
+    // Helper to add if to an action
+    const addIfToAction = (act: Action): Action => ({
+      ...act,
+      if: { field, operator, value }
+    });
+
+    if (Array.isArray(currentDo)) {
+      // Get the last action and add if to it
+      const lastIndex = currentDo.length - 1;
+      const lastItem = currentDo[lastIndex];
+      
+      if (lastItem && 'actions' in lastItem) {
+        // It's an ActionGroup - add if to its last action
+        const groupActions = (lastItem as ActionGroup).actions;
+        const lastActionIndex = groupActions.length - 1;
+        if (lastActionIndex >= 0) {
+          groupActions[lastActionIndex] = addIfToAction(groupActions[lastActionIndex] as Action);
+        }
+      } else if (lastItem) {
+        // It's a regular Action
+        currentDo[lastIndex] = addIfToAction(lastItem as Action);
+      }
+    } else if (currentDo && 'actions' in currentDo) {
+      // It's an ActionGroup
+      const groupActions = (currentDo as ActionGroup).actions;
+      const lastActionIndex = groupActions.length - 1;
+      if (lastActionIndex >= 0) {
+        groupActions[lastActionIndex] = addIfToAction(groupActions[lastActionIndex] as Action);
+      }
+    } else if (currentDo) {
+      // It's a single Action
+      this.rule.do = addIfToAction(currentDo as Action);
+    }
+
+    return this;
+  }
+
+  /**
+   * Add a then clause (actions to run if condition is true) to the last action.
+   * This allows for conditional action execution: if condition is true, execute then actions.
+   * The previous action must have an 'if' condition for then to work properly.
+   * 
+   * @example
+   * builder
+   *   .do("checkStatus", { status: "active" })
+   *   .ifAction("data.status", "EQ", "active")
+   *   .thenAction("notify", { message: "Active!" })
+   *   .elseAction("notify", { message: "Not active" })
+   */
+  thenAction(action: Action | Action[] | ActionGroup): this {
+    // Get the current do and add then to the last action
+    const currentDo = this.rule.do;
+    
+    if (!currentDo) {
+      throw new Error("Cannot add then: no action defined. Use do() or then() first.");
+    }
+
+    // Helper to add then to an action
+    const addThenToAction = (act: Action): Action => ({
+      ...act,
+      then: action
+    });
+
+    if (Array.isArray(currentDo)) {
+      // Get the last action and add then to it
+      const lastIndex = currentDo.length - 1;
+      const lastItem = currentDo[lastIndex];
+      
+      if (lastItem && 'actions' in lastItem) {
+        // It's an ActionGroup - add then to its last action
+        const groupActions = (lastItem as ActionGroup).actions;
+        const lastActionIndex = groupActions.length - 1;
+        if (lastActionIndex >= 0) {
+          groupActions[lastActionIndex] = addThenToAction(groupActions[lastActionIndex] as Action);
+        }
+      } else if (lastItem) {
+        // It's a regular Action
+        currentDo[lastIndex] = addThenToAction(lastItem as Action);
+      }
+    } else if (currentDo && 'actions' in currentDo) {
+      // It's an ActionGroup
+      const groupActions = (currentDo as ActionGroup).actions;
+      const lastActionIndex = groupActions.length - 1;
+      if (lastActionIndex >= 0) {
+        groupActions[lastActionIndex] = addThenToAction(groupActions[lastActionIndex] as Action);
+      }
+    } else if (currentDo) {
+      // It's a single Action
+      this.rule.do = addThenToAction(currentDo as Action);
+    }
+
+    return this;
+  }
+
+  /**
+   * Add an else clause to the last action in the rule.
+   * This allows for conditional action execution: if condition is false, execute else actions.
+   * The previous action must have an 'if' condition for else to work properly.
+   * 
+   * @example
+   * builder
+   *   .do("checkStatus", { status: "active" })
+   *   .ifAction("data.status", "EQ", "active")
+   *   .thenAction({ type: "notify", params: { message: "Active!" } })
+   *   .elseAction({ type: "notify", params: { message: "Not active" } })
+   */
+  else(action: Action | Action[] | ActionGroup): this {
+    // Get the current do and add else to the last action
+    const currentDo = this.rule.do;
+    
+    if (!currentDo) {
+      throw new Error("Cannot add else: no action defined. Use do() or then() first.");
+    }
+
+    // Helper to add else to an action
+    const addElseToAction = (act: Action): Action => ({
+      ...act,
+      else: action
+    });
+
+    if (Array.isArray(currentDo)) {
+      // Get the last action and add else to it
+      const lastIndex = currentDo.length - 1;
+      const lastItem = currentDo[lastIndex];
+      
+      if (lastItem && 'actions' in lastItem) {
+        // It's an ActionGroup - add else to its last action
+        const groupActions = (lastItem as ActionGroup).actions;
+        const lastActionIndex = groupActions.length - 1;
+        if (lastActionIndex >= 0) {
+          groupActions[lastActionIndex] = addElseToAction(groupActions[lastActionIndex] as Action);
+        }
+      } else if (lastItem) {
+        // It's a regular Action
+        currentDo[lastIndex] = addElseToAction(lastItem as Action);
+      }
+    } else if (currentDo && 'actions' in currentDo) {
+      // It's an ActionGroup
+      const groupActions = (currentDo as ActionGroup).actions;
+      const lastActionIndex = groupActions.length - 1;
+      if (lastActionIndex >= 0) {
+        groupActions[lastActionIndex] = addElseToAction(groupActions[lastActionIndex] as Action);
+      }
+    } else if (currentDo) {
+      // It's a single Action - wrap in array and add else
+      this.rule.do = [addElseToAction(currentDo as Action)];
+    }
+
+    return this;
+  }
+
+  /**
+   * Alias for else() - provided for consistency with thenAction().
+   */
+  elseAction(action: Action | Action[] | ActionGroup): this {
+    return this.else(action);
+  }
+
+  /**
    * Build the final TriggerRule.
    */
   build(): TriggerRule {

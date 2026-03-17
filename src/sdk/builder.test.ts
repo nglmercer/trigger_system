@@ -332,4 +332,215 @@ describe("RuleBuilder SDK", () => {
     const roleMatches2 = (yaml2.match(/field: role/g) || []).length;
     expect(roleMatches2).toBe(2);
   });
+
+  // --- Tests for then/else conditional actions ---
+
+  test("then() should be an alias for do()", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-then-alias")
+      .on("event")
+      .then("log", { msg: "test" })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.type).toBe("log");
+    expect(doAction.params).toEqual({ msg: "test" });
+  });
+
+  test("then() should work with multiple actions", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-then-multiple")
+      .on("event")
+      .then("log", { msg: "first" })
+      .then("log", { msg: "second" })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    expect(Array.isArray(rule.do)).toBe(true);
+    const actions = rule.do as Action[];
+    expect(actions.length).toBe(2);
+    expect(actions[0]?.type).toBe("log");
+    expect(actions[1]?.type).toBe("log");
+  });
+
+  test("ifAction() should add condition to last action", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-if-action")
+      .on("event")
+      .do("checkStatus", {})
+      .ifAction("data.status", "EQ", "active")
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.if).toBeDefined();
+    expect((doAction.if as Condition).field).toBe("data.status");
+    expect((doAction.if as Condition).operator).toBe("EQ");
+    expect((doAction.if as Condition).value).toBe("active");
+  });
+
+  test("thenAction() should add then clause to last action", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-then-action")
+      .on("event")
+      .do("checkStatus", {})
+      .ifAction("data.status", "EQ", "active")
+      .thenAction({ type: "notify", params: { message: "Active!" } })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.then).toBeDefined();
+    const thenAction = doAction.then as Action;
+    expect(thenAction.type).toBe("notify");
+    expect(thenAction.params).toEqual({ message: "Active!" });
+  });
+
+  test("else() should add else clause to last action", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-else")
+      .on("event")
+      .do("checkStatus", {})
+      .ifAction("data.status", "EQ", "active")
+      .thenAction({ type: "notify", params: { message: "Active!" } })
+      .elseAction({ type: "notify", params: { message: "Not active" } })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.else).toBeDefined();
+    const elseAction = doAction.else as Action;
+    expect(elseAction.type).toBe("notify");
+    expect(elseAction.params).toEqual({ message: "Not active" });
+  });
+
+  test("else() without thenAction should work", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-else-only")
+      .on("event")
+      .do("checkStatus", {})
+      .ifAction("data.status", "EQ", "active")
+      .else({ type: "log", params: { msg: "Not active" } })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.if).toBeDefined();
+    expect(doAction.else).toBeDefined();
+    const elseAction = doAction.else as Action;
+    expect(elseAction.type).toBe("log");
+    expect(elseAction.params).toEqual({ msg: "Not active" });
+  });
+
+  test("should throw error when else() is called without prior do()", () => {
+    const builder = new RuleBuilder();
+    expect(() => {
+      builder
+        .id("test-error")
+        .on("event")
+        .else({ type: "log", params: { msg: "test" } })
+        .build();
+    }).toThrow("Cannot add else: no action defined");
+  });
+
+  test("should support complete if-then-else pattern with array actions", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-if-then-else-array")
+      .on("event")
+      .do("checkStatus", {})
+      .ifAction("data.status", "EQ", "active")
+      .thenAction([
+        { type: "notify", params: { message: "Active!" } },
+        { type: "log", params: { msg: "Logging active" } }
+      ])
+      .elseAction({ type: "log", params: { msg: "Not active" } })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    
+    // Check then is an array
+    expect(Array.isArray(doAction.then)).toBe(true);
+    const thenActions = doAction.then as Action[];
+    expect(thenActions.length).toBe(2);
+    expect(thenActions[0]?.type).toBe("notify");
+    expect(thenActions[1]?.type).toBe("log");
+    
+    // Check else
+    expect(doAction.else).toBeDefined();
+  });
+
+  test("should work with mixed do and then actions", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-mixed")
+      .on("event")
+      .do("log", { msg: "Before conditional" })
+      .do("checkStatus", {})
+      .ifAction("data.status", "EQ", "active")
+      .thenAction({ type: "notify", params: { message: "Active!" } })
+      .elseAction({ type: "log", params: { msg: "Not active" } })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    expect(Array.isArray(rule.do)).toBe(true);
+    const actions = rule.do as Action[];
+    expect(actions.length).toBe(2);
+    
+    // First action is a regular action
+    expect(actions[0]?.type).toBe("log");
+    expect(actions[0]?.if).toBeUndefined();
+    
+    // Second action has conditional
+    const conditionalAction = actions[1];
+    expect(conditionalAction?.if).toBeDefined();
+    expect(conditionalAction?.then).toBeDefined();
+    expect(conditionalAction?.else).toBeDefined();
+  });
+
+  test("elseRule() should add else at rule level", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-else-rule")
+      .on("event")
+      .if("data.status", "EQ", "active")
+      .do("notify", { message: "Active!" })
+      .elseRule({ type: "log", params: { msg: "Not active" } })
+      .build();
+
+    expect(rule.if).toBeDefined();
+    expect(rule.do).toBeDefined();
+    expect(rule.else).toBeDefined();
+    
+    const elseAction = rule.else as Action;
+    expect(elseAction.type).toBe("log");
+    expect(elseAction.params).toEqual({ msg: "Not active" });
+  });
+
+  test("elseRule() should work with action arrays", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-else-rule-array")
+      .on("event")
+      .if("data.status", "EQ", "active")
+      .do("notify", { message: "Active!" })
+      .elseRule([
+        { type: "log", params: { msg: "Not active 1" } },
+        { type: "log", params: { msg: "Not active 2" } }
+      ])
+      .build();
+
+    expect(rule.else).toBeDefined();
+    expect(Array.isArray(rule.else)).toBe(true);
+    const elseActions = rule.else as Action[];
+    expect(elseActions.length).toBe(2);
+  });
 });

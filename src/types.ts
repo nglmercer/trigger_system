@@ -93,6 +93,8 @@ export interface TriggerRule extends RuleMetadata {
   on: string;
   if?: RuleCondition | RuleCondition[];
   do: Action | Action[] | ActionGroup | (Action | ActionGroup)[];
+  // Optional else clause: actions to run when rule's 'if' condition is false
+  else?: Action | Action[] | ActionGroup | (Action | ActionGroup)[];
 }
 
 // --- Engine Context ---
