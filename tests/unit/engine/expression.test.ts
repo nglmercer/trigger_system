@@ -251,4 +251,124 @@ describe("Expression Engine Unit Tests", () => {
         const result = ExpressionEngine.evaluate("env.API_KEY", context);
         expect(result).toBe("test-key");
     });
+
+    // --- 6. evaluateMath function coverage (lines 206-233) ---
+
+    test("Should evaluate math with simple expression", () => {
+        const context = {} as any;
+        const result = ExpressionEngine.evaluateMath("2 + 3", context);
+        expect(result).toBe(5);
+    });
+
+    test("Should evaluate math with multiplication", () => {
+        const context = {} as any;
+        const result = ExpressionEngine.evaluateMath("4 * 5", context);
+        expect(result).toBe(20);
+    });
+
+    test("Should evaluate math with division", () => {
+        const context = {} as any;
+        const result = ExpressionEngine.evaluateMath("10 / 2", context);
+        expect(result).toBe(5);
+    });
+
+    test("Should evaluate math with variables from context", () => {
+        const context = {
+            vars: { x: 5, y: 3 }
+        } as any;
+        // evaluateMath uses simple word matching, so it can only handle simple vars
+        const result = ExpressionEngine.evaluateMath("x + y", context);
+        expect(result).toBe(8);
+    });
+
+    test("Should evaluate math with Math functions", () => {
+        const context = {} as any;
+        // Math functions need to be in the expression as-is since they are global
+        const result = ExpressionEngine.evaluateMath("Math.sqrt(16)", context);
+        expect(result).toBe(4);
+    });
+
+    test("Should return NaN for invalid math expression", () => {
+        const context = {} as any;
+        const result = ExpressionEngine.evaluateMath("invalid ++ syntax", context);
+        expect(result).toBeNaN();
+    });
+
+    // --- 7. Nested property access coverage (lines 114-115) ---
+
+    test("Should access nested data properties via regex", () => {
+        const context = {
+            event: "test",
+            timestamp: 123456789,
+            data: { user: { name: "John" } }
+        } as any;
+        
+        // This should match the NESTED_PROPERTY_ACCESS regex
+        const result = ExpressionEngine.evaluate("data.user.name", context);
+        expect(result).toBe("John");
+    });
+
+    test("Should access nested request properties", () => {
+        const context = {
+            request: { headers: { authorization: "Bearer token" } }
+        } as any;
+        
+        const result = ExpressionEngine.evaluate("request.headers.authorization", context);
+        expect(result).toBe("Bearer token");
+    });
+
+    test("Should access nested computed properties", () => {
+        const context = {
+            computed: { result: { value: 42 } }
+        } as any;
+        
+        const result = ExpressionEngine.evaluate("computed.result.value", context);
+        expect(result).toBe(42);
+    });
+
+    // --- 8. Error handling coverage (lines 142-147) ---
+
+    test("Should handle undefined expression gracefully", () => {
+        const context = {
+            event: "test",
+            timestamp: 123456789
+        } as any;
+        
+        const result = ExpressionEngine.evaluate(undefined as any, context);
+        expect(result).toBeNull();
+    });
+
+    test("Should return original expression on evaluation error", () => {
+        const context = {
+            event: "test",
+            timestamp: 123456789,
+            data: {}
+        } as any;
+        
+        // This should trigger the catch block and return original expression
+        const result = ExpressionEngine.evaluate("nonexistent_var + 1", context);
+        // The function catches the error and returns the original expression
+        expect(result).toBe("nonexistent_var + 1");
+    });
+
+    // --- 9. ContextKeys exports test ---
+
+    test("Should export ContextKeys constants", () => {
+        const { ContextKeys } = require("../../../src/core/expression-engine");
+        expect(ContextKeys.DATA).toBe("data");
+        expect(ContextKeys.VARS).toBe("vars");
+        expect(ContextKeys.REQUEST).toBe("request");
+        expect(ContextKeys.COMPUTED).toBe("computed");
+        expect(ContextKeys.ENV).toBe("env");
+        expect(ContextKeys.STATE).toBe("state");
+    });
+
+    // --- 10. MathFunctions exports test ---
+
+    test("Should export MathFunctions constants", () => {
+        const { MathFunctions } = require("../../../src/core/expression-engine");
+        expect(MathFunctions.SQRT).toBe("sqrt");
+        expect(MathFunctions.ABS).toBe("abs");
+        expect(MathFunctions.POW).toBe("pow");
+    });
 });

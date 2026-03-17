@@ -185,7 +185,7 @@ describe('Coverage Boost - TriggerEngine', () => {
                 }
             ]
         };
-        (engine as any).rules = [rule];
+        engine.rules = [rule];
         
         const res = await engine.processEvent(context);
         expect(res[0]!.executedActions[0]!.type).toBe('a1');
@@ -199,7 +199,7 @@ describe('Coverage Boost - TriggerEngine', () => {
                 actions: [{ type: 'a1' }, { type: 'a2' }]
             }
         };
-        (engine as any).rules = [groupRule];
+        engine.rules = [groupRule];
         const res2 = await engine.processEvent(context);
         expect(res2[0]!.executedActions.length).toBe(2);
     });
@@ -233,7 +233,7 @@ describe('Coverage Boost - TriggerEngine', () => {
                 }
             }
         };
-        (engine as any).rules = [rule];
+        engine.rules = [rule];
         await engine.processEvent(context);
 
         expect(capturedParams.meta.info).toBe('User bob is in NY');

@@ -348,7 +348,7 @@ export class TriggerEngine {
   }
 
   /**
-   * Interpolates parameters (legacy compatibility)
+   * Interpolates parameters
    */
   protected interpolateParams(params: ActionParams, context: TriggerContext): ActionParams {
     return EngineUtils.interpolateParams(params, context);

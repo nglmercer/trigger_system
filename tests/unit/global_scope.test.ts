@@ -31,7 +31,7 @@ describe("Global Scope & StateManager Access", () => {
         };
 
         // Hack to inject rule
-        (engine as any).rules = [rule];
+        engine.rules = [rule];
 
         const context = ContextAdapter.create("TEST_EVENT", { value: 6 });
         const results = await engine.processEvent(context);
@@ -74,7 +74,7 @@ describe("Global Scope & StateManager Access", () => {
              }
          };
          
-         (engine as any).rules = [ruleUsingVars];
+         engine.rules = [ruleUsingVars];
 
          // Inject StateManager into context vars when creating context
          const context = ContextAdapter.create("TEST_EVENT", { value: 10 }, { StateManager: stateManager });
@@ -120,7 +120,7 @@ describe("Global Scope & StateManager Access", () => {
         // Mock LOG to run the interpolation
         engine.registerAction("LOG", async (params) => { return params.msg; });
 
-        (engine as any).rules = [rule];
+        engine.rules = [rule];
 
         const context = ContextAdapter.create(
             "TEST_EVENT", 
@@ -157,7 +157,7 @@ describe("Global Scope & StateManager Access", () => {
             }
         };
 
-        (engine as any).rules = [rule];
+        engine.rules = [rule];
 
         const context = ContextAdapter.create(
             "TEST_EVENT", 
