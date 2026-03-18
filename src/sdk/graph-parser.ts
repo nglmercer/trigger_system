@@ -294,9 +294,6 @@ export function parseGraph(
     const newChain = chain.includes(currentId) ? [...chain] : [...chain, currentId];
     const condEdges = edges.filter(e => e.source === currentId);
     
-    // DEBUG: Log the edges found
-    console.log(`[DEBUG] traceConditionChain: currentId=${currentId}, newChain=[${newChain.join(',')}], found ${condEdges.length} edges`);
-    
     let hasConditionOutput = false;
     let foundActionOutput = false;
     
@@ -304,40 +301,31 @@ export function parseGraph(
       const tgtNode = ctx.nodes.find(n => n.id === edge.target);
       if (!tgtNode) continue;
       
-      // DEBUG: Log each edge
-      console.log(`[DEBUG]   edge: source=${edge.source}, target=${edge.target}, sourceHandle=${edge.sourceHandle}, targetType=${tgtNode.type}`);
-      
-      if (isCond(tgtNode) && edge.sourceHandle === 'condition-output') {
+      if (isCond(tgtNode) && (edge.sourceHandle === 'condition-output' || edge.sourceHandle?.startsWith('cond'))) {
         // Continue tracing the chain
         hasConditionOutput = true;
         traceConditionChain(edge.target, newChain);
       } else if (isAct(tgtNode)) {
         // Found action output - this is a terminal condition
         foundActionOutput = true;
-        // Find existing terminal condition with the same chain root
-        const rootCondId = newChain[0]!;
-        const existing = terminalConditions.find(tc => tc.condChain[0] === rootCondId);
-        
-        // DEBUG: Log terminal condition handling
-        console.log(`[DEBUG]   -> Action found! rootCondId=${rootCondId}, existing=${existing ? 'yes' : 'no'}, sourceHandle=${edge.sourceHandle}`);
-        
+        // Find existing terminal condition with the same CURRENT condition (not just chain root)
+        // This ensures we properly merge then/else from the same condition node
+        const existing = terminalConditions.find(tc => 
+          tc.condChain[tc.condChain.length - 1] === currentId
+        );
         if (existing) {
           // Add to existing terminal (multiple handles from same condition)
           if (edge.sourceHandle === 'else-output') {
             existing.elseActionId = edge.target;
-            console.log(`[DEBUG]   -> Added elseActionId=${edge.target} to existing terminal`);
           } else {
             existing.thenActionId = edge.target;
-            console.log(`[DEBUG]   -> Added thenActionId=${edge.target} to existing terminal`);
           }
         } else {
-          const newTerminal = {
+          terminalConditions.push({
             condChain: newChain,
             thenActionId: edge.sourceHandle !== 'else-output' ? edge.target : undefined,
             elseActionId: edge.sourceHandle === 'else-output' ? edge.target : undefined
-          };
-          terminalConditions.push(newTerminal);
-          console.log(`[DEBUG]   -> Created new terminal:`, newTerminal);
+          });
         }
       }
     }
@@ -355,55 +343,46 @@ export function parseGraph(
   
   // Process terminal conditions
   if (terminalConditions.length > 0) {
-    // First, group by action ID - conditions pointing to same action become AND group
-    const actionGroups = new Map<string, typeof terminalConditions>();
+    // Collect all unique conditions and merge then/else from all terminals
+    const allCondIds: string[] = [];
+    let thenActionId: string | undefined;
+    let elseActionId: string | undefined;
     
     for (const tc of terminalConditions) {
-      // Use the action ID as key (then action takes precedence, then else action)
-      const key = tc.thenActionId || tc.elseActionId || 'no-action';
-      if (!actionGroups.has(key)) {
-        actionGroups.set(key, []);
-      }
-      actionGroups.get(key)!.push(tc);
+      allCondIds.push(...tc.condChain);
+      if (tc.thenActionId) thenActionId = tc.thenActionId;
+      if (tc.elseActionId) elseActionId = tc.elseActionId;
     }
     
-    // Process the first action group
-    const firstGroup = actionGroups.values().next().value as typeof terminalConditions;
-    if (firstGroup && firstGroup.length > 0) {
-      // Combine all condition chains from this group
-      const allCondIds: string[] = [];
-      // Merge then and else action IDs from all terminals in this group
-      let thenActionId: string | undefined;
-      let elseActionId: string | undefined;
-      
-      for (const tc of firstGroup) {
-        allCondIds.push(...tc.condChain);
-        if (tc.thenActionId) thenActionId = tc.thenActionId;
-        if (tc.elseActionId) elseActionId = tc.elseActionId;
-      }
-      
-      // Remove duplicates while preserving order
-      const uniqueCondIds = [...new Set(allCondIds)];
-      
-      // Build conditions
-      const allConditions = uniqueCondIds.map(id => resolveCondition(id, ctx)).filter((c): c is RuleCondition => c !== null);
-      
-      if (allConditions.length === 1) {
-        builder.withIf(allConditions[0]!);
-      } else if (allConditions.length > 1) {
-        builder.withIf({ operator: 'AND', conditions: allConditions });
-      }
-      
-      // Add THEN action (from condition-output)
-      if (thenActionId) {
-        const thenAct = resolveAction(thenActionId, ctx);
-        if (thenAct) builder.withDo(thenAct);
-      }
-      
-      // Add ELSE action (from else-output)
-      if (elseActionId) {
-        const elseAct = resolveAction(elseActionId, ctx);
-        if (elseAct) builder.elseRule(elseAct);
+    // Remove duplicates while preserving order
+    const uniqueCondIds = [...new Set(allCondIds)];
+    
+    // Build conditions (single or AND)
+    const allConditions = uniqueCondIds.map(id => resolveCondition(id, ctx)).filter((c): c is RuleCondition => c !== null);
+    
+    if (allConditions.length === 1) {
+      builder.withIf(allConditions[0]!);
+    } else if (allConditions.length > 1) {
+      builder.withIf({ operator: 'AND', conditions: allConditions });
+    }
+    
+    // Add THEN action
+    if (thenActionId) {
+      const thenAct = resolveAction(thenActionId, ctx);
+      if (thenAct) builder.withDo(thenAct);
+    }
+    
+    // Add ELSE action
+    if (elseActionId) {
+      const elseAct = resolveAction(elseActionId, ctx);
+      if (elseAct) {
+        // If elseAct is an ActionGroup, flatten it to avoid double nesting
+        if ('actions' in elseAct) {
+          const actGroup = elseAct as ActionGroup;
+          builder.elseRule(actGroup.actions.length === 1 ? actGroup.actions[0]! : actGroup.actions as Action[]);
+        } else {
+          builder.elseRule(elseAct);
+        }
       }
     }
   } else {

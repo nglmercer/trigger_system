@@ -45,6 +45,9 @@ export class RuleExporter {
     // The action part (always last)
     cleaned.do = rule.do;
     
+    // The else clause (if present)
+    if (rule.else) cleaned.else = rule.else;
+    
     return cleaned;
   }
 

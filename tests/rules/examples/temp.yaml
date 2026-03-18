@@ -1,13 +1,26 @@
-- id: rule-wmyiq
+- id: rule-8ly82
   name: New Rule
   on: "123"
   if:
-    field: data
-    operator: EQ
-    value: ""
+    operator: AND
+    conditions:
+      - field: data
+        operator: EQ
+        value: ""
+      - field: data
+        operator: EQ
+        value: "123"
   do:
-    type: log1
-    params: {}
+    mode: SEQUENCE
+    actions:
+      - type: "123"
+        params: {}
+      - type: "345"
+        params: {}
   else:
-    type: log2
-    params: {}
+    mode: SEQUENCE
+    actions:
+      - type: log
+        params: {}
+      - type: log
+        params: {}
