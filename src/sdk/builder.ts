@@ -178,6 +178,37 @@ export class RuleBuilder {
   }
 
   /**
+   * Start a conditional action block with an 'if' condition.
+   * Returns a ConditionalActionBuilder to chain then/do/else actions.
+   * 
+   * @example
+   * builder
+   *   .on("event")
+   *   .when("data.status", "EQ", "active")
+   *   .then("notify", { message: "Active!" })
+   *   .else("log", { message: "Not active" })
+   */
+  when(field: string, operator: ComparisonOperator, value?: ConditionValue): ConditionalActionBuilder {
+    return new ConditionalActionBuilder(this, field, operator, value);
+  }
+
+  /**
+   * Start a complex conditional action block using a condition builder.
+   * 
+   * @example
+   * builder
+   *   .on("event")
+   *   .whenComplex(cb => cb.where("data.status", "EQ", "active").and(sub => sub.where("data.priority", "GT", 5)))
+   *   .then("notify", { message: "Active and high priority!" })
+   *   .else("log", { message: "Not active or low priority" })
+   */
+  whenComplex(sub: (builder: ConditionBuilder) => ConditionBuilder): ConditionalActionBuilder {
+    const builder = new ConditionBuilder();
+    const condition = sub(builder).build();
+    return new ConditionalActionBuilder(this, condition);
+  }
+
+  /**
    * Alias for do() - provided for compatibility with then/else syntax.
    * Note: Using 'do' is recommended, 'then' is allowed for compatibility.
    */
@@ -380,5 +411,116 @@ export class RuleBuilder {
     }
 
     return this.rule as TriggerRule;
+  }
+}
+
+/**
+ * Builder for creating conditional actions with if/then/else flow.
+ * This class is used by RuleBuilder.when() and RuleBuilder.whenComplex() methods.
+ */
+export class ConditionalActionBuilder {
+  private parent: RuleBuilder;
+  private condition: RuleCondition;
+  private thenActions: Action | Action[] | ActionGroup | undefined;
+  private elseActions: Action | Action[] | ActionGroup | undefined;
+
+  constructor(
+    parent: RuleBuilder,
+    fieldOrCondition: string | RuleCondition,
+    operator?: ComparisonOperator,
+    value?: ConditionValue
+  ) {
+    this.parent = parent;
+    if (typeof fieldOrCondition === 'string') {
+      this.condition = { field: fieldOrCondition, operator: operator!, value };
+    } else {
+      this.condition = fieldOrCondition;
+    }
+  }
+
+  /**
+   * Set the action(s) to execute when the condition is true.
+   * 'then' is an alias for 'do' - both can be used interchangeably.
+   */
+  then(type: string, params?: ActionParams, options?: { delay?: number; probability?: number }): ConditionalActionBuilder;
+  then(actions: Action | Action[] | ActionGroup): ConditionalActionBuilder;
+  then(
+    typeOrActions: string | Action | Action[] | ActionGroup,
+    params?: ActionParams,
+    options?: { delay?: number; probability?: number }
+  ): ConditionalActionBuilder {
+    if (typeof typeOrActions === 'string') {
+      this.thenActions = { type: typeOrActions, params, ...options };
+    } else {
+      this.thenActions = typeOrActions;
+    }
+    return this;
+  }
+
+  /**
+   * Alias for then() - 'do' can be used interchangeably with 'then'.
+   */
+  do(type: string, params?: ActionParams, options?: { delay?: number; probability?: number }): ConditionalActionBuilder;
+  do(actions: Action | Action[] | ActionGroup): ConditionalActionBuilder;
+  do(
+    typeOrActions: string | Action | Action[] | ActionGroup,
+    params?: ActionParams,
+    options?: { delay?: number; probability?: number }
+  ): ConditionalActionBuilder {
+    return this.then(typeOrActions as any, params, options);
+  }
+
+  /**
+   * Complete the conditional action and return to the RuleBuilder.
+   * Call this when you're done building the conditional action.
+   */
+  done(): RuleBuilder {
+    return this.build();
+  }
+
+  /**
+   * Set the action(s) to execute when the condition is false.
+   */
+  else(type: string, params?: ActionParams, options?: { delay?: number; probability?: number }): RuleBuilder;
+  else(actions: Action | Action[] | ActionGroup): RuleBuilder;
+  else(
+    typeOrActions: string | Action | Action[] | ActionGroup,
+    params?: ActionParams,
+    options?: { delay?: number; probability?: number }
+  ): RuleBuilder {
+    if (typeof typeOrActions === 'string') {
+      this.elseActions = { type: typeOrActions, params, ...options };
+    } else {
+      this.elseActions = typeOrActions;
+    }
+    return this.build();
+  }
+
+  /**
+   * Build and add the conditional action to the parent RuleBuilder.
+   */
+  build(): RuleBuilder {
+    const conditionalAction: Action = {
+      if: this.condition
+    };
+
+    if (this.thenActions) {
+      conditionalAction.then = this.thenActions;
+    }
+
+    if (this.elseActions) {
+      conditionalAction.else = this.elseActions;
+    }
+
+    // Append to existing actions instead of replacing
+    const currentDo = this.parent['rule'].do;
+    if (!currentDo) {
+      this.parent['rule'].do = conditionalAction;
+    } else if (Array.isArray(currentDo)) {
+      currentDo.push(conditionalAction);
+    } else {
+      this.parent['rule'].do = [currentDo, conditionalAction];
+    }
+    return this.parent;
   }
 }

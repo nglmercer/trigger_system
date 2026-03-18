@@ -633,4 +633,131 @@ describe("RuleBuilder SDK", () => {
     const elseActions = rule.else as Action[];
     expect(elseActions.length).toBe(2);
   });
+
+  // --- Tests for new when() / whenComplex() conditional action builder ---
+
+  test("when() should create conditional action with then", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-when-then")
+      .on("event")
+      .when("data.status", "EQ", "active")
+      .then("notify", { message: "Active!" })
+      .else("log", { message: "Not active" })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.if).toBeDefined();
+    expect((doAction.if as Condition).field).toBe("data.status");
+    expect(doAction.then).toBeDefined();
+    expect((doAction.then as Action).type).toBe("notify");
+    expect(doAction.else).toBeDefined();
+    expect((doAction.else as Action).type).toBe("log");
+  });
+
+  test("when() should work with do as alias for then", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-when-do")
+      .on("event")
+      .when("data.status", "EQ", "active")
+      .do("notify", { message: "Active!" })
+      .else("log", { message: "Not active" })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.if).toBeDefined();
+    expect(doAction.then).toBeDefined();
+    expect((doAction.then as Action).type).toBe("notify");
+    expect(doAction.else).toBeDefined();
+  });
+
+  test("when() should work without else clause", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-when-no-else")
+      .on("event")
+      .when("data.status", "EQ", "active")
+      .then("notify", { message: "Active!" })
+      .done()  // Complete the conditional action
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.if).toBeDefined();
+    expect(doAction.then).toBeDefined();
+    expect(doAction.else).toBeUndefined();
+  });
+
+  test("whenComplex() should create conditional action with complex conditions", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-when-complex")
+      .on("event")
+      .whenComplex(cb => 
+        cb.where("data.status", "EQ", "active")
+          .and(sub => sub.where("data.priority", "GT", 5))
+      )
+      .then("notify", { message: "Active and high priority!" })
+      .else("log", { message: "Conditions not met" })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.if).toBeDefined();
+    expect(doAction.then).toBeDefined();
+    expect((doAction.then as Action).type).toBe("notify");
+    expect(doAction.else).toBeDefined();
+  });
+
+  test("when() should append to existing actions", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-when-append")
+      .on("event")
+      .do("log", { msg: "First action" })
+      .when("data.status", "EQ", "active")
+      .then("notify", { message: "Active!" })
+      .else("log", { message: "Not active" })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    expect(Array.isArray(rule.do)).toBe(true);
+    const actions = rule.do as Action[];
+    expect(actions.length).toBe(2);
+    
+    // First action is regular
+    expect(actions[0]?.type).toBe("log");
+    expect(actions[0]?.if).toBeUndefined();
+    
+    // Second action is conditional
+    expect(actions[1]?.if).toBeDefined();
+    expect(actions[1]?.then).toBeDefined();
+    expect(actions[1]?.else).toBeDefined();
+  });
+
+  test("when() should accept action arrays for then and else", () => {
+    const builder = new RuleBuilder();
+    const rule = builder
+      .id("test-when-arrays")
+      .on("event")
+      .when("data.status", "EQ", "active")
+      .then([
+        { type: "notify", params: { message: "Active!" } },
+        { type: "log", params: { msg: "Logging active" } }
+      ])
+      .else({ type: "log", params: { msg: "Not active" } })
+      .build();
+
+    expect(rule.do).toBeDefined();
+    const doAction = rule.do as Action;
+    expect(doAction.then).toBeDefined();
+    expect(Array.isArray(doAction.then)).toBe(true);
+    const thenActions = doAction.then as Action[];
+    expect(thenActions.length).toBe(2);
+    expect(thenActions[0]?.type).toBe("notify");
+    expect(thenActions[1]?.type).toBe("log");
+  });
 });

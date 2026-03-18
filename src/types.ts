@@ -104,6 +104,7 @@ export interface Action {
   // --- Control Flow ---
   if?: RuleCondition | RuleCondition[];  // Conditional execution
   then?: Action | Action[] | ActionGroup; // Actions to run if condition is true
+  do?: Action | Action[] | ActionGroup; // Alias for then
   else?: Action | Action[] | ActionGroup; // Actions to run if condition is false
   break?: boolean; // Break out of action execution
   continue?: boolean; // Skip remaining actions

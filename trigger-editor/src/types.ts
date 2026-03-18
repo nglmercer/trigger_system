@@ -29,6 +29,14 @@ export interface ConditionGroupNodeData extends AppNodeData {
 export interface ActionNodeData extends AppNodeData {
   type: string;
   params: string; // JSON string
+  // Conditional action support
+  conditionField?: string;
+  conditionOperator?: ComparisonOperator;
+  conditionValue?: string;
+  thenType?: string;
+  thenParams?: string;
+  elseType?: string;
+  elseParams?: string;
 }
 
 export interface ActionGroupNodeData extends AppNodeData {

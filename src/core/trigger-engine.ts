@@ -267,11 +267,14 @@ export class TriggerEngine {
       const act = action as Action;
 
       // Handle conditional actions
-      if ('if' in act && act.if && (act.then || act.else)) {
+      if ('if' in act && act.if && (act.then || act.else || act.do)) {
         const conditionMet = this.evaluateConditions(act.if, context);
         
-        if (conditionMet && act.then) {
-          executionLogs.push(...(await this.executeRuleActions(act.then, context)));
+        // 'do' is an alias for 'then'
+        const thenActions = act.then || act.do;
+        
+        if (conditionMet && thenActions) {
+          executionLogs.push(...(await this.executeRuleActions(thenActions as Action | Action[] | ActionGroup | (Action | ActionGroup)[], context)));
         } else if (!conditionMet && act.else) {
           executionLogs.push(...(await this.executeRuleActions(act.else, context)));
         }
