@@ -141,15 +141,32 @@ export function resolveAction(id: string, ctx: GraphParserContext): (Action | Ac
   } catch { params = {}; }
 
   if (node.type === 'action') {
-    const res: Action = { type: node.data.type || 'log', params };
+    // Build base action
+    const baseAction: Action = { type: node.data.type || 'log', params };
     
-    const childrenEdges = ctx.edges.filter(e => e.source === id && isAct(ctx.nodes.find(n => n.id === e.target)!));
-    const children = childrenEdges.map(e => resolveAction(e.target, ctx)).filter((a): a is Action | ActionGroup => a !== null);
+    // Check if this action is connected from a Condition's then/else output
+    const parentCondEdge = ctx.edges.find(e => 
+      e.target === id && 
+      (e.sourceHandle === 'then-output' || e.sourceHandle === 'else-output')
+    );
     
-    if (children.length > 0) {
-      result = { mode: 'ALL', actions: [res, ...children] };
+    if (parentCondEdge) {
+      // This action is part of a conditional branch - it will be processed by the condition
+      // Just return the base action without children
+      result = baseAction;
     } else {
-      result = res;
+      // Regular action - handle children (chaining)
+      const childrenEdges = ctx.edges.filter(e => 
+        e.source === id && 
+        isAct(ctx.nodes.find(n => n.id === e.target)!)
+      );
+      const children = childrenEdges.map(e => resolveAction(e.target, ctx)).filter((a): a is Action | ActionGroup => a !== null);
+      
+      if (children.length > 0) {
+        result = { mode: 'ALL', actions: [baseAction, ...children] };
+      } else {
+        result = baseAction;
+      }
     }
   } else {
     const childrenEdges = ctx.edges.filter(e => e.source === id && isAct(ctx.nodes.find(n => n.id === e.target)!));
@@ -165,6 +182,65 @@ export function resolveAction(id: string, ctx: GraphParserContext): (Action | Ac
   }
 
   return result;
+}
+
+// Build conditional action from a ConditionNode with implicit THEN (condition-output) and explicit ELSE (else-output)
+function buildConditionalAction(condNodeId: string, ctx: GraphParserContext): Action | null {
+  const isCond = ctx.options.isCondNode || defaultIsCondNode;
+  const isAct = ctx.options.isActNode || defaultIsActNode;
+  
+  const condNode = ctx.nodes.find(n => n.id === condNodeId);
+  if (!condNode || !isCond(condNode)) return null;
+  
+  // Get the condition
+  const condition = resolveCondition(condNodeId, ctx);
+  if (!condition) return null;
+  
+  // Build conditional action base
+  const conditionalAction: Action = { if: condition };
+  
+  // Find implicit THEN branch (actions connected via condition-output)
+  const thenEdges = ctx.edges.filter(e => 
+    e.source === condNodeId && e.sourceHandle === 'condition-output' && isAct(ctx.nodes.find(n => n.id === e.target)!)
+  );
+  
+  if (thenEdges.length > 0) {
+    const thenActs = thenEdges.map(e => {
+      const act = resolveAction(e.target, ctx);
+      if (act) ctx.visitedActs.add(e.target);
+      return act;
+    }).filter((a): a is Action | ActionGroup => a !== null);
+    
+    if (thenActs.length === 1) {
+      conditionalAction.then = thenActs[0]!;
+    } else if (thenActs.length > 1) {
+      conditionalAction.then = { mode: 'ALL', actions: thenActs };
+    }
+  }
+  
+  // Find explicit ELSE branch (actions connected via else-output)
+  const elseEdges = ctx.edges.filter(e => 
+    e.source === condNodeId && e.sourceHandle === 'else-output'
+  );
+  
+  if (elseEdges.length > 0) {
+    const elseActs = elseEdges.map(e => {
+      const act = resolveAction(e.target, ctx);
+      if (act) ctx.visitedActs.add(e.target);
+      return act;
+    }).filter((a): a is Action | ActionGroup => a !== null);
+    
+    if (elseActs.length === 1) {
+      conditionalAction.else = elseActs[0]!;
+    } else if (elseActs.length > 1) {
+      conditionalAction.else = { mode: 'ALL', actions: elseActs };
+    }
+  }
+  
+  // Mark condition as visited
+  ctx.visitedConds.add(condNodeId);
+  
+  return conditionalAction;
 }
 
 export function parseGraph(
@@ -206,24 +282,144 @@ export function parseGraph(
   // Find root conditions (connected directly from event)
   const rootCondEdges = edges.filter(e => e.source === eventNode.id && isCond(ctx.nodes.find(n => n.id === e.target)!));
   
-  const rootConds = rootCondEdges.map(e => resolveCondition(e.target, ctx)).filter((c): c is RuleCondition => c !== null);
-  if (rootConds.length > 0) {
-    builder.withIf(rootConds.length === 1 ? rootConds[0]! : { operator: 'AND', conditions: rootConds });
-  }
-
-  // Find root actions. 
-  const actionSourceEdges = edges.filter(e => {
-    const srcNode = ctx.nodes.find(n => n.id === e.source);
-    const tgtNode = ctx.nodes.find(n => n.id === e.target);
-    return tgtNode && isAct(tgtNode) && srcNode && !isAct(srcNode);
-  });
-
-  const rootActs = actionSourceEdges.map(e => resolveAction(e.target, ctx)).filter((a): a is Action | ActionGroup => a !== null);
+  // Trace condition chains to find terminal conditions (those that have action outputs)
+  const terminalConditions: Array<{
+    condChain: string[];  // Chain of condition IDs from root to terminal
+    thenActionId?: string;  // Action via condition-output
+    elseActionId?: string;  // Action via else-output
+  }> = [];
   
-  if (rootActs.length > 0) {
-    builder.withDo(rootActs.length === 1 ? rootActs[0]! : rootActs);
+  function traceConditionChain(currentId: string, chain: string[]) {
+    // Always include currentId in the chain from the start
+    const newChain = chain.includes(currentId) ? [...chain] : [...chain, currentId];
+    const condEdges = edges.filter(e => e.source === currentId);
+    
+    // DEBUG: Log the edges found
+    console.log(`[DEBUG] traceConditionChain: currentId=${currentId}, newChain=[${newChain.join(',')}], found ${condEdges.length} edges`);
+    
+    let hasConditionOutput = false;
+    let foundActionOutput = false;
+    
+    for (const edge of condEdges) {
+      const tgtNode = ctx.nodes.find(n => n.id === edge.target);
+      if (!tgtNode) continue;
+      
+      // DEBUG: Log each edge
+      console.log(`[DEBUG]   edge: source=${edge.source}, target=${edge.target}, sourceHandle=${edge.sourceHandle}, targetType=${tgtNode.type}`);
+      
+      if (isCond(tgtNode) && edge.sourceHandle === 'condition-output') {
+        // Continue tracing the chain
+        hasConditionOutput = true;
+        traceConditionChain(edge.target, newChain);
+      } else if (isAct(tgtNode)) {
+        // Found action output - this is a terminal condition
+        foundActionOutput = true;
+        // Find existing terminal condition with the same chain root
+        const rootCondId = newChain[0]!;
+        const existing = terminalConditions.find(tc => tc.condChain[0] === rootCondId);
+        
+        // DEBUG: Log terminal condition handling
+        console.log(`[DEBUG]   -> Action found! rootCondId=${rootCondId}, existing=${existing ? 'yes' : 'no'}, sourceHandle=${edge.sourceHandle}`);
+        
+        if (existing) {
+          // Add to existing terminal (multiple handles from same condition)
+          if (edge.sourceHandle === 'else-output') {
+            existing.elseActionId = edge.target;
+            console.log(`[DEBUG]   -> Added elseActionId=${edge.target} to existing terminal`);
+          } else {
+            existing.thenActionId = edge.target;
+            console.log(`[DEBUG]   -> Added thenActionId=${edge.target} to existing terminal`);
+          }
+        } else {
+          const newTerminal = {
+            condChain: newChain,
+            thenActionId: edge.sourceHandle !== 'else-output' ? edge.target : undefined,
+            elseActionId: edge.sourceHandle === 'else-output' ? edge.target : undefined
+          };
+          terminalConditions.push(newTerminal);
+          console.log(`[DEBUG]   -> Created new terminal:`, newTerminal);
+        }
+      }
+    }
+    
+    // If no outputs at all, this is a terminal condition with no actions
+    if (!hasConditionOutput && !foundActionOutput && condEdges.length === 0) {
+      terminalConditions.push({ condChain: newChain });
+    }
+  }
+  
+  // Start tracing from root conditions
+  for (const edge of rootCondEdges) {
+    traceConditionChain(edge.target, []);
+  }
+  
+  // Process terminal conditions
+  if (terminalConditions.length > 0) {
+    // First, group by action ID - conditions pointing to same action become AND group
+    const actionGroups = new Map<string, typeof terminalConditions>();
+    
+    for (const tc of terminalConditions) {
+      // Use the action ID as key (then action takes precedence, then else action)
+      const key = tc.thenActionId || tc.elseActionId || 'no-action';
+      if (!actionGroups.has(key)) {
+        actionGroups.set(key, []);
+      }
+      actionGroups.get(key)!.push(tc);
+    }
+    
+    // Process the first action group
+    const firstGroup = actionGroups.values().next().value as typeof terminalConditions;
+    if (firstGroup && firstGroup.length > 0) {
+      // Combine all condition chains from this group
+      const allCondIds: string[] = [];
+      // Merge then and else action IDs from all terminals in this group
+      let thenActionId: string | undefined;
+      let elseActionId: string | undefined;
+      
+      for (const tc of firstGroup) {
+        allCondIds.push(...tc.condChain);
+        if (tc.thenActionId) thenActionId = tc.thenActionId;
+        if (tc.elseActionId) elseActionId = tc.elseActionId;
+      }
+      
+      // Remove duplicates while preserving order
+      const uniqueCondIds = [...new Set(allCondIds)];
+      
+      // Build conditions
+      const allConditions = uniqueCondIds.map(id => resolveCondition(id, ctx)).filter((c): c is RuleCondition => c !== null);
+      
+      if (allConditions.length === 1) {
+        builder.withIf(allConditions[0]!);
+      } else if (allConditions.length > 1) {
+        builder.withIf({ operator: 'AND', conditions: allConditions });
+      }
+      
+      // Add THEN action (from condition-output)
+      if (thenActionId) {
+        const thenAct = resolveAction(thenActionId, ctx);
+        if (thenAct) builder.withDo(thenAct);
+      }
+      
+      // Add ELSE action (from else-output)
+      if (elseActionId) {
+        const elseAct = resolveAction(elseActionId, ctx);
+        if (elseAct) builder.elseRule(elseAct);
+      }
+    }
   } else {
-    throw new Error("No actions connected to the flow.");
+    // No conditions, just find actions connected from event
+    const actionEdges = edges.filter(e => {
+      const tgtNode = ctx.nodes.find(n => n.id === e.target);
+      return e.source === eventNode.id && tgtNode && isAct(tgtNode);
+    });
+    
+    const rootActs = actionEdges.map(e => resolveAction(e.target, ctx)).filter((a): a is Action | ActionGroup => a !== null);
+    
+    if (rootActs.length > 0) {
+      builder.withDo(rootActs.length === 1 ? rootActs[0]! : rootActs);
+    } else {
+      throw new Error("No actions connected to the flow.");
+    }
   }
 
   return builder;

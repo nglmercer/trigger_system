@@ -1,0 +1,13 @@
+- id: rule-wmyiq
+  name: New Rule
+  on: "123"
+  if:
+    field: data
+    operator: EQ
+    value: ""
+  do:
+    type: log1
+    params: {}
+  else:
+    type: log2
+    params: {}

@@ -3,7 +3,7 @@ import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionNodeData } from '../types.ts';
 import { NodeField, NodeType } from '../constants.ts';
 import { ClearIcon, ActionIcon } from './Icons.tsx';
-import { TextInput, TextAreaInput, FormField } from './FormFields.tsx';
+import { TextInput, FormField } from './FormFields.tsx';
 import { ParamsBuilder } from './ParamsBuilder.tsx';
 
 export default function ActionNode({ id, data }: { id: string, data: ActionNodeData }) {
@@ -11,7 +11,6 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
   const edges = useEdges();
   
   // Show output handle for connecting to ActionGroup or chaining actions
-  // Always show to allow initial connections
   const isConnectedToActionGroup = edges.some(e => 
     (e.target === id && getNode(e.source)?.type === NodeType.ACTION_GROUP) ||
     (e.source === id && getNode(e.target)?.type === NodeType.ACTION_GROUP)
@@ -43,14 +42,12 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
         </FormField>
         <FormField label="Params">
           <ParamsBuilder
-            value={data.params || '{}'}
+            value={data.params || '{}' }
             onChange={(val) => data.onChange(val, NodeField.PARAMS)}
             placeholder='{"key": "value"}'
           />
         </FormField>
       </div>
-      {/* Output handle for connecting to ActionGroup or chaining actions */}
-      {/* Always show output handle to allow connections */}
       <Handle
         type="source"
         position={Position.Right}

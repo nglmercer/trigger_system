@@ -12,18 +12,15 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
-  // Detection logic to hide "next" handle if part of a group
-  const isPartofGroup = edges.some(e => {
-    const sourceNode = getNode(e.source);
-    return e.target === id && sourceNode?.type === NodeType.CONDITION_GROUP;
-  });
-
-  // Check if this condition already has an output connection to an action
-  const hasActionOutput = edges.some(e => 
+  // Check if condition-output is connected to another condition (chaining)
+  const hasConditionChain = edges.some(e => 
     e.source === id && 
-    (getNode(e.target)?.type === NodeType.ACTION ||
-     getNode(e.target)?.type === NodeType.ACTION_GROUP)
+    e.sourceHandle === 'condition-output' &&
+    getNode(e.target)?.type === NodeType.CONDITION
   );
+
+  // Show ELSE only when not chaining to another condition
+  const showElse = !hasConditionChain;
 
   return (
     <div className="drawflow-node condition">
@@ -77,14 +74,55 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         </FormField>
       </div>
       
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="condition-output"
-          className="node-output-handle"
-          style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
-          title="Connect to action or next condition"
-        />
+      {/* Main output handle (condition-output) - for chaining conditions or connecting to actions (implicit THEN) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="condition-output"
+        className="node-output-handle"
+        style={{ 
+          background: 'var(--condition-color)', 
+          border: '2px solid var(--bg-color)', 
+          width: '12px', 
+          height: '12px',
+          top: showElse ? '35%' : '50%'
+        }}
+        title="Connect to next condition or action (implicit THEN)"
+      />
+
+      {/* ELSE output handle - for actions when condition is FALSE */}
+      {showElse && (
+        <>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="else-output"
+            className="node-output-handle"
+            style={{ 
+              background: '#ff6b6b', 
+              border: '2px solid var(--bg-color)', 
+              width: '12px', 
+              height: '12px',
+              top: '75%'
+            }}
+            title="Actions to run when condition is FALSE"
+          />
+          <div 
+            style={{ 
+              position: 'absolute', 
+              right: '-45px', 
+              top: '75%', 
+              transform: 'translateY(-50%)',
+              fontSize: '10px',
+              color: '#ff6b6b',
+              fontWeight: 'bold',
+              pointerEvents: 'none'
+            }}
+          >
+            ELSE
+          </div>
+        </>
+      )}
 
     </div>
   );
