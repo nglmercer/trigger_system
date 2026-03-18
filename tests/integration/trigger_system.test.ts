@@ -120,23 +120,125 @@ describe("Trigger System Integration", () => {
     });
 
     test("System should handle dynamic values in rules (mocked by manual rule injection)", async () => {
-         // Create raw rule engine for specific scenario
-         const { RuleEngine } = await import("../../src/core/rule-engine");
-         const ruleEngine = new RuleEngine({
-             rules: [{
-                 id: "dyn", 
-                 on: "LimitCheck", 
-                 if: { field: "data.amt", operator: "GT", value: "${vars.limit}" },
-                 do: { type: "LOG" } 
-             }],
-             globalSettings: { evaluateAll: true }
-         });
-         
-         const ctx: TriggerContext = {
-             event: "LimitCheck", timestamp: Date.now(), data: { amt: 150 }, vars: { limit: 100 }
-         };
-         
-         const res = await ruleEngine.evaluateContext(ctx);
-         expect(res).toHaveLength(1);
-    });
+          // Create raw rule engine for specific scenario
+          const { RuleEngine } = await import("../../src/core/rule-engine");
+          const ruleEngine = new RuleEngine({
+              rules: [{
+                  id: "dyn", 
+                  on: "LimitCheck", 
+                  if: { field: "data.amt", operator: "GT", value: "${vars.limit}" },
+                  do: { type: "LOG" } 
+              }],
+              globalSettings: { evaluateAll: true }
+          });
+          
+          const ctx: TriggerContext = {
+              event: "LimitCheck", timestamp: Date.now(), data: { amt: 150 }, vars: { limit: 100 }
+          };
+          
+          const res = await ruleEngine.evaluateContext(ctx);
+          expect(res).toHaveLength(1);
+      });
+
+      // --- Test for top-level else in rule ---
+      test("Should execute else branch when condition is false", async () => {
+          // Load only our rule for this test
+          const rule = await TriggerLoader.loadRule(path.join(import.meta.dir, "../rules/examples/test_top_level_else.yaml"));
+          const localEngine = new TriggerEngine(rule);
+          localEngine.registerAction("LOG", async (params) => {
+              console.log("Logged:", params.message);
+              return params.message;
+          });
+
+          const results = await localEngine.processEvent({
+              event: "TEST_EVENT",
+              timestamp: Date.now(),
+              data: { value: 6 } // condition: data.value EQ 5 -> false, so else should run
+          });
+          
+          // Expect one result from our rule
+          expect(results).toHaveLength(1);
+          expect(results[0]!.success).toBe(true);
+          
+          // The else branch should have executed a LOG action with message "Value is not 5"
+          const logAction = results[0]!.executedActions.find(a => a.type === "LOG");
+          expect(logAction).toBeDefined();
+          expect(logAction?.result).toBe("Value is not 5");
+      });
+
+      test("Should execute if branch when condition is true", async () => {
+          // Load only our rule for this test
+          const rule = await TriggerLoader.loadRule(path.join(import.meta.dir, "../rules/examples/test_top_level_else.yaml"));
+          const localEngine = new TriggerEngine(rule);
+          localEngine.registerAction("LOG", async (params) => {
+              console.log("Logged:", params.message);
+              return params.message;
+          });
+
+          const results = await localEngine.processEvent({
+              event: "TEST_EVENT",
+              timestamp: Date.now(),
+              data: { value: 5 } // condition: data.value EQ 5 -> true, so if branch should run
+          });
+          
+          // Expect one result from our rule
+          expect(results).toHaveLength(1);
+          expect(results[0]!.success).toBe(true);
+          
+          // The if branch should have executed a LOG action with message "Value is 5"
+          const logAction = results[0]!.executedActions.find(a => a.type === "LOG");
+          expect(logAction).toBeDefined();
+          expect(logAction?.result).toBe("Value is 5");
+      });
+
+      // --- Test for multiple conditions with else ---
+      test("Should execute else branch when multiple conditions are false", async () => {
+          // Load only our multiple conditions rule for this test
+          const rule = await TriggerLoader.loadRule(path.join(import.meta.dir, "../rules/examples/test_multiple_conditions_else.yaml"));
+          const localEngine = new TriggerEngine(rule);
+          localEngine.registerAction("LOG", async (params) => {
+              console.log("Logged:", params.message);
+              return params.message;
+          });
+
+          const results = await localEngine.processEvent({
+              event: "TEST_EVENT_MULTI",
+              timestamp: Date.now(),
+              data: { value1: 5, value2: 5 } // first condition true, second false (5 > 10? false) -> AND false -> else should run
+          });
+          
+          // Expect one result from our rule
+          expect(results).toHaveLength(1);
+          expect(results[0]!.success).toBe(true);
+          
+          // The else branch should have executed a LOG action with message "Conditions not met"
+          const logAction = results[0]!.executedActions.find(a => a.type === "LOG");
+          expect(logAction).toBeDefined();
+          expect(logAction?.result).toBe("Conditions not met");
+      });
+
+      test("Should execute if branch when multiple conditions are true", async () => {
+          // Load only our multiple conditions rule for this test
+          const rule = await TriggerLoader.loadRule(path.join(import.meta.dir, "../rules/examples/test_multiple_conditions_else.yaml"));
+          const localEngine = new TriggerEngine(rule);
+          localEngine.registerAction("LOG", async (params) => {
+              console.log("Logged:", params.message);
+              return params.message;
+          });
+
+          const results = await localEngine.processEvent({
+              event: "TEST_EVENT_MULTI",
+              timestamp: Date.now(),
+              data: { value1: 5, value2: 15 } // both conditions true (5==5 and 15>10) -> AND true -> if should run
+          });
+          
+          // Expect one result from our rule
+          expect(results).toHaveLength(1);
+          expect(results[0]!.success).toBe(true);
+          
+          // The if branch should have executed a LOG action with message "Both conditions met"
+          const logAction = results[0]!.executedActions.find(a => a.type === "LOG");
+          expect(logAction).toBeDefined();
+          expect(logAction?.result).toBe("Both conditions met");
+      });
 });

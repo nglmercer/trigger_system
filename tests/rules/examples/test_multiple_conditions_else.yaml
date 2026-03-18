@@ -1,0 +1,19 @@
+- id: test-multiple-conditions-else
+  on: TEST_EVENT_MULTI
+  if:
+    operator: AND
+    conditions:
+      - field: data.value1
+        operator: EQ
+        value: 5
+      - field: data.value2
+        operator: GT
+        value: 10
+  do:
+    - type: LOG
+      params:
+        message: "Both conditions met"
+  else:
+    - type: LOG
+      params:
+        message: "Conditions not met"

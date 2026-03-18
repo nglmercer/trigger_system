@@ -1,0 +1,14 @@
+- id: test-top-level-else
+  on: TEST_EVENT
+  if:
+    field: data.value
+    operator: EQ
+    value: 5
+  do:
+    - type: LOG
+      params:
+        message: "Value is 5"
+  else:
+    - type: LOG
+      params:
+        message: "Value is not 5"
