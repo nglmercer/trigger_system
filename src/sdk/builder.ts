@@ -6,13 +6,16 @@ export { ConditionBuilder, ActionBuilder, ParamsBuilder } from './builders';
 
 // Re-export from graph-parser
 export { 
-  parseGraph, 
   type GraphParserOptions, 
   type GraphParserContext 
-} from './graph-parser';
+} from './graph/types';
 
 // RuleBuilder is the main class - kept here for convenience
-import { parseGraph, type GraphParserContext, type GraphParserOptions } from './graph-parser';
+import { 
+  type GraphParserOptions, 
+  type GraphParserContext 
+} from './graph/types';
+import { parseGraph } from './graph-parser';
 import { optimizeCondition, optimizeAction, type OptimizeOptions } from './optimize';
 import type {
   TriggerRule,
