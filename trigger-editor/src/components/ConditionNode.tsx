@@ -85,7 +85,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
           border: '2px solid var(--bg-color)', 
           width: '12px', 
           height: '12px',
-          top: showElse ? '35%' : '50%'
+          top: '50%'
         }}
         title="Connect to next condition or action (implicit THEN)"
       />
@@ -97,26 +97,32 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
             type="source"
             position={Position.Right}
             id="else-output"
-            className="node-output-handle"
+            className="node-output-handle else-handle"
             style={{ 
               background: '#ff6b6b', 
               border: '2px solid var(--bg-color)', 
-              width: '12px', 
-              height: '12px',
-              top: '75%'
+              width: '14px', 
+              height: '14px',
+              top: '75%',
+              zIndex: 20,
+              pointerEvents: 'all',
+              cursor: 'pointer'
             }}
             title="Actions to run when condition is FALSE"
           />
           <div 
+            className="else-label"
             style={{ 
               position: 'absolute', 
               right: '-45px', 
               top: '75%', 
               transform: 'translateY(-50%)',
-              fontSize: '10px',
+              fontSize: '11px',
               color: '#ff6b6b',
               fontWeight: 'bold',
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              zIndex: 1,
+              letterSpacing: '0.5px'
             }}
           >
             ELSE

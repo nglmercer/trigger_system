@@ -327,12 +327,13 @@ function NodeEditor() {
         return false;
       }
       
-      // else-output can only connect to Actions
+      // else-output can only connect to Actions (including ActionGroup)
       if (connection.sourceHandle === 'else-output') {
-        if (!isTargetAction) {
-          return false; // Else output can only connect to Action or ActionGroup
+        // Allow connection to Action OR ActionGroup
+        if (targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP) {
+          return true;
         }
-        return true;
+        return false;
       }
       
       // condition-output (for chaining conditions or simple action connection = implicit THEN)
@@ -351,7 +352,7 @@ function NodeEditor() {
         }
         
         // Can connect to Action/ActionGroup (implicit THEN)
-        if (isTargetAction) {
+        if (targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP) {
           return true;
         }
       }

@@ -39,8 +39,15 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
         position={Position.Left}
         id="action-group-input"
         className="node-input-handle"
-        style={{ background: 'var(--action-group-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
-        title="Connect from condition"
+        style={{ 
+          background: 'var(--action-group-color)', 
+          border: '2px solid var(--bg-color)', 
+          width: '14px', 
+          height: '14px',
+          zIndex: 15,
+          pointerEvents: 'all'
+        }}
+        title="Connect from condition or action"
       />
       <div className="node-title node-title--action-group">
         <span className="node-icon"><ActionGroupIcon /></span> Action Group

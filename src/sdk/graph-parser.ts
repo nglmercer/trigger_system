@@ -212,9 +212,10 @@ function findTerminalActions(
     if (!condNode || !isCond(condNode)) return;
     
     // Check for action connections from this condition
+    // If sourceHandle is not specified, treat all edges from this condition as then-output
     const actionEdges = ctx.edges.filter(e => 
       e.source === condId && 
-      (e.sourceHandle === 'then-output' || e.sourceHandle === 'else-output' || e.sourceHandle === 'condition-output')
+      (!e.sourceHandle || e.sourceHandle === 'then-output' || e.sourceHandle === 'else-output' || e.sourceHandle === 'condition-output')
     );
     
     for (const edge of actionEdges) {
@@ -436,11 +437,18 @@ export function resolveCondition(id: string, ctx: GraphParserContext): RuleCondi
   } else {
     // Regular condition
     const d = node.data;
-    const condition: RuleCondition = {
+    let condition: RuleCondition = {
       field: d.field || 'data',
       operator: (d.operator as ComparisonOperator) || 'EQ',
       value: d.value !== undefined ? d.value : ''
     };
+    
+    // Apply condition transformer if provided
+    if (ctx.transformers?.condition) {
+      const transformed = ctx.transformers.condition(condition, node);
+      if (transformed === null) return null;
+      condition = transformed;
+    }
     
     // Check for chained conditions
     const chainEdges = ctx.edges.filter(e => 
@@ -489,10 +497,17 @@ export function resolveAction(id: string, ctx: GraphParserContext): (Action | Ac
       params = d.params ? (typeof d.params === 'string' ? JSON.parse(d.params) : d.params) : {};
     } catch { params = {}; }
     
-    const action: Action = {
+    let action: Action = {
       type: d.type || 'log',
       params
     };
+    
+    // Apply action transformer if provided
+    if (ctx.transformers?.action) {
+      const transformed = ctx.transformers.action(action, node);
+      if (transformed === null) return null;
+      action = transformed as Action;
+    }
     
     // Check for chained actions
     const chainEdges = ctx.edges.filter(e => 
