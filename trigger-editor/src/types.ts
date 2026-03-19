@@ -1,4 +1,14 @@
+import type { Node } from '@xyflow/react';
 import type { ComparisonOperator, ExecutionMode } from '../../src/types';
+
+// AppNode type - union of all node data types
+export type AppNode = Node<
+  | EventNodeData 
+  | ConditionNodeData 
+  | ConditionGroupNodeData 
+  | ActionNodeData 
+  | ActionGroupNodeData
+>;
 
 export interface AppNodeData {
   onChange: (val: any, field: string) => void;

@@ -109,6 +109,16 @@ const types = scope({
 
     RuleAction: "Action | ActionGroup",
 
+    // Inline Conditional Action - an Action with control flow (if/then/else/do/break/continue)
+    InlineConditionalAction: {
+        "if": "RuleCondition | RuleCondition[]",
+        "then?": "Action | ActionGroup",
+        "do?": "Action | ActionGroup", // Alias for then
+        "else?": "Action | ActionGroup",
+        "break?": "boolean",
+        "continue?": "boolean"
+    },
+    
     TriggerRule: {
         id: "string > 0",
         "name?": "string",
@@ -121,7 +131,9 @@ const types = scope({
         
         "if?": "RuleCondition | RuleCondition[]",
         
-        do: "RuleAction | RuleAction[]",
+        // Allow inline conditional actions in do field
+        do: "RuleAction | RuleAction[] | InlineConditionalAction",
+        "else?": "RuleAction | RuleAction[]",
         "comment?": "string"
     }
 }).export();
@@ -133,6 +145,7 @@ export const ConditionGroupSchema = types.ConditionGroup;
 export const RuleConditionSchema = types.RuleCondition;
 export const ActionSchema = types.Action;
 export const ActionGroupSchema = types.ActionGroup;
+export const InlineConditionalActionSchema = types.InlineConditionalAction;
 export const TriggerRuleSchema = types.TriggerRule;
 
 // --- Validation Result Types ---
@@ -205,11 +218,78 @@ export class TriggerValidator {
     
     this.validateConditionsRecursive(rule.if, semanticIssues, 'if');
 
+    // Validate inline conditionals in do field
+    this.validateInlineConditionalRecursive(rule.do, semanticIssues, 'do');
+    
+    // Validate else field if present
+    if (rule.else) {
+        this.validateInlineConditionalRecursive(rule.else, semanticIssues, 'else');
+    }
+
     if (semanticIssues.length > 0) {
         return { valid: false, issues: semanticIssues };
     }
 
     return { valid: true, rule };
+  }
+
+  /**
+   * Validates inline conditional actions recursively
+   * These are actions that have if/then/else/do/break/continue properties
+   */
+  private static validateInlineConditionalRecursive(
+    action: unknown,
+    issues: ValidationIssue[],
+    path: string
+  ): void {
+    if (!action) return;
+
+    // Handle arrays of actions
+    if (Array.isArray(action)) {
+      action.forEach((a, idx) => {
+        this.validateInlineConditionalRecursive(a, issues, `${path}.${idx}`);
+      });
+      return;
+    }
+
+    // Handle ActionGroup (has 'mode' and 'actions')
+    if (typeof action === 'object' && action !== null && 'mode' in action && 'actions' in action) {
+      const actionGroup = action as Record<string, unknown>;
+      if (Array.isArray(actionGroup.actions)) {
+        actionGroup.actions.forEach((a: unknown, idx: number) => {
+          this.validateInlineConditionalRecursive(a, issues, `${path}.actions.${idx}`);
+        });
+      }
+      return;
+    }
+
+    // Handle inline conditional action (has 'if' property)
+    if (typeof action === 'object' && action !== null && 'if' in action) {
+      const conditional = action as Record<string, unknown>;
+      
+      // Validate the 'if' condition
+      this.validateConditionsRecursive(conditional.if, issues, `${path}.if`);
+      
+      // Validate 'then' if present
+      if (conditional.then) {
+        this.validateInlineConditionalRecursive(conditional.then, issues, `${path}.then`);
+      }
+      
+      // Validate 'do' if present (alias for then)
+      if (conditional.do) {
+        this.validateInlineConditionalRecursive(conditional.do, issues, `${path}.do`);
+      }
+      
+      // Validate 'else' if present
+      if (conditional.else) {
+        this.validateInlineConditionalRecursive(conditional.else, issues, `${path}.else`);
+      }
+      
+      return;
+    }
+
+    // Regular action - no additional validation needed for now
+    // (type, params, etc. are validated by ArkType structural validation)
   }
 
   private static validateConditionsRecursive(

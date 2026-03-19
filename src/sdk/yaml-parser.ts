@@ -913,39 +913,130 @@ export function triggerRuleToNodes(rule: TriggerRule): TriggerRuleToNodesResult 
   // Determine the source node for actions
   const actionSourceNodeId = conditionGroupNodeId || lastConditionNodeId || eventNodeId;
   
+  // Track if we've already processed actions (to avoid duplicate processing)
+  let actionsProcessed = false;
+  
   // Process actions (rule's 'do')
-  if (rule.do) {
+  if (rule.do && !actionsProcessed) {
     const doActions = Array.isArray(rule.do) ? rule.do : [rule.do];
     
     // Check if 'do' is an ActionGroup (has mode and actions)
     if (doActions.length === 1 && isActionGroup(doActions[0]!)) {
-      // Create an ActionGroup node
-      const actionGroupNodeId = getNodeId();
       const actionGroup = doActions[0];
-      const actionGroupNode = buildActionGroupNode(
-        actionGroup.mode,
-        actionGroupNodeId,
-        getPosition(3, 0, 1)
-      );
-      nodes.push(actionGroupNode);
       
-      // Connect from source to action group
-      edges.push(buildEdge(actionSourceNodeId, actionGroupNodeId, null, 'input'));
-      
-      // Process each action in the group
-      if (actionGroup.actions) {
-        actionGroup.actions.forEach((action, idx) => {
-          const actionNodeId = getNodeId();
-          const actionNode = buildActionNode(
-            action as Action,
-            actionNodeId,
-            getPosition(4, idx, actionGroup.actions!.length)
+      // Check if the action group contains a single action with conditional execution (if/then/else)
+      // In this case, we should connect conditions directly to that conditional action
+      // rather than going through the action group
+      if (actionGroup.actions && actionGroup.actions.length === 1) {
+        const singleAction = actionGroup.actions[0];
+        
+        // If the single action has conditional execution (if/then/else)
+        if (hasConditionalExecution(singleAction)) {
+          // Create the conditional action node directly (connected from conditions)
+          const conditionalActionNodeId = getNodeId();
+          const conditionalActionNode = buildActionNode(
+            singleAction as Action,
+            conditionalActionNodeId,
+            getPosition(3, 0, 1)
           );
-          nodes.push(actionNode);
+          nodes.push(conditionalActionNode);
           
-          // Connect from group to action
-          edges.push(buildEdge(actionGroupNodeId, actionNodeId, null, 'input'));
-        });
+          // Connect from source (condition group) to conditional action
+          edges.push(buildEdge(actionSourceNodeId, conditionalActionNodeId, null, 'input'));
+          
+          // Process then branch
+          const thenBranch = (singleAction as Action).then;
+          if (thenBranch) {
+            const thenActions = Array.isArray(thenBranch) ? thenBranch : [thenBranch];
+            if (thenActions.length > 0 && thenActions[0]) {
+              const thenFirstId = getNodeId();
+              const thenFirstNode = buildActionNode(
+                thenActions[0] as Action,
+                thenFirstId,
+                getPosition(4, 0, thenActions.length)
+              );
+              nodes.push(thenFirstNode);
+              edges.push(buildEdge(conditionalActionNodeId, thenFirstId, 'then-output', 'input'));
+              
+              // Process remaining then actions
+              for (let i = 1; i < thenActions.length; i++) {
+                if (!thenActions[i]) continue;
+                const thenNodeId = getNodeId();
+                const thenNode = buildActionNode(
+                  thenActions[i] as Action,
+                  thenNodeId,
+                  getPosition(4, i, thenActions.length)
+                );
+                nodes.push(thenNode);
+                edges.push(buildEdge(thenFirstId, thenNodeId, null, 'input'));
+              }
+            }
+          }
+          
+          // Process else branch - use level 5 to separate from then branch
+          const elseBranch = (singleAction as Action).else;
+          if (elseBranch) {
+            const elseActions = Array.isArray(elseBranch) ? elseBranch : [elseBranch];
+            if (elseActions.length > 0 && elseActions[0]) {
+              const elseFirstId = getNodeId();
+              const elseFirstNode = buildActionNode(
+                elseActions[0] as Action,
+                elseFirstId,
+                getPosition(5, 0, elseActions.length)
+              );
+              nodes.push(elseFirstNode);
+              edges.push(buildEdge(conditionalActionNodeId, elseFirstId, 'else-output', 'input'));
+              
+              // Process remaining else actions
+              for (let i = 1; i < elseActions.length; i++) {
+                if (!elseActions[i]) continue;
+                const elseNodeId = getNodeId();
+                const elseNode = buildActionNode(
+                  elseActions[i] as Action,
+                  elseNodeId,
+                  getPosition(5, i, elseActions.length)
+                );
+                nodes.push(elseNode);
+                edges.push(buildEdge(elseFirstId, elseNodeId, null, 'input'));
+              }
+            }
+          }
+          
+          // Mark as processed
+          actionsProcessed = true;
+        }
+      }
+      
+      // Default: Create an ActionGroup node for non-conditional actions
+      if (!actionsProcessed) {
+        const actionGroupNodeId = getNodeId();
+        const actionGroupNode = buildActionGroupNode(
+          actionGroup.mode,
+          actionGroupNodeId,
+          getPosition(3, 0, 1)
+        );
+        nodes.push(actionGroupNode);
+        
+        // Connect from source to action group
+        edges.push(buildEdge(actionSourceNodeId, actionGroupNodeId, null, 'input'));
+        
+        // Process each action in the group
+        if (actionGroup.actions) {
+          actionGroup.actions.forEach((action, idx) => {
+            const actionNodeId = getNodeId();
+            const actionNode = buildActionNode(
+              action as Action,
+              actionNodeId,
+              getPosition(4, idx, actionGroup.actions!.length)
+            );
+            nodes.push(actionNode);
+            
+            // Connect from group to action
+            edges.push(buildEdge(actionGroupNodeId, actionNodeId, null, 'input'));
+          });
+        }
+        
+        actionsProcessed = true;
       }
     } else {
       // Regular action or array of actions
@@ -957,6 +1048,8 @@ export function triggerRuleToNodes(rule: TriggerRule): TriggerRuleToNodesResult 
         getNodeId,
         getPosition
       );
+      
+      actionsProcessed = true;
     }
   }
   

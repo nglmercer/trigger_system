@@ -26,14 +26,32 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
      getNode(e.source)?.type === NodeType.ACTION)
   );
   
+  // Check if this ActionGroup has incoming connection from Condition
+  const hasConditionInput = edges.some(e => 
+    e.target === id && getNode(e.source)?.type === NodeType.CONDITION
+  );
+  
   // Check if this ActionGroup already has outgoing connections to Actions (for chaining)
   const hasActionOutput = edges.some(e => 
     e.source === id && 
     getNode(e.target)?.type === NodeType.ACTION
   );
+  
+  // Check if this ActionGroup has outgoing connection to a Condition (for inline conditions)
+  const hasConditionOutput = edges.some(e => 
+    e.source === id && 
+    getNode(e.target)?.type === NodeType.CONDITION
+  );
+
+  // Show condition input handle when connected from a Condition
+  const showConditionInput = hasConditionInput;
+  
+  // Show output handles when there's input OR when there's already an output connection
+  const showOutputHandles = hasAnyInput || hasActionOutput || hasConditionOutput;
 
   return (
     <div className="drawflow-node action-group">
+      {/* Primary input handle - for Event, Action, or general connections } */}
       <Handle
         type="target"
         position={Position.Left}
@@ -49,6 +67,43 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
         }}
         title="Connect from condition or action"
       />
+      
+      {/* Condition input handle - appears when connected from a Condition node */}
+      {showConditionInput && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="condition-input"
+            className="node-input-handle"
+            style={{ 
+              background: 'var(--condition-color)', 
+              border: '2px solid var(--bg-color)', 
+              width: '12px', 
+              height: '12px',
+              zIndex: 15,
+              pointerEvents: 'all',
+              top: '60%'
+            }}
+            title="Connect from Condition for inline conditional"
+          />
+          <div 
+            className="condition-input-label"
+            style={{ 
+              position: 'absolute', 
+              left: '-50px', 
+              top: '60%', 
+              transform: 'translateY(-50%)',
+              fontSize: '10px',
+              color: 'var(--condition-color)',
+              fontWeight: 'bold',
+              pointerEvents: 'none'
+            }}
+          >
+            IF
+          </div>
+        </>
+      )}
       <div className="node-title node-title--action-group">
         <span className="node-icon"><ActionGroupIcon /></span> Action Group
         <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
@@ -67,21 +122,38 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
           {hasAnyInput ? 'Actions connected. Add more actions to chain.' : 'Connect from a condition or action first.'}
         </div>
       </div>
-      {/* Output handle for chaining actions within the group - only show when has any input */}
-      {hasAnyInput && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="action-group-output"
-          className="node-output-handle"
-          style={{ 
-            background: 'var(--action-color)', 
-            border: '2px solid var(--bg-color)', 
-            width: '12px', 
-            height: '12px'
-          }}
-          title={hasActionOutput ? 'More actions connected' : 'Connect to action'}
-        />
+      {/* Output handle for chaining actions within the group - show when has input OR has outputs */}
+      {showOutputHandles && (
+        <>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="action-group-output"
+            className="node-output-handle"
+            style={{ 
+              background: 'var(--action-color)', 
+              border: '2px solid var(--bg-color)', 
+              width: '12px', 
+              height: '12px'
+            }}
+            title={hasActionOutput ? 'More actions connected' : 'Connect to action'}
+          />
+          {/* Condition output for connecting to Condition nodes - for inline conditionals */}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="condition-output"
+            className="node-output-handle"
+            style={{ 
+              background: 'var(--condition-color)', 
+              border: '2px solid var(--bg-color)', 
+              width: '12px', 
+              height: '12px',
+              top: '60%'
+            }}
+            title={hasConditionOutput ? 'More conditions connected' : 'Connect to Condition for inline conditional'}
+          />
+        </>
       )}
     </div>
   );

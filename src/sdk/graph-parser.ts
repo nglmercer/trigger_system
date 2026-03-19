@@ -365,28 +365,105 @@ export function parseGraph(
       builder.withIf({ operator: 'AND', conditions });
     }
     
-    if (thenActionId) {
-      const thenAct = resolveAction(thenActionId, ctx);
-      if (thenAct) builder.withDo(thenAct);
+    // Check if then/else actions are ActionGroups
+    const thenAct = thenActionId ? resolveAction(thenActionId, ctx) : null;
+    const elseAct = elseActionId ? resolveAction(elseActionId, ctx) : null;
+    
+    if (thenAct) {
+      builder.withDo(thenAct);
     }
     
-    if (elseActionId) {
-      const elseAct = resolveAction(elseActionId, ctx);
-      if (elseAct) builder.elseRule(elseAct);
+    if (elseAct) {
+      builder.elseRule(elseAct);
+    }
+    
+    // Also check for ActionGroup connections directly from conditions
+    // This handles Condition → ActionGroup connections
+    for (const condId of rootConditions) {
+      const actionGroupEdges = ctx.edges.filter(e => 
+        e.source === condId && 
+        (e.sourceHandle === 'condition-output' || !e.sourceHandle) &&
+        ctx.nodes.find(n => n.id === e.target && n.type === 'action_group')
+      );
+      
+      for (const agEdge of actionGroupEdges) {
+        const { actions, mode } = collectActionsForGroup(agEdge.target, ctx);
+        if (actions.length > 0) {
+          const actionGroup: ActionGroup = { mode, actions };
+          // Add as do action (could be multiple)
+          if (!thenActionId) {
+            builder.withDo(actionGroup);
+          }
+        }
+      }
     }
   }
 
-  // Process action groups (if no conditions were processed)
-  if (rootActionGroups.length > 0 && rootConditionGroups.length === 0 && rootConditions.length === 0) {
+  // Process action groups
+  // Action groups can now be connected to conditions for inline conditionals
+  if (rootActionGroups.length > 0) {
     for (const groupId of rootActionGroups) {
-      const { actions, mode } = collectActionsForGroup(groupId, ctx);
+      // Check if this ActionGroup is connected to a Condition (inline conditional)
+      const conditionEdges = ctx.edges.filter(e => 
+        e.source === groupId && 
+        e.sourceHandle === 'condition-output' &&
+        ctx.nodes.find(n => n.id === e.target && isCond(n))
+      );
       
-      if (actions.length > 0) {
-        const actionGroup: ActionGroup = {
-          mode,
-          actions
-        };
-        builder.withDo(actionGroup);
+      if (conditionEdges.length > 0) {
+        // This ActionGroup is connected to conditions - build inline conditional
+        const actionGroupActions = collectActionsForGroup(groupId, ctx);
+        
+        for (const condEdge of conditionEdges) {
+          const condition = resolveCondition(condEdge.target, ctx);
+          if (!condition) continue;
+          
+          // Find terminal actions for this condition
+          const { thenActionId, elseActionId } = findTerminalActions(condEdge.target, ctx);
+          
+          // Build inline conditional action
+          const thenAction = thenActionId ? resolveAction(thenActionId, ctx) : null;
+          const elseAction = elseActionId ? resolveAction(elseActionId, ctx) : null;
+          
+          const inlineConditional: Action = {
+            if: condition,
+            then: thenAction ?? undefined,
+            else: elseAction ?? undefined
+          };
+          
+          // Add to do with the action group
+          if (actionGroupActions.actions.length > 0 || inlineConditional.then || inlineConditional.else) {
+            const doActions: (Action | ActionGroup)[] = [];
+            
+            // Add the action group actions first
+            if (actionGroupActions.actions.length > 0) {
+              doActions.push({ mode: actionGroupActions.mode, actions: actionGroupActions.actions });
+            }
+            
+            // Add inline conditional
+            doActions.push(inlineConditional);
+            
+            if (doActions.length === 1) {
+              builder.withDo(doActions[0]!);
+            } else {
+              builder.withDo(doActions);
+            }
+          }
+        }
+      } else {
+        // Regular action group without condition connections
+        // Only process if no conditions were processed
+        if (rootConditionGroups.length === 0 && rootConditions.length === 0) {
+          const { actions, mode } = collectActionsForGroup(groupId, ctx);
+          
+          if (actions.length > 0) {
+            const actionGroup: ActionGroup = {
+              mode,
+              actions
+            };
+            builder.withDo(actionGroup);
+          }
+        }
       }
     }
   }

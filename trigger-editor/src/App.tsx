@@ -1,23 +1,13 @@
 import * as React from 'react';
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
-  addEdge,
   Background,
   Controls,
-  applyNodeChanges,
-  applyEdgeChanges,
   ReactFlowProvider,
   useReactFlow,
-  reconnectEdge,
 } from '@xyflow/react';
-import type {
-  Node,
-  Edge,
-  Connection,
-  EdgeChange,
-  NodeChange,
-} from '@xyflow/react';
+import type { Connection, Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import Sidebar from './components/Sidebar.tsx';
@@ -31,31 +21,15 @@ import ConditionGroupNode from './components/ConditionGroupNode.tsx';
 import ActionNode from './components/ActionNode.tsx';
 import ActionGroupNode from './components/ActionGroupNode.tsx';
 
-import { useRuleBuilder } from './hooks/useRuleBuilder.ts';
+import { useRuleBuilder, useNodeEdgeState, useImportExport, useConnectionValidation } from './hooks';
 import { NodeType, DRAG_DATA_FORMAT } from './constants.ts';
 import { generateRandomId } from './utils.ts';
-import type { 
-  EventNodeData, 
-  ConditionNodeData, 
-  ConditionGroupNodeData, 
-  ActionNodeData, 
-  ActionGroupNodeData 
-} from './types.ts';
+import type { AppNode } from './types.ts';
 import { loadImports } from './lsp/engine.ts';
 import type { ImportConfig } from './lsp/types.ts';
-import { 
-  exportToJson, 
-  downloadJson, 
-  downloadYaml, 
-  createImportPicker, 
-  sanitizeNodesForImport,
-  generateShareUrl,
-  getSharedDataFromUrl,
-  clearShareDataFromUrl,
-  type ExportData 
-} from './utils/exportImport.ts';
-import { createYamlImportPicker } from './utils/yamlImport.ts';
+import { getSharedDataFromUrl, clearShareDataFromUrl } from './utils/exportImport.ts';
 
+// Node type mapping
 const nodeTypes = {
   [NodeType.EVENT]: EventNode,
   [NodeType.CONDITION]: ConditionNode,
@@ -64,20 +38,48 @@ const nodeTypes = {
   [NodeType.ACTION_GROUP]: ActionGroupNode,
 };
 
-type AppNode = Node<
-  EventNodeData | 
-  ConditionNodeData | 
-  ConditionGroupNodeData | 
-  ActionNodeData | 
-  ActionGroupNodeData
->;
-
+// Helper to generate unique node IDs
 const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
 
 function NodeEditor() {
-  const [nodes, setNodes] = useState<AppNode[]>([]);
+  // Use modular hooks for state management
+  const { 
+    nodes, 
+    edges, 
+    setNodes, 
+    setEdges,
+    onNodesChange, 
+    onEdgesChange, 
+    onNodeDataChange, 
+    onConnect, 
+    onReconnect, 
+    clearAll,
+    setGraph
+  } = useNodeEdgeState();
+
   const { success } = useAlert();
-  
+
+  // Import/Export hook
+  const {
+    handleExportJson,
+    handleExportYaml,
+    handleImport,
+    handleImportYaml,
+    handleShare,
+    loadSharedData,
+    clearSharedData
+  } = useImportExport(
+    nodes, 
+    edges, 
+    () => yaml || '',
+    onNodeDataChange,
+    setGraph,
+    success
+  );
+
+  // Connection validation hook
+  const { isValidConnection } = useConnectionValidation(nodes, edges);
+
   // Initialize imports from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('trigger-editor-imports');
@@ -100,344 +102,21 @@ function NodeEditor() {
   }, []);
 
   // Load shared data from URL - runs after initial render
-  // The existing useEffect for ensuring onChange handlers will handle sanitization
   useEffect(() => {
-    const sharedData = getSharedDataFromUrl();
+    const sharedData = loadSharedData();
     if (sharedData && sharedData.nodes.length > 0) {
-      setNodes(sharedData.nodes);
-      setEdges(sharedData.edges || []);
-      
-      // Clear the share data from URL to clean up
-      clearShareDataFromUrl();
-      
+      setGraph(sharedData.nodes, sharedData.edges || []);
+      clearSharedData();
       console.log('Loaded shared project with', sharedData.nodes.length, 'nodes');
     }
-  }, []);
-  
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as AppNode[]),
-    []
-  );
-
-  const [edges, setEdges] = useState<Edge[]>([]);
-  
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
-
+  }, [loadSharedData, clearSharedData, setGraph]);
 
   const buildRule = useRuleBuilder(nodes, edges);
   
   // Compute rule, yaml and errors in real-time
   const { rule, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
 
-  // ============================================================
-  // Share Handler - Generate shareable URL
-  // ============================================================
-  const handleShare = useCallback(() => {
-    if (nodes.length === 0) return;
-    
-    const shareUrl = generateShareUrl(nodes, edges);
-    if (!shareUrl) {
-      console.error('Failed to generate share URL');
-      return;
-    }
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      // Show success feedback
-      success('Share link copied to clipboard!', { title: 'Link Shared' });
-    }).catch(err => {
-      console.error('Failed to copy to clipboard:', err);
-      // Fallback: open in new tab
-      window.open(shareUrl, '_blank');
-    });
-  }, [nodes, edges]);
-
-  const onNodeDataChange = useCallback((id: string, value: any, field: string) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === id) {
-          return {
-            ...node,
-            data: { ...node.data, [field]: value },
-          };
-        }
-        return node;
-      })
-    );
-  }, [setNodes]);
-
-  // Ensure nodes have their onChange and latest state
-  useEffect(() => {
-    setNodes((nds) => 
-      nds.map((node) => {
-        if (typeof node.data.onChange !== 'function' || node.data._id !== node.id) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              _id: node.id,
-              onChange: (val: any, f: string) => onNodeDataChange(node.id, val, f),
-            },
-          };
-        }
-        return node;
-      })
-    );
-  }, [nodes.length, onNodeDataChange, setNodes]);
-
-  const onConnect = useCallback(
-    (params: Connection) => {
-      setEdges((eds: Edge[]) => {
-        const sourceNode = nodes.find(n => n.id === params.source);
-        const targetNode = nodes.find(n => n.id === params.target);
-
-        // Logic: If a Condition is being connected TO a Group (Forward Discovery)
-        // We should clean up any outgoing edges from the Condition
-        // because "cannot have action when in a group".
-        if (sourceNode?.type === NodeType.CONDITION_GROUP && targetNode?.type === NodeType.CONDITION) {
-           return addEdge(params, eds.filter(e => e.source !== targetNode.id));
-        }
-
-        // Generate unique edge ID to prevent merging
-        const edgeId = `edge_${params.source}_${params.target}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-        // Create edge with unique ID and class for coloring
-        const newEdge: Edge = {
-          id: edgeId,
-          source: params.source,
-          target: params.target,
-          sourceHandle: params.sourceHandle,
-          targetHandle: params.targetHandle,
-          className: `source-${sourceNode?.type}`,
-        };
-        
-        // Add edge directly to allow multiple edges between same nodes
-        return [...eds, newEdge];
-      });
-    },
-    [setEdges, nodes]
-  );
-
-  const onReconnect = useCallback(
-    (oldEdge: Edge, newConnection: Connection) => setEdges((els: Edge[]) => reconnectEdge(oldEdge, newConnection, els)),
-    [setEdges]
-  );
-
-  // ============================================================
-  // Export Handlers
-  // ============================================================
-  const handleExportJson = useCallback(() => {
-    if (nodes.length === 0) return;
-    const json = exportToJson(nodes, edges, yaml);
-    const filename = `trigger-rule-${Date.now()}.json`;
-    downloadJson(json, filename);
-  }, [nodes, edges, yaml]);
-
-  const handleExportYaml = useCallback(() => {
-    if (!yaml) return;
-    const filename = `trigger-rule-${Date.now()}.yaml`;
-    downloadYaml(yaml, filename);
-  }, [yaml]);
-
-  // ============================================================
-  // Import Handler (JSON)
-  // ============================================================
-  const handleImport = useCallback(async () => {
-    const data = await createImportPicker();
-    if (!data) return;
-    
-    // Sanitize nodes to ensure they have proper onChange handlers
-    const sanitizedNodes = sanitizeNodesForImport(data.nodes, onNodeDataChange);
-    
-    setNodes(sanitizedNodes);
-    setEdges(data.edges || []);
-  }, [onNodeDataChange]);
-
-  // ============================================================
-  // Import Handler (YAML)
-  // ============================================================
-  const handleImportYaml = useCallback(async () => {
-    const response = await createYamlImportPicker();
-    
-    // Check if import was successful
-    if (!response.success) {
-      console.error('YAML import error:', response.error.message);
-      return;
-    }
-    
-    const { nodes, edges } = response.data;
-    
-    // Sanitize nodes to ensure they have proper onChange handlers
-    const sanitizedNodes = sanitizeNodesForImport(nodes, onNodeDataChange);
-    
-    setNodes(sanitizedNodes);
-    setEdges(edges || []);
-    
-    success('YAML imported successfully!', { title: 'Import Complete' });
-  }, [onNodeDataChange]);
-
-  const isValidConnection = useCallback((connection: Connection | Edge) => {
-    const sourceNode = nodes.find((n) => n.id === connection.source);
-    const targetNode = nodes.find((n) => n.id === connection.target);
-    if (!sourceNode || !targetNode || sourceNode.id === targetNode.id) return false;
-    if (targetNode.type === NodeType.EVENT) return false;
-    
-    // Node Category Helpers
-    // const isSourceAction = sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP;
-    // const isTargetAction = targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP;
-    // const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
-    const isTargetCondition = targetNode.type === NodeType.CONDITION || targetNode.type === NodeType.CONDITION_GROUP;
-
-    // ============================================================
-    // RULE 1: Event Node - Can only have ONE single connection
-    // ============================================================
-    if (sourceNode.type === NodeType.EVENT) {
-      const existingOutgoingEdges = edges.filter(e => e.source === sourceNode.id);
-      if (existingOutgoingEdges.length >= 1) {
-        return false; // Event can only have one outgoing connection
-      }
-    }
-
-    // ============================================================
-    // RULE 2: Condition Group - Input handle only accepts Event or Condition
-    // ============================================================
-    if (targetNode.type === NodeType.CONDITION_GROUP && connection.targetHandle === 'input') {
-      // Input of ConditionGroup can only accept from Event or Condition (not from Action or ActionGroup)
-      if (sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP) {
-        return false;
-      }
-    }
-
-    // ============================================================
-    // RULE 3: Condition Group - Output connects to Conditions
-    // ConditionGroup can connect to multiple Conditions in sequence
-    // ============================================================
-    if (sourceNode.type === NodeType.CONDITION_GROUP) {
-      // Right handle of ConditionGroup can connect to Conditions
-      if (connection.sourceHandle?.startsWith('cond')) {
-        // Can only connect to Conditions (not to Actions or ActionGroups)
-        if (targetNode.type !== NodeType.CONDITION) {
-          return false;
-        }
-      }
-    }
-
-    // ============================================================
-    // RULE 4: Condition Node - condition-output for chaining/actions (implicit THEN), else-output for ELSE
-    // ============================================================
-    if (sourceNode.type === NodeType.CONDITION) {
-      // Condition cannot connect to ConditionGroup
-      if (targetNode.type === NodeType.CONDITION_GROUP) {
-        return false;
-      }
-      
-      // else-output can only connect to Actions (including ActionGroup)
-      if (connection.sourceHandle === 'else-output') {
-        // Allow connection to Action OR ActionGroup
-        if (targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP) {
-          return true;
-        }
-        return false;
-      }
-      
-      // condition-output (for chaining conditions or simple action connection = implicit THEN)
-      if (connection.sourceHandle === 'condition-output' || !connection.sourceHandle) {
-        // Can connect to another Condition (chaining)
-        if (targetNode.type === NodeType.CONDITION) {
-          // Check if target already has a condition input
-          const targetHasConditionInput = edges.some(e => 
-            e.target === targetNode.id &&
-            nodes.find(n => n.id === e.source)?.type === NodeType.CONDITION
-          );
-          if (targetHasConditionInput) {
-            return false;
-          }
-          return true;
-        }
-        
-        // Can connect to Action/ActionGroup (implicit THEN)
-        if (targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP) {
-          return true;
-        }
-      }
-    }
-
-    // ============================================================
-    // RULE 5: Action Group - Input can accept from Event, Condition, ConditionGroup, or Action
-    // (Action can connect directly to ActionGroup for grouping)
-    // ============================================================
-    if (targetNode.type === NodeType.ACTION_GROUP) {
-      // ActionGroup can receive from Event, Condition, ConditionGroup, or Action
-      const isValidSource = 
-        sourceNode.type === NodeType.EVENT || 
-        sourceNode.type === NodeType.CONDITION || 
-        sourceNode.type === NodeType.CONDITION_GROUP ||
-        sourceNode.type === NodeType.ACTION;
-      if (!isValidSource) {
-        return false; // ActionGroup can only receive from Event/Condition/ConditionGroup/Action
-      }
-    }
-
-    // ============================================================
-    // RULE 6: Action can connect to ActionGroup (for grouping)
-    // AND can connect to another Action (for chaining in ActionGroup context)
-    // ============================================================
-    if (sourceNode.type === NodeType.ACTION) {
-      if (targetNode.type === NodeType.ACTION_GROUP) {
-        return true;
-      }
-      
-      if (targetNode.type === NodeType.ACTION) {
-        return true;
-      }
-      
-      if (isTargetCondition) {
-        return false;
-      }
-    }
-
-    // ============================================================
-    // RULE 7: Action Group can connect to Actions (for chaining within group)
-    // ============================================================
-    if (sourceNode.type === NodeType.ACTION_GROUP) {
-      // ActionGroup can connect to Actions (for sequential execution)
-      if (targetNode.type === NodeType.ACTION) {
-        return true;
-      }
-      
-      // ActionGroup cannot connect to Conditions
-      if (isTargetCondition) {
-        return false;
-      }
-    }
-
-    // ============================================================
-    // RULE 8: Prevent circular connections
-    // ============================================================
-    // Check if creating this edge would create a cycle
-    const wouldCreateCycle = (sourceId: string, targetId: string): boolean => {
-      const visited = new Set<string>();
-      const stack = [targetId];
-      while (stack.length > 0) {
-        const current = stack.pop()!;
-        if (current === sourceId) return true;
-        if (visited.has(current)) continue;
-        visited.add(current);
-        edges.filter(e => e.source === current).forEach(e => stack.push(e.target));
-      }
-      return false;
-    };
-    
-    if (wouldCreateCycle(sourceNode.id, targetNode.id)) {
-      return false;
-    }
-    
-    return true;
-  }, [nodes, edges]);
-
+  // Screen to flow position hook
   const { screenToFlowPosition } = useReactFlow();
 
   const onDrop = useCallback(
@@ -466,7 +145,7 @@ function NodeEditor() {
       //@ts-expect-error
       setNodes((nds) => nds.concat(newNode));
     },
-    [screenToFlowPosition, setNodes]
+    [screenToFlowPosition, setNodes, clearAll]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -477,7 +156,7 @@ function NodeEditor() {
   return (
     <div className="react-flow-wrapper" style={{ display: 'flex', width: '100vw', height: '100vh', background: '#0d1117' }}>
       <Sidebar 
-        onClear={() => { setNodes([]); setEdges([]); }} 
+        onClear={clearAll} 
         onExportJson={handleExportJson}
         onExportYaml={handleExportYaml}
         onImport={handleImport}

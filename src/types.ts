@@ -119,12 +119,27 @@ export interface ActionGroup {
   actions: (Action | ActionGroup)[];
 }
 
+// --- Inline Conditional Action ---
+// Used in do field for inline if/then/else logic
+// Note: Includes index signature for compatibility with Action type
+export interface InlineConditionalAction {
+  if: RuleCondition | RuleCondition[];
+  then?: Action | Action[] | ActionGroup;
+  do?: Action | Action[] | ActionGroup; // Alias for then
+  else?: Action | Action[] | ActionGroup;
+  break?: boolean;
+  continue?: boolean;
+  // Index signature for compatibility with Action
+  [key: string]: unknown;
+}
+
 // --- The Rule ---
 
 export interface TriggerRule extends RuleMetadata {
   on: string;
   if?: RuleCondition | RuleCondition[];
-  do: Action | Action[] | ActionGroup | (Action | ActionGroup)[];
+  // Allow inline conditional actions in do field
+  do: Action | Action[] | ActionGroup | (Action | ActionGroup)[] | InlineConditionalAction;
   // Optional else clause: actions to run when rule's 'if' condition is false
   else?: Action | Action[] | ActionGroup | (Action | ActionGroup)[];
 }
