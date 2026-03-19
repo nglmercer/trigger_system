@@ -84,7 +84,7 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     }
 
     // ============================================================
-    // RULE 4: Condition Node - condition-output for chaining/actions or DO node
+    // RULE 4: Condition Node - single output handle for chaining/actions, DO node, or ELSE node
     // ============================================================
     if (sourceNode.type === NodeType.CONDITION) {
       // Condition cannot connect to ConditionGroup
@@ -92,8 +92,8 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
         return false;
       }
       
-      // condition-output (for chaining conditions, DO node, or action connection = implicit THEN)
-      if (connection.sourceHandle === 'condition-output' || !connection.sourceHandle) {
+      // Single output handle - can connect to DO or ELSE nodes (determined by branchType)
+      if (connection.sourceHandle === 'output' || !connection.sourceHandle) {
         // Can connect to another Condition (chaining)
         if (targetNode.type === NodeType.CONDITION) {
           // Check if target already has a condition input
@@ -107,8 +107,37 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
           return true;
         }
         
-        // Can connect to DO node (explicit DO or ELSE path)
+        // Can connect to DO node (DO or ELSE path based on branchType)
         if (targetNode.type === NodeType.DO) {
+          const targetDoNode = targetNode as AppNode;
+          const branchType = targetDoNode.data?.branchType;
+          
+          // Check if there's already a DO connection (branchType: 'do')
+          const existingDoConnection = edges.some(e => 
+            e.source === sourceNode.id && 
+            e.sourceHandle === 'output' &&
+            nodes.find(n => n.id === e.target)?.type === NodeType.DO &&
+            (nodes.find(n => n.id === e.target) as AppNode)?.data?.branchType === 'do'
+          );
+          
+          // Check if there's already an ELSE connection (branchType: 'else')
+          const existingElseConnection = edges.some(e => 
+            e.source === sourceNode.id && 
+            e.sourceHandle === 'output' &&
+            nodes.find(n => n.id === e.target)?.type === NodeType.DO &&
+            (nodes.find(n => n.id === e.target) as AppNode)?.data?.branchType === 'else'
+          );
+          
+          // If connecting to a DO node, ensure we don't already have a DO connection
+          if (branchType === 'do' && existingDoConnection) {
+            return false; // Only 1 DO connection allowed
+          }
+          
+          // If connecting to an ELSE node, ensure we don't already have an ELSE connection
+          if (branchType === 'else' && existingElseConnection) {
+            return false; // Only 1 ELSE connection allowed
+          }
+          
           return true;
         }
         
@@ -202,12 +231,12 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     // RULE 8: Condition can connect back to ActionGroup (for then/else branches)
     // ============================================================
     if (sourceNode.type === NodeType.CONDITION) {
-      // Condition's condition-output can connect to ActionGroup
-      if (connection.sourceHandle === 'condition-output' || !connection.sourceHandle) {
+      // Condition's output can connect to ActionGroup or DO node
+      if (connection.sourceHandle === 'output' || !connection.sourceHandle) {
         if (targetNode.type === NodeType.ACTION_GROUP) {
           return true;
         }
-        // Condition can also connect to DO node (explicit DO path)
+        // Condition can also connect to DO node (DO or ELSE path based on branchType)
         if (targetNode.type === NodeType.DO) {
           return true;
         }
@@ -228,8 +257,11 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
 
     // DO node as target
     if (targetNode.type === NodeType.DO) {
-      // DO can receive from Condition
+      // DO can receive from Condition via output handle
       if (sourceNode.type === NodeType.CONDITION) {
+        if (connection.sourceHandle !== 'output' && connection.sourceHandle) {
+          return false; // Only accept from 'output' handle
+        }
         return true;
       }
       // DO cannot receive from other types

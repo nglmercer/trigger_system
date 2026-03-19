@@ -23,23 +23,29 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
-  // Check if this DoNode has incoming connection from Condition
+  // Check if this DoNode has incoming connection from Condition via the correct handle
+  // For DO type: must connect via do-output
+  // For ELSE type: must connect via else-output
+  const isElse = data.branchType === 'else';
+  const requiredHandle = isElse ? 'else-output' : 'do-output';
   const hasConditionInput = edges.some(e => 
-    e.target === id && getNode(e.source)?.type === NodeType.CONDITION
+    e.target === id &&
+    (
+      (getNode(e.source)?.type === NodeType.CONDITION && e.sourceHandle === requiredHandle) ||
+      (getNode(e.source)?.type === NodeType.CONDITION_GROUP)
+    )
   );
   
   // Check if DoNode has outgoing connections to Actions or ActionGroups
   const hasActionOutput = edges.some(e => 
     e.source === id && 
     (getNode(e.target)?.type === NodeType.ACTION ||
-     getNode(e.target)?.type === NodeType.ACTION_GROUP)
+     getNode(e.target)?.type === NodeType.ACTION_GROUP
+    )
   );
-
+  //console.log('edges', edges,hasConditionInput,hasActionOutput);
   // Show output when there's input connection
   const showOutput = hasConditionInput;
-
-  // Determine colors based on branch type
-  const isElse = data.branchType === 'else';
   const nodeColor = isElse ? '#ff6b6b' : 'var(--do-color, #9b59b6)';
 
   return (

@@ -55,7 +55,15 @@ export function createParserContext(
 
 export const defaultIsEventNode = (n: SDKGraphNode) => n.type === 'event';
 export const defaultIsCondNode = (n: SDKGraphNode) => n.type === 'condition' || n.type === 'condition_group';
-export const defaultIsActNode = (n: SDKGraphNode) => n.type === 'action' || n.type === 'action_group';
+export const defaultIsActNode = (n: SDKGraphNode) => n.type === 'action' || n.type === 'action_group' || n.type === 'do';
+
+// Check if a node is a DO node
+export const defaultIsDoNode = (n: SDKGraphNode) => n.type === 'do';
+
+// Get the branch type (do or else) from a DO node
+export const defaultGetDoBranchType = (n: SDKGraphNode): 'do' | 'else' => {
+  return n.data?.branchType === 'else' ? 'else' : 'do';
+};
 
 export function defaultExtractEventData(n: SDKGraphNode): Partial<TriggerRule> {
   const d = n.data || {};
@@ -204,6 +212,8 @@ function findTerminalActions(
 ): { thenActionId?: string; elseActionId?: string } {
   const isCond = ctx.options.isCondNode || defaultIsCondNode;
   const isAct = ctx.options.isActNode || defaultIsActNode;
+  const isDo = (n: SDKGraphNode) => n.type === 'do';
+  const getDoBranchType = (n: SDKGraphNode): 'do' | 'else' => n.data?.branchType === 'else' ? 'else' : 'do';
   
   let thenActionId: string | undefined;
   let elseActionId: string | undefined;
@@ -221,7 +231,29 @@ function findTerminalActions(
     
     for (const edge of actionEdges) {
       const targetNode = ctx.nodes.find(n => n.id === edge.target);
-      if (!targetNode || !isAct(targetNode)) continue;
+      if (!targetNode) continue;
+      
+      // Handle DO nodes - they are intermediaries for then/else paths
+      if (isDo(targetNode)) {
+        // Find the action connected to this DO node
+        const doToActionEdges = ctx.edges.filter(e => 
+          e.source === targetNode.id &&
+          isAct(ctx.nodes.find(n => n.id === e.target)!)
+        );
+        
+        const branchType = getDoBranchType(targetNode);
+        for (const doEdge of doToActionEdges) {
+          if (branchType === 'else') {
+            elseActionId = doEdge.target;
+          } else {
+            thenActionId = doEdge.target;
+          }
+        }
+        continue;
+      }
+      
+      // Regular action nodes
+      if (!isAct(targetNode)) continue;
       
       if (edge.sourceHandle === 'else-output') {
         elseActionId = edge.target;

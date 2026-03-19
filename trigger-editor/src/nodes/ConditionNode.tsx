@@ -12,18 +12,27 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
-  // Check if condition-output is connected to another condition (chaining)
+  // Check if output is connected to another condition (chaining)
   const hasConditionChain = edges.some(e => 
     e.source === id && 
-    e.sourceHandle === 'condition-output' &&
+    e.sourceHandle === 'output' &&
     getNode(e.target)?.type === NodeType.CONDITION
   );
 
-  // Check if condition-output is connected to DoNode
+  // Check if output is connected to DoNode (DO path)
   const hasDoOutput = edges.some(e => 
     e.source === id && 
-    e.sourceHandle === 'condition-output' &&
-    getNode(e.target)?.type === NodeType.DO
+    e.sourceHandle === 'output' &&
+    getNode(e.target)?.type === NodeType.DO &&
+    getNode(e.target)?.data?.branchType === 'do'
+  );
+
+  // Check if output is connected to DoNode (ELSE path)
+  const hasElseOutput = edges.some(e => 
+    e.source === id && 
+    e.sourceHandle === 'output' &&
+    getNode(e.target)?.type === NodeType.DO &&
+    getNode(e.target)?.data?.branchType === 'else'
   );
 
   return (
@@ -78,11 +87,11 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         </FormField>
       </div>
       
-      {/* Main output handle (condition-output) - for chaining conditions, DO node, or actions (implicit THEN) */}
+      {/* Single output handle - for chaining conditions, DO/ELSE path, or actions */}
       <Handle
         type="source"
         position={Position.Right}
-        id="condition-output"
+        id="output"
         className="node-output-handle"
         style={{ 
           background: 'var(--condition-color)', 
@@ -91,7 +100,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
           height: '12px',
           top: '50%'
         }}
-        title={hasConditionChain ? 'Connect to next condition' : hasDoOutput ? 'Connect to DO/ELSE node' : 'Connect to action, action group, or DO node'}
+        title={hasConditionChain ? 'Connect to next condition' : hasDoOutput || hasElseOutput ? 'DO/ELSE path configured' : 'Connect to DO/ELSE node, action, or next condition'}
       />
 
     </div>
