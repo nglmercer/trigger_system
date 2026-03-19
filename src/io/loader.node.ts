@@ -2,7 +2,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import type { TriggerRule } from "../types";
-import { parseYamlRules } from "../sdk/yaml-parser";
+import { parseYamlRules, type YamlParserError } from "../sdk/yaml-parser";
 
 export class TriggerLoader {
   /**
@@ -49,10 +49,9 @@ export class TriggerLoader {
   /**
    * Loads rules from a YAML file (supports multi-document)
    */
-  static async loadRule(filePath: string): Promise<TriggerRule[]> {
+  static async loadRule(filePath: string,debug=(_err:YamlParserError|unknown)=>{}): Promise<TriggerRule[]> {
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      
       // Use the new YAML parser
       const result = parseYamlRules(content, { 
         filename: filePath,
@@ -61,14 +60,9 @@ export class TriggerLoader {
       
       // Log any validation errors
       if (result.errors.length > 0) {
-        console.error(`\n[TriggerLoader] ⚠️ Validation Problem in ${filePath}`);
+        console.error(`Validation rule path: ${filePath}`);
         result.errors.forEach(err => {
-          console.error(`  - Rule #${err.index + 1}: ${err.message}`);
-          if (err.issues) {
-            err.issues.forEach(issue => {
-              console.error(`    [${issue.path}] ${issue.message}`,issue.suggestion);
-            });
-          }
+          debug(err)
         });
       }
 
@@ -83,7 +77,7 @@ export class TriggerLoader {
 
       return rules;
     } catch (error) {
-      console.error(`Error parsing YAML file ${filePath}:`, error);
+      debug({error,filePath});
       throw error;
     }
   }
