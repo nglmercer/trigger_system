@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import type { EventNodeData } from '../types.ts';
-import { NodeField } from '../constants.ts';
-import { getFieldTooltip } from '../shared-constants.ts';
-import { ClearIcon, SettingsIcon, StarIcon } from './Icons.tsx';
-import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from './FormFields.tsx';
+import { NodeField } from '../constants';
+import { getFieldTooltip } from '../shared-constants';
+import { ClearIcon, SettingsIcon, StarIcon } from '../components/Icons';
+import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from '../components/FormFields';
 
 export default function EventNode({ id, data }: { id: string, data: EventNodeData }) {
   const { deleteElements } = useReactFlow();

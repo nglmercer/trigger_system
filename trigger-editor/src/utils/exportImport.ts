@@ -5,6 +5,7 @@ import type {
   ConditionGroupNodeData,
   ActionNodeData,
   ActionGroupNodeData,
+  DoNodeData,
 } from '../types';
 
 export type AppNode = Node<
@@ -13,6 +14,7 @@ export type AppNode = Node<
   | ConditionGroupNodeData
   | ActionNodeData
   | ActionGroupNodeData
+  | DoNodeData
 >;
 
 /**

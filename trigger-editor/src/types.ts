@@ -8,6 +8,7 @@ export type AppNode = Node<
   | ConditionGroupNodeData 
   | ActionNodeData 
   | ActionGroupNodeData
+  | DoNodeData
 >;
 
 export interface AppNodeData {
@@ -51,4 +52,10 @@ export interface ActionNodeData extends AppNodeData {
 
 export interface ActionGroupNodeData extends AppNodeData {
   mode: ExecutionMode;
+}
+
+export interface DoNodeData extends AppNodeData {
+  // DO node - explicit path for condition branches (DO or ELSE)
+  // Can connect to Actions or ActionGroups
+  branchType: 'do' | 'else';
 }

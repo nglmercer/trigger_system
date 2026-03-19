@@ -4,6 +4,7 @@ export enum NodeType {
   CONDITION_GROUP = 'condition_group',
   ACTION = 'action',
   ACTION_GROUP = 'action_group',
+  DO = 'do',
 }
 
 export const DRAG_DATA_FORMAT = 'application/reactflow';
@@ -27,6 +28,7 @@ export enum NodeField {
   TYPE = 'type',
   PARAMS = 'params',
   MODE = 'mode',
+  BRANCH_TYPE = 'branchType',
 }
 
 // Comparison operators for conditional actions

@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
-import type { ActionNodeData } from '../types.ts';
-import { NodeField, NodeType } from '../constants.ts';
-import { ClearIcon, ActionIcon } from './Icons.tsx';
-import { TextInput, FormField } from './FormFields.tsx';
-import { ParamsBuilder } from './ParamsBuilder.tsx';
+import type { ActionNodeData } from '../types';
+import { NodeField, NodeType } from '../constants';
+import { ClearIcon, ActionIcon } from '../components/Icons';
+import { TextInput, FormField } from '../components/FormFields';
+import { ParamsBuilder } from '../components/ParamsBuilder';
 
 export default function ActionNode({ id, data }: { id: string, data: ActionNodeData }) {
   const { deleteElements, getNode } = useReactFlow();

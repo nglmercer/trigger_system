@@ -125,25 +125,28 @@ export function useNodeEdgeState() {
         }
 
         // ============================================================
-        // Rule 4: ActionGroup -> Condition
-        // When connecting ActionGroup to Condition, ensure clean connection
+        // Rule 4: ActionGroup -> Condition (inline conditional)
+        // When connecting ActionGroup's condition-output to Condition
         // ============================================================
-        if (sourceNode?.type === NodeType.ACTION_GROUP && targetNode?.type === NodeType.CONDITION) {
-          // Remove any existing edge to the Condition's input
+        if (sourceNode?.type === NodeType.ACTION_GROUP && 
+            targetNode?.type === NodeType.CONDITION &&
+            params.sourceHandle === 'condition-output') {
+          // Remove any existing edge from this ActionGroup to a Condition
           filteredEdges = filteredEdges.filter(e => 
-            !(e.target === params.target && e.targetHandle === 'condition-input')
+            !(e.source === params.source && e.sourceHandle === 'condition-output')
           );
         }
 
         // ============================================================
-        // Rule 5: ActionGroup -> Action
-        // When connecting ActionGroup to another Action, remove existing connections
-        // to maintain sequential execution
+        // Rule 5: ActionGroup -> Action (chaining)
+        // When connecting ActionGroup's action-output to Action
         // ============================================================
-        if (sourceNode?.type === NodeType.ACTION_GROUP && targetNode?.type === NodeType.ACTION) {
-          // Remove any existing incoming edges to the target action
+        if (sourceNode?.type === NodeType.ACTION_GROUP && 
+            targetNode?.type === NodeType.ACTION &&
+            params.sourceHandle === 'action-output') {
+          // Remove any existing edge from this ActionGroup to an Action
           filteredEdges = filteredEdges.filter(e => 
-            !(e.target === params.target && e.targetHandle === params.targetHandle)
+            !(e.source === params.source && e.sourceHandle === 'action-output')
           );
         }
 

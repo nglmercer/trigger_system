@@ -168,10 +168,10 @@ function collectActionsForGroup(
     };
     actions.push(action);
     
-    // Follow chaining edges (action-output)
+    // Follow chaining edges (action-output or action-group-output for backward compatibility)
     const chainEdges = ctx.edges.filter(e => 
       e.source === actionId && 
-      e.sourceHandle === 'action-output' &&
+      (e.sourceHandle === 'action-output' || e.sourceHandle === 'action-group-output') &&
       ctx.nodes.find(n => n.id === e.target && isAct(n))
     );
     for (const edge of chainEdges) {
@@ -180,9 +180,10 @@ function collectActionsForGroup(
   }
 
   // Start from actions directly connected to the group
+  // Support both action-output and action-group-output handles
   const directEdges = ctx.edges.filter(e => 
     e.source === groupId && 
-    e.sourceHandle?.startsWith('action') &&
+    (e.sourceHandle === 'action-output' || e.sourceHandle === 'action-group-output') &&
     ctx.nodes.find(n => n.id === e.target && isAct(n))
   );
   
@@ -404,6 +405,7 @@ export function parseGraph(
   if (rootActionGroups.length > 0) {
     for (const groupId of rootActionGroups) {
       // Check if this ActionGroup is connected to a Condition (inline conditional)
+      // Support condition-output handle from ActionGroup
       const conditionEdges = ctx.edges.filter(e => 
         e.source === groupId && 
         e.sourceHandle === 'condition-output' &&

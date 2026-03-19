@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
-import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon, ShareIcon } from './Icons.tsx';
+import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon, ShareIcon, DoIcon } from './Icons.tsx';
 import { IfIcon,StarIcon } from './Icons.tsx';
 import { Modal } from './Modal.tsx';
 import { ImportList } from './ImportList.tsx';
@@ -127,6 +127,14 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 <div className="drag-info">
                   <span className="drag-name">Action</span>
                   <span className="drag-desc">Execute a handler</span>
+                </div>
+              </div>
+
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.DO)}>
+                <span className="drag-icon drag-icon--do"><DoIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">DO</span>
+                  <span className="drag-desc">Explicit then path</span>
                 </div>
               </div>
 

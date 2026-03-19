@@ -77,6 +77,22 @@ export const ActionGroupIcon = () => (
   </svg>
 );
 
+// Do Icon - arrow pointing right (explicit then/branch)
+export const DoIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+    <polyline points="12 5 19 12 12 19"></polyline>
+  </svg>
+);
+
+// Else Icon - arrow pointing down (explicit else branch)
+export const ElseIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <polyline points="5 12 12 19 19 12"></polyline>
+  </svg>
+);
+
 // Chevron Icon - directional arrow
 export const ChevronIcon = ({ direction = 'right' }: { direction?: 'left' | 'right' }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: direction === 'left' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>

@@ -15,11 +15,7 @@ import OutputPanel from './components/OutputPanel.tsx';
 import { ParamsModal } from './components/ParamsModal.tsx';
 import { AlertProvider, useAlert } from './components/Alert.tsx';
 
-import EventNode from './components/EventNode.tsx';
-import ConditionNode from './components/ConditionNode.tsx';
-import ConditionGroupNode from './components/ConditionGroupNode.tsx';
-import ActionNode from './components/ActionNode.tsx';
-import ActionGroupNode from './components/ActionGroupNode.tsx';
+import { nodeTypes } from './nodes';
 
 import { useRuleBuilder, useNodeEdgeState, useImportExport, useConnectionValidation } from './hooks';
 import { NodeType, DRAG_DATA_FORMAT } from './constants.ts';
@@ -29,14 +25,7 @@ import { loadImports } from './lsp/engine.ts';
 import type { ImportConfig } from './lsp/types.ts';
 import { getSharedDataFromUrl, clearShareDataFromUrl } from './utils/exportImport.ts';
 
-// Node type mapping
-const nodeTypes = {
-  [NodeType.EVENT]: EventNode,
-  [NodeType.CONDITION]: ConditionNode,
-  [NodeType.CONDITION_GROUP]: ConditionGroupNode,
-  [NodeType.ACTION]: ActionNode,
-  [NodeType.ACTION_GROUP]: ActionGroupNode,
-};
+// Node types are now imported from ./nodes/index.ts
 
 // Helper to generate unique node IDs
 const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
@@ -138,12 +127,13 @@ function NodeEditor() {
             enabled: true, 
             priority: 0,
             event: ''
+          } : {}),
+          ...(type === NodeType.DO ? {
+            branchType: 'do' as const
           } : {})
         },
       };
-      // please fix or implement a better types or builder for make and build, never use any
-      //@ts-expect-error
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => nds.concat(newNode as AppNode));
     },
     [screenToFlowPosition, setNodes, clearAll]
   );

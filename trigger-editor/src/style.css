@@ -31,6 +31,10 @@
   --action-group-color-light: #fb923c;
   --action-group-color-dark: #ea580c;
 
+  --do-color: #9b59b6;
+  --do-color-light: #a87bc7;
+  --do-color-dark: #8e44ad;
+
   --node-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
@@ -139,6 +143,9 @@ body {
 }
 .drag-icon--condition-group {
   color: var(--condition-group-color);
+}
+.drag-icon--do {
+  color: var(--do-color);
 }
 .drag-icon--action {
   color: var(--action-color);
@@ -392,6 +399,15 @@ body {
   border-bottom: 2px solid rgba(0, 0, 0, 0.2);
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
+.node-title--do {
+  background: linear-gradient(
+    135deg,
+    var(--do-color-dark),
+    var(--do-color)
+  );
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
+}
 
 .node-delete {
   margin-left: auto;
@@ -439,6 +455,10 @@ body {
 .action-group .node-body {
   border-left-color: var(--action-group-color);
   background: linear-gradient(90deg, rgba(249, 115, 22, 0.05), transparent);
+}
+.do .node-body {
+  border-left-color: var(--do-color);
+  background: linear-gradient(90deg, rgba(155, 89, 182, 0.05), transparent);
 }
 
 .node-label {

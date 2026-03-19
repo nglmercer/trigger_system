@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
-import type { ConditionGroupNodeData } from '../types.ts';
-import { NodeField, NodeType } from '../constants.ts';
-import { CONDITION_GROUP_OPTIONS } from '../shared-constants.ts';
-import { ClearIcon, ConditionGroupIcon } from './Icons.tsx';
-import { SelectInput, FormField } from './FormFields.tsx';
+import type { ConditionGroupNodeData } from '../types';
+import { NodeField, NodeType } from '../constants';
+import { CONDITION_GROUP_OPTIONS } from '../shared-constants';
+import { ClearIcon, ConditionGroupIcon } from '../components/Icons';
+import { SelectInput, FormField } from '../components/FormFields';
 
 export default function ConditionGroupNode({ id, data }: { id: string, data: ConditionGroupNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
