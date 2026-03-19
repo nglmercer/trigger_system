@@ -84,7 +84,7 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     }
 
     // ============================================================
-    // RULE 4: Condition Node - condition-output for chaining/actions (implicit THEN), else-output for ELSE
+    // RULE 4: Condition Node - condition-output for chaining/actions or DO node
     // ============================================================
     if (sourceNode.type === NodeType.CONDITION) {
       // Condition cannot connect to ConditionGroup
@@ -92,16 +92,7 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
         return false;
       }
       
-      // else-output can only connect to Actions (including ActionGroup)
-      if (connection.sourceHandle === 'else-output') {
-        // Allow connection to Action OR ActionGroup
-        if (targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP) {
-          return true;
-        }
-        return false;
-      }
-      
-      // condition-output (for chaining conditions or simple action connection = implicit THEN)
+      // condition-output (for chaining conditions, DO node, or action connection = implicit THEN)
       if (connection.sourceHandle === 'condition-output' || !connection.sourceHandle) {
         // Can connect to another Condition (chaining)
         if (targetNode.type === NodeType.CONDITION) {
@@ -116,6 +107,11 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
           return true;
         }
         
+        // Can connect to DO node (explicit DO or ELSE path)
+        if (targetNode.type === NodeType.DO) {
+          return true;
+        }
+        
         // Can connect to Action/ActionGroup (implicit THEN)
         if (targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP) {
           return true;
@@ -124,11 +120,11 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     }
 
     // ============================================================
-    // RULE 5: Action Group - Input can accept from Event, Condition, ConditionGroup, Action, or DO
+    // RULE 5: Action Group and Action - Input can accept from Event, Condition, ConditionGroup, Action, or DO
     // (Action can connect directly to ActionGroup for grouping)
     // ============================================================
-    if (targetNode.type === NodeType.ACTION_GROUP) {
-      // ActionGroup can receive from Event, Condition, ConditionGroup, Action, or DO node
+    if (targetNode.type === NodeType.ACTION_GROUP || targetNode.type === NodeType.ACTION) {
+      // ActionGroup and Action can receive from Event, Condition, ConditionGroup, Action, or DO node
       const isValidSource = 
         sourceNode.type === NodeType.EVENT || 
         sourceNode.type === NodeType.CONDITION || 
@@ -136,7 +132,7 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
         sourceNode.type === NodeType.ACTION ||
         sourceNode.type === NodeType.DO;
       if (!isValidSource) {
-        return false; // ActionGroup can only receive from Event/Condition/ConditionGroup/Action/DO
+        return false; // Action/ActionGroup can only receive from Event/Condition/ConditionGroup/Action/DO
       }
     }
 

@@ -19,8 +19,12 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
     getNode(e.target)?.type === NodeType.CONDITION
   );
 
-  // Show ELSE only when not chaining to another condition
-  const showElse = !hasConditionChain;
+  // Check if condition-output is connected to DoNode
+  const hasDoOutput = edges.some(e => 
+    e.source === id && 
+    e.sourceHandle === 'condition-output' &&
+    getNode(e.target)?.type === NodeType.DO
+  );
 
   return (
     <div className="drawflow-node condition">
@@ -74,7 +78,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         </FormField>
       </div>
       
-      {/* Main output handle (condition-output) - for chaining conditions or connecting to actions (implicit THEN) */}
+      {/* Main output handle (condition-output) - for chaining conditions, DO node, or actions (implicit THEN) */}
       <Handle
         type="source"
         position={Position.Right}
@@ -87,48 +91,8 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
           height: '12px',
           top: '50%'
         }}
-        title="Connect to next condition or action (implicit THEN)"
+        title={hasConditionChain ? 'Connect to next condition' : hasDoOutput ? 'Connect to DO/ELSE node' : 'Connect to action, action group, or DO node'}
       />
-
-      {/* ELSE output handle - for actions when condition is FALSE */}
-      {showElse && (
-        <>
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="else-output"
-            className="node-output-handle else-handle"
-            style={{ 
-              background: '#ff6b6b', 
-              border: '2px solid var(--bg-color)', 
-              width: '14px', 
-              height: '14px',
-              top: '75%',
-              zIndex: 20,
-              pointerEvents: 'all',
-              cursor: 'pointer'
-            }}
-            title="Actions to run when condition is FALSE"
-          />
-          <div 
-            className="else-label"
-            style={{ 
-              position: 'absolute', 
-              right: '-45px', 
-              top: '75%', 
-              transform: 'translateY(-50%)',
-              fontSize: '11px',
-              color: '#ff6b6b',
-              fontWeight: 'bold',
-              pointerEvents: 'none',
-              zIndex: 1,
-              letterSpacing: '0.5px'
-            }}
-          >
-            ELSE
-          </div>
-        </>
-      )}
 
     </div>
   );
