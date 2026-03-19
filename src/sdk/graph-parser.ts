@@ -229,16 +229,16 @@ function resolveDoInlineCondition(
     ctx.nodes.find(n => n.id === e.target && isCond(n))
   );
   
-  // If we have a source condition (the condition that connects to this DO node),
-  // we should use that condition instead of the one after the DO
+  // Find the condition to use for the inline conditional
+  // Priority: DO_CONDITION_OUTPUT edge > sourceConditionId
   let conditionToUse: string | undefined;
   
-  if (sourceConditionId) {
-    // Use the source condition that connects to this DO node
-    conditionToUse = sourceConditionId;
-  } else if (conditionEdge) {
-    // Fall back to the condition after the DO node (legacy behavior)
+  if (conditionEdge) {
+    // Use the condition connected via DO_CONDITION_OUTPUT (this is the inline condition)
     conditionToUse = conditionEdge.target;
+  } else if (sourceConditionId) {
+    // Fall back to the source condition that connects to this DO node (legacy behavior)
+    conditionToUse = sourceConditionId;
   }
   
   if (!conditionToUse) {
@@ -562,15 +562,55 @@ export function parseGraph(
             // The inline conditional already has its own if/then/else from the DO -> Condition chain
             thenAct = inlineResult.inlineCondition as Action;
             
-            // Also get else action from DO_OUTPUT if available
-            const doOutputEdge = ctx.edges.find(e =>
-              e.source === doNodeId &&
-              e.sourceHandle === HandleId.DO_OUTPUT &&
-              ctx.nodes.find(n => n.id === e.target && isAct(n))
-            );
-            if (doOutputEdge && !elseAct) {
-              const resolvedElseAct = resolveAction(doOutputEdge.target, ctx);
-              if (resolvedElseAct) elseAct = resolvedElseAct;
+            // Also look for rule-level else action
+            // Find all conditions in the chain (including the root and any chained conditions)
+            // and look for else DO branches from each of them
+            const allConditionIds = new Set<string>();
+            
+            // Start with the root condition
+            allConditionIds.add(condId);
+            
+            // Find all chained conditions from the root
+            function collectChainedConditions(conditionId: string) {
+              const chainEdges = ctx.edges.filter(e =>
+                e.source === conditionId &&
+                (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === 'condition-output' || e.sourceHandle === 'output') &&
+                ctx.nodes.find(n => n.id === e.target && isCond(n))
+              );
+              
+              for (const edge of chainEdges) {
+                if (!allConditionIds.has(edge.target)) {
+                  allConditionIds.add(edge.target);
+                  collectChainedConditions(edge.target);
+                }
+              }
+            }
+            
+            collectChainedConditions(condId);
+            
+            // For each condition, find else DO branches
+            for (const conditionId of allConditionIds) {
+              const elseDoEdges = ctx.edges.filter(e =>
+                e.source === conditionId &&
+                (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === 'output' || !e.sourceHandle) &&
+                e.target !== doNodeId &&
+                ctx.nodes.find(n => n.id === e.target && n.type === NodeType.DO && n.data?.branchType === BranchType.ELSE)
+              );
+              
+              for (const elseDoEdge of elseDoEdges) {
+                // Find action connected to this else DO node
+                const elseDoToActionEdges = ctx.edges.filter(e =>
+                  e.source === elseDoEdge.target &&
+                  (e.sourceHandle === HandleId.DO_OUTPUT || !e.sourceHandle) &&
+                  ctx.nodes.find(n => n.id === e.target && isAct(n))
+                );
+                
+                for (const actionEdge of elseDoToActionEdges) {
+                  if (!elseAct) {
+                    elseAct = resolveAction(actionEdge.target, ctx);
+                  }
+                }
+              }
             }
           }
         }
