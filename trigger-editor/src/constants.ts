@@ -31,6 +31,39 @@ export enum NodeField {
   BRANCH_TYPE = 'branchType',
 }
 
+// Handle IDs for node connections
+export enum NodeHandle {
+  // Event node handles
+  EVENT_OUTPUT = 'event-output',
+  
+  // Condition node handles
+  CONDITION_INPUT = 'condition-input',
+  CONDITION_OUTPUT = 'output',
+  
+  // ConditionGroup node handles
+  CONDITION_GROUP_INPUT = 'input',
+  CONDITION_GROUP_OUTPUT = 'cond-output',
+  
+  // Action node handles
+  ACTION_INPUT = 'action-input',
+  ACTION_OUTPUT = 'action-output',
+  
+  // ActionGroup node handles
+  ACTION_GROUP_INPUT = 'input',
+  ACTION_GROUP_OUTPUT = 'action-output',
+  ACTION_GROUP_CONDITION_OUTPUT = 'condition-output',
+  
+  // DoNode handles
+  DO_INPUT = 'do-input',
+  DO_OUTPUT = 'do-output',
+}
+
+// Branch types for DoNode
+export enum BranchType {
+  DO = 'do',
+  ELSE = 'else',
+}
+
 // Comparison operators for conditional actions
 export const COMPARISON_OPERATORS = [
   { value: 'EQ', label: 'Equals (==)' },

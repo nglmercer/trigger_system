@@ -1,4 +1,5 @@
 import { RuleBuilder, type OptimizeOptions } from './builder';
+import { HandleId, BranchType, NodeType, ConditionOperator } from './constants';
 import type {
   TriggerRule,
   RuleCondition,
@@ -53,16 +54,16 @@ export function createParserContext(
   };
 }
 
-export const defaultIsEventNode = (n: SDKGraphNode) => n.type === 'event';
-export const defaultIsCondNode = (n: SDKGraphNode) => n.type === 'condition' || n.type === 'condition_group';
-export const defaultIsActNode = (n: SDKGraphNode) => n.type === 'action' || n.type === 'action_group' || n.type === 'do';
+export const defaultIsEventNode = (n: SDKGraphNode) => n.type === NodeType.EVENT;
+export const defaultIsCondNode = (n: SDKGraphNode) => n.type === NodeType.CONDITION || n.type === NodeType.CONDITION_GROUP;
+export const defaultIsActNode = (n: SDKGraphNode) => n.type === NodeType.ACTION || n.type === NodeType.ACTION_GROUP || n.type === NodeType.DO;
 
 // Check if a node is a DO node
-export const defaultIsDoNode = (n: SDKGraphNode) => n.type === 'do';
+export const defaultIsDoNode = (n: SDKGraphNode) => n.type === NodeType.DO;
 
 // Get the branch type (do or else) from a DO node
-export const defaultGetDoBranchType = (n: SDKGraphNode): 'do' | 'else' => {
-  return n.data?.branchType === 'else' ? 'else' : 'do';
+export const defaultGetDoBranchType = (n: SDKGraphNode): BranchType => {
+  return n.data?.branchType === BranchType.ELSE ? BranchType.ELSE : BranchType.DO;
 };
 
 export function defaultExtractEventData(n: SDKGraphNode): Partial<TriggerRule> {
@@ -89,11 +90,11 @@ function collectConditionsForGroup(
 ): { conditions: RuleCondition[]; operator: 'AND' | 'OR' } {
   const isCond = ctx.options.isCondNode || defaultIsCondNode;
   const groupNode = ctx.nodes.find(n => n.id === groupId);
-  if (!groupNode || groupNode.type !== 'condition_group') {
-    return { conditions: [], operator: 'AND' };
+  if (!groupNode || groupNode.type !== NodeType.CONDITION_GROUP) {
+    return { conditions: [], operator: ConditionOperator.AND };
   }
 
-  const operator = (groupNode.data.operator || 'AND') as 'AND' | 'OR';
+  const operator = (groupNode.data.operator || ConditionOperator.AND) as 'AND' | 'OR';
   const conditions: RuleCondition[] = [];
   const visited = new Set<string>();
 
@@ -113,10 +114,10 @@ function collectConditionsForGroup(
     };
     conditions.push(condition);
     
-    // Follow chaining edges (condition-output)
+    // Follow chaining edges (condition-output or output)
     const chainEdges = ctx.edges.filter(e => 
       e.source === condId && 
-      e.sourceHandle === 'condition-output' &&
+      (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === HandleId.CONDITION_OUTPUT_LEGACY) &&
       ctx.nodes.find(n => n.id === e.target && isCond(n))
     );
     for (const edge of chainEdges) {
@@ -127,7 +128,7 @@ function collectConditionsForGroup(
   // Start from conditions directly connected to the group
   const directEdges = ctx.edges.filter(e => 
     e.source === groupId && 
-    e.sourceHandle?.startsWith('cond') &&
+    e.sourceHandle?.startsWith(HandleId.CONDITION_GROUP_OUTPUT) &&
     ctx.nodes.find(n => n.id === e.target && isCond(n))
   );
   
@@ -148,8 +149,8 @@ function collectActionsForGroup(
 ): { actions: (Action | ActionGroup)[]; mode: ExecutionMode } {
   const isAct = ctx.options.isActNode || defaultIsActNode;
   const groupNode = ctx.nodes.find(n => n.id === groupId);
-  if (!groupNode || groupNode.type !== 'action_group') {
-    return { actions: [], mode: 'ALL' };
+  if (!groupNode || groupNode.type !== NodeType.ACTION_GROUP) {
+    return { actions: [], mode: 'ALL' as ExecutionMode };
   }
 
   const mode = (groupNode.data.mode || 'ALL') as ExecutionMode;
@@ -179,7 +180,7 @@ function collectActionsForGroup(
     // Follow chaining edges (action-output or action-group-output for backward compatibility)
     const chainEdges = ctx.edges.filter(e => 
       e.source === actionId && 
-      (e.sourceHandle === 'action-output' || e.sourceHandle === 'action-group-output') &&
+      (e.sourceHandle === HandleId.ACTION_OUTPUT || e.sourceHandle === HandleId.ACTION_OUTPUT_LEGACY) &&
       ctx.nodes.find(n => n.id === e.target && isAct(n))
     );
     for (const edge of chainEdges) {
@@ -191,7 +192,7 @@ function collectActionsForGroup(
   // Support both action-output and action-group-output handles
   const directEdges = ctx.edges.filter(e => 
     e.source === groupId && 
-    (e.sourceHandle === 'action-output' || e.sourceHandle === 'action-group-output') &&
+    (e.sourceHandle === HandleId.ACTION_OUTPUT || e.sourceHandle === HandleId.ACTION_OUTPUT_LEGACY) &&
     ctx.nodes.find(n => n.id === e.target && isAct(n))
   );
   
@@ -212,8 +213,8 @@ function findTerminalActions(
 ): { thenActionId?: string; elseActionId?: string } {
   const isCond = ctx.options.isCondNode || defaultIsCondNode;
   const isAct = ctx.options.isActNode || defaultIsActNode;
-  const isDo = (n: SDKGraphNode) => n.type === 'do';
-  const getDoBranchType = (n: SDKGraphNode): 'do' | 'else' => n.data?.branchType === 'else' ? 'else' : 'do';
+  const isDo = (n: SDKGraphNode) => n.type === NodeType.DO;
+  const getDoBranchType = (n: SDKGraphNode): BranchType => n.data?.branchType === BranchType.ELSE ? BranchType.ELSE : BranchType.DO;
   
   let thenActionId: string | undefined;
   let elseActionId: string | undefined;
@@ -226,7 +227,7 @@ function findTerminalActions(
     // If sourceHandle is not specified, treat all edges from this condition as then-output
     const actionEdges = ctx.edges.filter(e => 
       e.source === condId && 
-      (!e.sourceHandle || e.sourceHandle === 'then-output' || e.sourceHandle === 'else-output' || e.sourceHandle === 'condition-output')
+      (!e.sourceHandle || e.sourceHandle === HandleId.THEN_OUTPUT || e.sourceHandle === HandleId.ELSE_OUTPUT || e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === HandleId.CONDITION_OUTPUT_LEGACY || e.sourceHandle === HandleId.DO_OUTPUT)
     );
     
     for (const edge of actionEdges) {
@@ -255,10 +256,16 @@ function findTerminalActions(
       // Regular action nodes
       if (!isAct(targetNode)) continue;
       
-      if (edge.sourceHandle === 'else-output') {
-        elseActionId = edge.target;
+      if (edge.sourceHandle === HandleId.ELSE_OUTPUT || edge.sourceHandle === HandleId.DO_OUTPUT) {
+        // Check if it's actually an else by looking at the branchType of the DO node
+        const targetDoNode = ctx.nodes.find(n => n.id === edge.target);
+        if (targetDoNode?.data?.branchType === BranchType.ELSE) {
+          elseActionId = edge.target;
+        } else {
+          thenActionId = edge.target;
+        }
       } else {
-        // then-output or condition-output (implicit then)
+        // then-output, condition-output, or output (implicit then)
         thenActionId = edge.target;
       }
     }
@@ -266,7 +273,7 @@ function findTerminalActions(
     // Follow chain to other conditions
     const chainEdges = ctx.edges.filter(e => 
       e.source === condId && 
-      e.sourceHandle === 'condition-output' &&
+      (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === HandleId.CONDITION_OUTPUT_LEGACY) &&
       ctx.nodes.find(n => n.id === e.target && isCond(n))
     );
     
@@ -415,7 +422,7 @@ export function parseGraph(
     for (const condId of rootConditions) {
       const actionGroupEdges = ctx.edges.filter(e => 
         e.source === condId && 
-        (e.sourceHandle === 'condition-output' || !e.sourceHandle) &&
+        (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === 'condition-output' || e.sourceHandle === 'output' || !e.sourceHandle) &&
         ctx.nodes.find(n => n.id === e.target && n.type === 'action_group')
       );
       
@@ -440,7 +447,7 @@ export function parseGraph(
       // Support condition-output handle from ActionGroup
       const conditionEdges = ctx.edges.filter(e => 
         e.source === groupId && 
-        e.sourceHandle === 'condition-output' &&
+        (e.sourceHandle === HandleId.ACTION_GROUP_CONDITION_OUTPUT || e.sourceHandle === 'condition-output') &&
         ctx.nodes.find(n => n.id === e.target && isCond(n))
       );
       
@@ -564,7 +571,7 @@ export function resolveCondition(id: string, ctx: GraphParserContext): RuleCondi
     // Check for chained conditions
     const chainEdges = ctx.edges.filter(e => 
       e.source === id && 
-      e.sourceHandle === 'condition-output' &&
+      (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === 'condition-output' || e.sourceHandle === 'output') &&
       ctx.nodes.find(n => n.id === e.target && isCond(n))
     );
     

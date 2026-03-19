@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionGroupNodeData } from '../types';
-import { NodeField, NodeType } from '../constants';
+import { NodeField, NodeType, NodeHandle } from '../constants';
 import { CONDITION_GROUP_OPTIONS } from '../shared-constants';
 import { ClearIcon, ConditionGroupIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/FormFields';
@@ -20,7 +20,7 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
   // Count how many conditions are connected to this group
   // SDK looks for edges where sourceHandle starts with 'cond'
   const connectedConditions = edges.filter(e => 
-    e.source === id && e.sourceHandle?.startsWith('cond')
+    e.source === id && e.sourceHandle?.startsWith(NodeHandle.CONDITION_GROUP_OUTPUT)
   ).length;
 
   // Condition Group has LEFT input and RIGHT output - standard 2-point connection
@@ -31,7 +31,7 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
       <Handle
         type="target"
         position={Position.Left}
-        id="input"
+        id={NodeHandle.CONDITION_GROUP_INPUT}
         className="node-input-handle"
         style={{ background: 'var(--condition-group-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
         title="Connect from event or condition"
@@ -40,7 +40,7 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
       <Handle
         type="source"
         position={Position.Right}
-        id="cond-output"
+        id={NodeHandle.CONDITION_GROUP_OUTPUT}
         className="node-output-handle"
         style={{ 
           background: 'var(--condition-group-color)', 

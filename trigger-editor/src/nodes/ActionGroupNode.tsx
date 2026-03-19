@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionGroupNodeData } from '../types';
-import { NodeField, NodeType } from '../constants';
+import { NodeField, NodeType, NodeHandle } from '../constants';
 import { ClearIcon, ActionGroupIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/FormFields';
 import type { ExecutionMode } from '../../../src/types';
@@ -11,6 +11,7 @@ const MODE_OPTIONS = [
   { value: 'EITHER', label: 'EITHER (Run one randomly)' },
   { value: 'SEQUENCE', label: 'SEQUENCE (Run in order)' },
 ];
+
 
 export default function ActionGroupNode({ id, data }: { id: string, data: ActionGroupNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
@@ -25,7 +26,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
   // Check if this ActionGroup has incoming connection from Condition (for inline conditionals)
   const hasConditionInput = edges.some(e => 
     e.target === id && 
-    e.targetHandle === 'condition-input' &&
+    e.targetHandle === NodeHandle.CONDITION_INPUT &&
     getNode(e.source)?.type === NodeType.CONDITION
   );
   
@@ -38,14 +39,14 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
   // Check if this ActionGroup has outgoing connections to Actions (for chaining)
   const hasActionOutput = edges.some(e => 
     e.source === id && 
-    e.sourceHandle === 'action-group-output' &&
+    e.sourceHandle === NodeHandle.ACTION_GROUP_OUTPUT &&
     getNode(e.target)?.type === NodeType.ACTION
   );
   
   // Check if this ActionGroup has outgoing connection to a Condition (for inline conditions)
   const hasConditionOutput = edges.some(e => 
     e.source === id && 
-    e.sourceHandle === 'condition-output' &&
+    e.sourceHandle === NodeHandle.ACTION_GROUP_CONDITION_OUTPUT &&
     getNode(e.target)?.type === NodeType.CONDITION
   );
 
@@ -58,7 +59,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
       <Handle
         type="target"
         position={Position.Left}
-        id="input"
+        id={NodeHandle.ACTION_GROUP_INPUT}
         className="node-input-handle"
         style={{ 
           background: 'var(--action-group-color)', 
@@ -78,7 +79,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
           <Handle
             type="source"
             position={Position.Right}
-            id="action-output"
+            id={NodeHandle.ACTION_GROUP_OUTPUT}
             className="node-output-handle"
             style={{ 
               background: 'var(--action-color)', 
@@ -93,7 +94,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
           <Handle
             type="source"
             position={Position.Right}
-            id="condition-output"
+            id={NodeHandle.ACTION_GROUP_CONDITION_OUTPUT}
             className="node-output-handle"
             style={{ 
               background: 'var(--condition-color)', 

@@ -1,6 +1,6 @@
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionNodeData } from '../types';
-import { NodeField, NodeType } from '../constants';
+import { NodeField, NodeType, NodeHandle, BranchType } from '../constants';
 import { getOperatorOptions, getOperatorDescription, getFieldTooltip } from '../shared-constants';
 import { ClearIcon, IfIcon } from '../components/Icons';
 import { TextInput, SelectInput, FormField } from '../components/FormFields';
@@ -15,24 +15,24 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
   // Check if output is connected to another condition (chaining)
   const hasConditionChain = edges.some(e => 
     e.source === id && 
-    e.sourceHandle === 'output' &&
+    e.sourceHandle === NodeHandle.CONDITION_OUTPUT &&
     getNode(e.target)?.type === NodeType.CONDITION
   );
 
   // Check if output is connected to DoNode (DO path)
   const hasDoOutput = edges.some(e => 
     e.source === id && 
-    e.sourceHandle === 'output' &&
+    e.sourceHandle === NodeHandle.CONDITION_OUTPUT &&
     getNode(e.target)?.type === NodeType.DO &&
-    getNode(e.target)?.data?.branchType === 'do'
+    getNode(e.target)?.data?.branchType === BranchType.DO
   );
 
   // Check if output is connected to DoNode (ELSE path)
   const hasElseOutput = edges.some(e => 
     e.source === id && 
-    e.sourceHandle === 'output' &&
+    e.sourceHandle === NodeHandle.CONDITION_OUTPUT &&
     getNode(e.target)?.type === NodeType.DO &&
-    getNode(e.target)?.data?.branchType === 'else'
+    getNode(e.target)?.data?.branchType === BranchType.ELSE
   );
 
   return (
@@ -40,7 +40,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
       <Handle
         type="target"
         position={Position.Left}
-        id="condition-input"
+        id={NodeHandle.CONDITION_INPUT}
         className="node-input-handle"
         style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
       />
@@ -91,7 +91,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
       <Handle
         type="source"
         position={Position.Right}
-        id="output"
+        id={NodeHandle.CONDITION_OUTPUT}
         className="node-output-handle"
         style={{ 
           background: 'var(--condition-color)', 

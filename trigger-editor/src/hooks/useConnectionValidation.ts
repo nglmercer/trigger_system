@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { Connection, Edge, Node } from '@xyflow/react';
-import { NodeType } from '../constants';
+import { NodeType, NodeHandle, BranchType } from '../constants';
 import type { AppNode } from '../types';
 
 /**
@@ -41,8 +41,13 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
         return false; // Same handle to same target, prevent duplicate
       }
     } else if (existingEdgeToTarget) {
-      // For other node types, prevent multiple edges to same target
-      return false;
+      // For DO nodes, allow multiple outputs to different targets (e.g., DoNode -> Action and DoNode -> ActionGroup)
+      if (sourceNode.type === NodeType.DO) {
+        // Allow multiple outputs from DO node to different targets
+      } else {
+        // For other node types, prevent multiple edges to same target
+        return false;
+      }
     }
     
     // Node Category Helpers
@@ -61,7 +66,7 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     // ============================================================
     // RULE 2: ActionGroup - Input accepts from Event or DO node (for running actions)
     // ============================================================
-    if (targetNode.type === NodeType.ACTION_GROUP && connection.targetHandle === 'input') {
+    if (targetNode.type === NodeType.ACTION_GROUP && connection.targetHandle === NodeHandle.ACTION_GROUP_INPUT) {
       // ActionGroup input can accept from Event (for triggering the action group)
       // or from DO node (explicit DO path)
       if (sourceNode.type !== NodeType.EVENT && sourceNode.type !== NodeType.DO) {
@@ -123,18 +128,18 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
           // Check if there's already an ELSE connection (branchType: 'else')
           const existingElseConnection = edges.some(e => 
             e.source === sourceNode.id && 
-            e.sourceHandle === 'output' &&
+            e.sourceHandle === NodeHandle.CONDITION_OUTPUT &&
             nodes.find(n => n.id === e.target)?.type === NodeType.DO &&
-            (nodes.find(n => n.id === e.target) as AppNode)?.data?.branchType === 'else'
+            (nodes.find(n => n.id === e.target) as AppNode)?.data?.branchType === BranchType.ELSE
           );
           
           // If connecting to a DO node, ensure we don't already have a DO connection
-          if (branchType === 'do' && existingDoConnection) {
+          if (branchType === BranchType.DO && existingDoConnection) {
             return false; // Only 1 DO connection allowed
           }
           
           // If connecting to an ELSE node, ensure we don't already have an ELSE connection
-          if (branchType === 'else' && existingElseConnection) {
+          if (branchType === BranchType.ELSE && existingElseConnection) {
             return false; // Only 1 ELSE connection allowed
           }
           
@@ -259,8 +264,8 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     if (targetNode.type === NodeType.DO) {
       // DO can receive from Condition via output handle
       if (sourceNode.type === NodeType.CONDITION) {
-        if (connection.sourceHandle !== 'output' && connection.sourceHandle) {
-          return false; // Only accept from 'output' handle
+        if (connection.sourceHandle !== NodeHandle.CONDITION_OUTPUT && connection.sourceHandle) {
+          return false; // Only accept from output handle
         }
         return true;
       }

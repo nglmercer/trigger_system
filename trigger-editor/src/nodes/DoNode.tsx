@@ -1,14 +1,16 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { DoNodeData } from '../types';
-import { NodeField, NodeType } from '../constants';
+import { NodeField, NodeType, NodeHandle, BranchType } from '../constants';
+
+const BRANCH_OPTIONS = [
+  { value: BranchType.DO, label: 'DO (then)' },
+  { value: BranchType.ELSE, label: 'ELSE' },
+];
 import { ClearIcon, DoIcon, ElseIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/FormFields';
 
-const BRANCH_OPTIONS = [
-  { value: 'do', label: 'DO (then)' },
-  { value: 'else', label: 'ELSE' },
-];
+
 
 /**
  * DoNode - Explicit DO path for complex condition branches
@@ -23,15 +25,12 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
-  // Check if this DoNode has incoming connection from Condition via the correct handle
-  // For DO type: must connect via do-output
-  // For ELSE type: must connect via else-output
-  const isElse = data.branchType === 'else';
-  const requiredHandle = isElse ? 'else-output' : 'do-output';
+  // Check if this DoNode has incoming connection from Condition
+  // Accepts from Condition via output handle
   const hasConditionInput = edges.some(e => 
     e.target === id &&
     (
-      (getNode(e.source)?.type === NodeType.CONDITION && e.sourceHandle === requiredHandle) ||
+      (getNode(e.source)?.type === NodeType.CONDITION && e.sourceHandle === NodeHandle.CONDITION_OUTPUT) ||
       (getNode(e.source)?.type === NodeType.CONDITION_GROUP)
     )
   );
@@ -43,6 +42,9 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
      getNode(e.target)?.type === NodeType.ACTION_GROUP
     )
   );
+  // Determine colors based on branch type
+  const isElse = data.branchType === BranchType.ELSE;
+  
   //console.log('edges', edges,hasConditionInput,hasActionOutput);
   // Show output when there's input connection
   const showOutput = hasConditionInput;
@@ -53,7 +55,7 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
       <Handle
         type="target"
         position={Position.Left}
-        id="do-input"
+        id={NodeHandle.DO_INPUT}
         className="node-input-handle"
         style={{ 
           background: nodeColor, 
@@ -68,7 +70,7 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
         <Handle
           type="source"
           position={Position.Right}
-          id="do-output"
+          id={NodeHandle.DO_OUTPUT}
           className="node-output-handle"
           style={{ 
             background: nodeColor, 
@@ -93,7 +95,7 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
           <SelectInput
             value={data.branchType || 'do'}
             options={BRANCH_OPTIONS}
-            onChange={(val) => data.onChange(val as 'do' | 'else', NodeField.BRANCH_TYPE)}
+            onChange={(val) => data.onChange(val as BranchType, NodeField.BRANCH_TYPE)}
           />
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionNodeData } from '../types';
-import { NodeField, NodeType } from '../constants';
+import { NodeField, NodeType, NodeHandle } from '../constants';
 import { ClearIcon, ActionIcon } from '../components/Icons';
 import { TextInput, FormField } from '../components/FormFields';
 import { ParamsBuilder } from '../components/ParamsBuilder';
@@ -21,7 +21,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
       <Handle
         type="target"
         position={Position.Left}
-        id="action-input"
+        id={NodeHandle.ACTION_INPUT}
         className="node-input-handle"
         style={{ background: 'var(--action-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
       />
@@ -51,7 +51,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
       <Handle
         type="source"
         position={Position.Right}
-        id="action-output"
+        id={NodeHandle.ACTION_OUTPUT}
         className="node-output-handle"
         style={{ 
           background: 'var(--action-color)', 
