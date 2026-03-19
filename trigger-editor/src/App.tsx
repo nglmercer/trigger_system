@@ -260,14 +260,21 @@ function NodeEditor() {
   // Import Handler (YAML)
   // ============================================================
   const handleImportYaml = useCallback(async () => {
-    const data = await createYamlImportPicker();
-    if (!data) return;
+    const response = await createYamlImportPicker();
+    
+    // Check if import was successful
+    if (!response.success) {
+      console.error('YAML import error:', response.error.message);
+      return;
+    }
+    
+    const { nodes, edges } = response.data;
     
     // Sanitize nodes to ensure they have proper onChange handlers
-    const sanitizedNodes = sanitizeNodesForImport(data.nodes, onNodeDataChange);
+    const sanitizedNodes = sanitizeNodesForImport(nodes, onNodeDataChange);
     
     setNodes(sanitizedNodes);
-    setEdges(data.edges || []);
+    setEdges(edges || []);
     
     success('YAML imported successfully!', { title: 'Import Complete' });
   }, [onNodeDataChange]);
@@ -279,9 +286,9 @@ function NodeEditor() {
     if (targetNode.type === NodeType.EVENT) return false;
     
     // Node Category Helpers
-    const isSourceAction = sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP;
-    const isTargetAction = targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP;
-    const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
+    // const isSourceAction = sourceNode.type === NodeType.ACTION || sourceNode.type === NodeType.ACTION_GROUP;
+    // const isTargetAction = targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP;
+    // const isSourceCondition = sourceNode.type === NodeType.CONDITION || sourceNode.type === NodeType.CONDITION_GROUP;
     const isTargetCondition = targetNode.type === NodeType.CONDITION || targetNode.type === NodeType.CONDITION_GROUP;
 
     // ============================================================

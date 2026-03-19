@@ -30,7 +30,7 @@ export function useRuleBuilder(nodes: Node[], edges: Edge[], options?: GraphPars
       // Pass the Nodes and Edges directly to the SDK
       const builder = RuleBuilder.fromGraph(sdkNodes, sdkEdges, options, transformers);
       const rule = builder.build();
-      console.log({sdkNodes, sdkEdges, options, transformers,rule})
+      //console.log({sdkNodes, sdkEdges, options, transformers,rule})
       return { rule, errors: [], yaml: RuleExporter.toCleanYaml(rule) };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);

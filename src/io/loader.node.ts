@@ -2,8 +2,8 @@
 import * as path from "path";
 import * as fs from "fs";
 import type { TriggerRule } from "../types";
-import { TriggerValidator } from "../domain/validator";
-import { parseAllDocuments } from "yaml";
+import { parseYamlRules } from "../sdk/yaml-parser";
+
 export class TriggerLoader {
   /**
    * Loads all YAML rule files from a directory
@@ -53,57 +53,32 @@ export class TriggerLoader {
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
       
-      // Support multi-document YAML
-      const yamlDocs = parseAllDocuments(content);
+      // Use the new YAML parser
+      const result = parseYamlRules(content, { 
+        filename: filePath,
+        throwOnError: false 
+      });
       
-      // Check for parsing errors
-      for (const doc of yamlDocs) {
-          // In some yaml versions errors is an array on the doc
-          if (doc.errors && doc.errors.length > 0) {
-             throw new Error(`YAML syntax error in ${filePath}: ${doc.errors.map(e => e.message).join(', ')}`);
+      // Log any validation errors
+      if (result.errors.length > 0) {
+        console.error(`\n[TriggerLoader] ⚠️ Validation Problem in ${filePath}`);
+        result.errors.forEach(err => {
+          console.error(`  - Rule #${err.index + 1}: ${err.message}`);
+          if (err.issues) {
+            err.issues.forEach(issue => {
+              console.error(`    [${issue.path}] ${issue.message}`,issue.suggestion);
+            });
           }
+        });
       }
 
-      const docs = yamlDocs.map(doc => doc.toJS());
-      
-      const rules: TriggerRule[] = [];
-
-      // Flatten docs if the root is an array (Single doc with list of rules)
-      let flattenedDocs: unknown[] = [];
-      docs.forEach(d => {
-          if (Array.isArray(d)) {
-              flattenedDocs.push(...d);
-          } else {
-              flattenedDocs.push(d);
-          }
-      });
-
-      flattenedDocs.forEach((doc: unknown, index: number) => {
-        // Normalize 'actions' to 'do' alias
-        if (doc && typeof doc === 'object' && doc !== null && 'actions' in doc && !(doc as Record<string, unknown>).do) {
-            (doc as Record<string, unknown>).do = (doc as Record<string, unknown>).actions;
+      // Assign ID from filename if missing
+      const rules = result.rules.map((rule, index) => {
+        if (!rule.id) {
+          const base = path.basename(filePath, path.extname(filePath));
+          rule.id = result.rules.length > 1 ? `${base}-${index}` : base;
         }
-
-        const validation = TriggerValidator.validate(doc as Record<string, unknown>);
-        
-        if (validation.valid) {
-          const rule = validation.rule;
-           // Assign ID from filename if missing, with index suffix if multidoc
-          if (!rule.id && typeof doc === 'object' && doc !== null) {
-            const base = path.basename(filePath, path.extname(filePath));
-            rule.id = flattenedDocs.length > 1 ? `${base}-${index}` : base;
-          }
-          rules.push(rule);
-        } else {
-             // LOG ERROR TO STDERR so it shows up in tests
-             console.error(`\n[TriggerLoader] ⚠️ Validation Problem in ${filePath} (item #${index + 1})`);
-             validation.issues.forEach(issue => {
-                 console.error(`  - [${issue.path}] ${issue.message}`);
-                 if (issue.suggestion) {
-                     console.error(`    💡 Suggestion: ${issue.suggestion}`);
-                 }
-             });
-        }
+        return rule;
       });
 
       return rules;
