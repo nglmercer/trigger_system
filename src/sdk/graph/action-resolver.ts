@@ -6,6 +6,7 @@
 import { NodeType, HandleId, BranchType } from '../constants';
 import { findEdgesBySource, HandleFilters, type HandleArray } from './traversal';
 import { nodeToAction, parseActionParams } from './converters';
+import { getDoBranchType, defaultIsActNode } from './node-filters';
 import type { 
   SDKGraphNode, 
   SDKGraphEdge, 
@@ -40,7 +41,7 @@ export interface GraphResolverContextBase {
  * Context for action resolution - compatible with GraphParserContext
  */
 export interface ActionResolverContext extends GraphResolverContextBase {
-  visitedActs: Set<string>;
+  visitedActs?: Set<string>;
   visitedConds?: Set<string>;
 }
 
@@ -69,12 +70,6 @@ export interface CollectedActions {
   actions: (Action | ActionGroup)[];
   mode: ExecutionMode;
 }
-
-/**
- * Default action node detector
- */
-export const defaultIsActNode = (n: SDKGraphNode): boolean => 
-  n.type === NodeType.ACTION || n.type === NodeType.ACTION_GROUP || n.type === NodeType.DO;
 
 /**
  * Collect all actions that belong to an action group (directly or via chaining).
@@ -142,8 +137,8 @@ export function resolveAction(
     return ctx.options.resolveAction(id, ctx);
   }
 
-  if (ctx.visitedActs.has(id)) return null;
-  ctx.visitedActs.add(id);
+  if (ctx.visitedActs!.has(id)) return null;
+  ctx.visitedActs!.add(id);
 
   const node = ctx.nodes.find(n => n.id === id);
   const isAct = ctx.options.isActNode || defaultIsActNode;
@@ -164,13 +159,6 @@ export function resolveAction(
   }
 
   return action;
-}
-
-/**
- * Get the branch type for a DO node
- */
-export function getDoBranchType(node: SDKGraphNode): BranchType {
-  return node.data?.branchType === BranchType.ELSE ? BranchType.ELSE : BranchType.DO;
 }
 
 /**
@@ -294,7 +282,7 @@ export class ActionResolver {
     return new ActionResolver(
       this.ctx.nodes,
       this.ctx.edges,
-      this.ctx.visitedActs,
+      this.ctx.visitedActs!,
       { ...this.ctx.options, ...options },
       this.ctx.transformers
     );
@@ -305,7 +293,7 @@ export class ActionResolver {
     return new ActionResolver(
       this.ctx.nodes,
       this.ctx.edges,
-      this.ctx.visitedActs,
+      this.ctx.visitedActs!,
       this.ctx.options,
       transformers
     );

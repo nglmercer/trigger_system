@@ -3,14 +3,13 @@
  * This module coordinates the conversion of SDKGraphNode/SDKGraphEdge to TriggerRule
  */
 
-import { RuleBuilder, type OptimizeOptions } from './builder';
-import { HandleId, BranchType, NodeType, ConditionOperator } from './constants';
+import { RuleBuilder } from './builder';
+import { HandleId, BranchType, NodeType } from './constants';
 import type { 
   TriggerRule,
   RuleCondition,
   Action,
   ActionGroup,
-  ComparisonOperator,
   ExecutionMode,
   SDKGraphNode,
   SDKGraphEdge,
@@ -24,24 +23,18 @@ import {
   defaultIsActNode,
   defaultIsDoNode,
   getDoBranchType,
-  extractEventData as extractEventDataDefault,
-  NodeFilter,
-  createNodeFilterConfig,
+  extractEventData,
   findEdgesBySource,
-  findConnectedNodes,
   HandleFilters,
-  GraphTraversal,
   resolveCondition as resolveConditionInternal,
   collectConditionsForGroup,
   resolveAction as resolveActionInternal,
   collectActionsForGroup,
   categorizeDoNodesByBranch,
-  nodeToAction,
-  converterFactory,
 } from './graph';
 import type { GraphParserOptions,GraphParserContext } from './graph/types';
-// Import action resolver for DO nodes
-import { getDoBranchType as getDoBranchTypeFromAction } from './graph/action-resolver';
+// Re-export for external use
+export type { GraphParserOptions, GraphParserContext } from './graph/types';
 
 // ============================================================================
 // Factory Functions
@@ -67,13 +60,9 @@ export function createParserContext(
 // Default Type Checkers (re-exported from graph module)
 // ============================================================================
 
-export const defaultGetDoBranchType = (n: SDKGraphNode): BranchType => {
-  return getDoBranchType(n);
-};
-
-export function defaultExtractEventData(n: SDKGraphNode): Partial<TriggerRule> {
-  return extractEventDataDefault(n);
-}
+// Re-export for convenience - uses functions from graph module
+export const defaultGetDoBranchType = getDoBranchType;
+export const defaultExtractEventData = extractEventData;
 
 // ============================================================================
 // Inline Conditional Builder
@@ -112,7 +101,7 @@ function buildInlineConditional(
   
   // Get the condition (clear visited to allow resolution)
   const savedVisited = new Set(ctx.visitedConds);
-  ctx.visitedConds.clear();
+  ctx.visitedConds!.clear();
   
   const condition = resolveConditionInternal(conditionToUse, ctx);
   ctx.visitedConds = savedVisited;
@@ -532,7 +521,7 @@ export function parseGraph(
       });
       
       if (conditionEdges.length > 0) {
-        const actionGroupActions = collectActionsForGroup(groupId, ctx);
+        collectActionsForGroup(groupId, ctx);
         
         for (const condEdge of conditionEdges) {
           const condition = resolveConditionInternal(condEdge.target, ctx);

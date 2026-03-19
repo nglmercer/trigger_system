@@ -30,8 +30,8 @@ export interface GraphParserOptions {
 export interface GraphParserContext {
   nodes: SDKGraphNode[];
   edges: SDKGraphEdge[];
-  visitedConds: Set<string>;
-  visitedActs: Set<string>;
+  visitedConds?: Set<string>;
+  visitedActs?: Set<string>;
   options: GraphParserOptions;
   transformers?: {
     condition?: (cond: RuleCondition, node: SDKGraphNode) => RuleCondition | null;

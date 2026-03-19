@@ -6,20 +6,19 @@
 import { NodeType, HandleId, ConditionOperator } from '../constants';
 import { 
   findEdgesBySource, 
-  findConnectedNodeIds,
   HandleFilters 
 } from './traversal';
 import { nodeToCondition } from './converters';
+import { defaultIsCondNode } from './node-filters';
 import type { 
   SDKGraphNode, 
   SDKGraphEdge, 
   RuleCondition,
-  ComparisonOperator,
   TriggerRule,
   Action,
   ActionGroup
 } from '../../types';
-
+import type { GraphParserContext,GraphParserOptions } from './types';
 /**
  * Base context interface for graph resolution
  */
@@ -31,7 +30,7 @@ export interface GraphResolverContextBase {
     isActNode?: (node: SDKGraphNode) => boolean;
     isEventNode?: (node: SDKGraphNode) => boolean;
     extractEventData?: (node: SDKGraphNode) => Partial<TriggerRule>;
-    resolveCondition?: (id: string, ctx: any) => RuleCondition | null;
+    resolveCondition?: (id: string, ctx: GraphParserContext) => RuleCondition | null;
     resolveAction?: (id: string, ctx: any) => Action | ActionGroup | null;
   };
   transformers?: {
@@ -44,20 +43,9 @@ export interface GraphResolverContextBase {
  * Context for condition resolution - compatible with GraphParserContext
  */
 export interface ConditionResolverContext extends GraphResolverContextBase {
-  visitedConds: Set<string>;
+  visitedConds?: Set<string>;
   visitedActs?: Set<string>;
 }
-
-/**
- * Options for condition resolution
- */
-export interface ConditionResolverOptions {
-  /** Custom predicate for detecting condition nodes */
-  isCondNode?: (node: SDKGraphNode) => boolean;
-  /** Custom function to resolve a condition from ID */
-  resolveCondition?: (id: string, ctx: ConditionResolverContext) => RuleCondition | null;
-}
-
 /**
  * Transformer for conditions during resolution
  */
@@ -73,12 +61,6 @@ export interface CollectedConditions {
   conditions: RuleCondition[];
   operator: 'AND' | 'OR';
 }
-
-/**
- * Default condition node detector
- */
-export const defaultIsCondNode = (n: SDKGraphNode): boolean => 
-  n.type === NodeType.CONDITION || n.type === NodeType.CONDITION_GROUP;
 
 /**
  * Collect all conditions that belong to a condition group (directly or via chaining).
@@ -146,8 +128,8 @@ export function resolveCondition(
     return ctx.options.resolveCondition(id, ctx);
   }
 
-  if (ctx.visitedConds.has(id)) return null;
-  ctx.visitedConds.add(id);
+  if (ctx.visitedConds!.has(id)) return null;
+  ctx.visitedConds!.add(id);
 
   const node = ctx.nodes.find(n => n.id === id);
   const isCond = ctx.options.isCondNode || defaultIsCondNode;
@@ -256,7 +238,7 @@ export class ConditionResolver {
     nodes: SDKGraphNode[],
     edges: SDKGraphEdge[],
     visitedConds: Set<string>,
-    options: ConditionResolverOptions = {},
+    options: GraphParserOptions = {},
     transformers?: ConditionTransformer
   ) {
     this.ctx = { nodes, edges, visitedConds, options, transformers };
@@ -289,11 +271,11 @@ export class ConditionResolver {
   }
 
   /** Create a new resolver with additional options */
-  withOptions(options: Partial<ConditionResolverOptions>): ConditionResolver {
+  withOptions(options: Partial<GraphParserOptions>): ConditionResolver {
     return new ConditionResolver(
       this.ctx.nodes,
       this.ctx.edges,
-      this.ctx.visitedConds,
+      this.ctx.visitedConds!,
       { ...this.ctx.options, ...options },
       this.ctx.transformers
     );
@@ -304,7 +286,7 @@ export class ConditionResolver {
     return new ConditionResolver(
       this.ctx.nodes,
       this.ctx.edges,
-      this.ctx.visitedConds,
+      this.ctx.visitedConds!,
       this.ctx.options,
       transformers
     );

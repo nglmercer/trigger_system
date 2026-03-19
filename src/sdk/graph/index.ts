@@ -19,9 +19,8 @@ export {
   type NodeFilterConfig
 } from './node-filters';
 
-// Re-export predicates from both modules
-export { defaultIsCondNode } from './condition-resolver';
-export { defaultIsActNode } from './action-resolver';
+// Node predicates from node-filters (centralized)
+export { defaultIsCondNode, defaultIsActNode } from './node-filters';
 
 // Traversal
 export * from './traversal';
@@ -36,7 +35,6 @@ export {
   resolveCondition,
   findTerminalConditions,
   type ConditionResolverContext,
-  type ConditionResolverOptions,
   type ConditionTransformer,
   type CollectedConditions,
   type TerminalActions
@@ -48,7 +46,6 @@ export {
   collectActionsForGroup,
   resolveAction,
   categorizeDoNodesByBranch,
-  getDoBranchType as getActionDoBranchType,
   type ActionResolverContext,
   type ActionResolverOptions,
   type ActionTransformer,
