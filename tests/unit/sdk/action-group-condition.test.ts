@@ -90,13 +90,13 @@ describe('ActionGroup to Condition inline conditionals', () => {
       expect(inlineCond).toBeDefined();
       expect(inlineCond.if).toBeDefined();
       expect(inlineCond.if.field).toBe("data.role");
-      expect(inlineCond.then).toBeDefined();
+      expect(inlineCond.do).toBeDefined(); // 'do' and 'then' are aliases
       expect(inlineCond.else).toBeDefined();
     } else if (typeof doNode === 'object' && 'if' in doNode) {
       // Single inline conditional
       expect(doNode.if).toBeDefined();
       expect(doNode.if.field).toBe("data.role");
-      expect(doNode.then).toBeDefined();
+      expect(doNode.do).toBeDefined(); // 'do' and 'then' are aliases
       expect(doNode.else).toBeDefined();
     }
   });
