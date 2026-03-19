@@ -1,5 +1,6 @@
 import { RuleBuilder, type OptimizeOptions } from './builder';
 import { HandleId, BranchType, NodeType, ConditionOperator } from './constants';
+import type { InlineConditionalAction } from '../types';
 import type {
   TriggerRule,
   RuleCondition,
@@ -204,6 +205,127 @@ function collectActionsForGroup(
 }
 
 /**
+ * Check if a DO node has a Condition connected via DO_CONDITION_OUTPUT handle.
+ * If so, build an inline conditional action.
+ * This supports "after do allow conditions" feature.
+ * 
+ * NEW: Also handles the case where a condition connects to DO nodes (then/else branches)
+ * and we need to build an inline conditional from the condition + DO branch actions.
+ */
+function resolveDoInlineCondition(
+  doNodeId: string,
+  ctx: GraphParserContext,
+  sourceConditionId?: string // The condition that connects to this DO node
+): { inlineCondition?: InlineConditionalAction; actionId?: string } | null {
+  const isCond = ctx.options.isCondNode || defaultIsCondNode;
+  const isAct = ctx.options.isActNode || defaultIsActNode;
+  const isDo = (n: SDKGraphNode) => n.type === NodeType.DO;
+  const getDoBranchType = (n: SDKGraphNode): BranchType => n.data?.branchType === BranchType.ELSE ? BranchType.ELSE : BranchType.DO;
+  
+  // Find condition connected via DO_CONDITION_OUTPUT
+  const conditionEdge = ctx.edges.find(e => 
+    e.source === doNodeId && 
+    e.sourceHandle === HandleId.DO_CONDITION_OUTPUT &&
+    ctx.nodes.find(n => n.id === e.target && isCond(n))
+  );
+  
+  // If we have a source condition (the condition that connects to this DO node),
+  // we should use that condition instead of the one after the DO
+  let conditionToUse: string | undefined;
+  
+  if (sourceConditionId) {
+    // Use the source condition that connects to this DO node
+    conditionToUse = sourceConditionId;
+  } else if (conditionEdge) {
+    // Fall back to the condition after the DO node (legacy behavior)
+    conditionToUse = conditionEdge.target;
+  }
+  
+  if (!conditionToUse) {
+    return null; // No inline condition
+  }
+  
+  // Get the condition from the condition node
+  // Note: We need to temporarily clear visitedConds because the condition might have been
+  // visited during findTerminalActions traversal but we still need to resolve it for the inline case
+  const savedVisited = new Set(ctx.visitedConds);
+  ctx.visitedConds.clear();
+  const condition = resolveCondition(conditionToUse, ctx);
+  ctx.visitedConds = savedVisited;
+  if (!condition) {
+    return null;
+  }
+  
+  // Find terminal actions for this condition
+  let { thenActionId, elseActionId } = findTerminalActions(conditionToUse, ctx);
+  
+  // If we have a source condition, also check for DO nodes connected from that condition
+  // that might provide then/else actions (handles then/else branch DO nodes)
+  if (sourceConditionId) {
+    // Find all DO nodes connected from the source condition
+    const doEdgesFromCondition = ctx.edges.filter(e =>
+      e.source === sourceConditionId &&
+      (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === 'output' || !e.sourceHandle) &&
+      ctx.nodes.find(n => n.id === e.target && isDo(n))
+    );
+    
+    for (const doEdge of doEdgesFromCondition) {
+      const doNode = ctx.nodes.find(n => n.id === doEdge.target);
+      if (!doNode || !isDo(doNode)) continue;
+      
+      const branchType = getDoBranchType(doNode);
+      
+      // Find actions connected from this DO node
+      const doToActionEdges = ctx.edges.filter(e =>
+        e.source === doNode.id &&
+        (e.sourceHandle === HandleId.DO_OUTPUT || !e.sourceHandle) &&
+        ctx.nodes.find(n => n.id === e.target && isAct(n))
+      );
+      
+      for (const actionEdge of doToActionEdges) {
+        if (branchType === BranchType.ELSE) {
+          // This is an else branch
+          if (!elseActionId) {
+            elseActionId = actionEdge.target;
+          }
+        } else {
+          // This is a then/do branch
+          if (!thenActionId) {
+            thenActionId = actionEdge.target;
+          }
+        }
+      }
+    }
+  }
+  
+  // If no else action found yet, check if the DO node has a direct do-condition-output to an action
+  // This handles the case where do-condition-output goes directly to an action (not through a condition)
+  const sourceDoNodeId = doNodeId;
+  const directDoConditionToAction = ctx.edges.find(e =>
+    e.source === sourceDoNodeId &&
+    e.sourceHandle === HandleId.DO_CONDITION_OUTPUT &&
+    isAct(ctx.nodes.find(n => n.id === e.target)!)
+  );
+  
+  if (directDoConditionToAction && !elseActionId) {
+    elseActionId = directDoConditionToAction.target;
+  }
+  
+  const thenAction = thenActionId ? resolveAction(thenActionId, ctx) : undefined;
+  const elseAction = elseActionId ? resolveAction(elseActionId, ctx) : undefined;
+  
+  // Build inline conditional action
+  // Note: Only use 'do' property, not both 'do' and 'then' since they are aliases
+  const inlineCondition: InlineConditionalAction = {
+    if: condition,
+    do: thenAction ?? undefined,
+    else: elseAction ?? undefined
+  };
+  
+  return { inlineCondition };
+}
+
+/**
  * Find the terminal condition(s) in a condition chain (where actions connect).
  * Returns then/else action IDs.
  */
@@ -237,8 +359,10 @@ function findTerminalActions(
       // Handle DO nodes - they are intermediaries for then/else paths
       if (isDo(targetNode)) {
         // Find the action connected to this DO node
+        // Accept both DO_OUTPUT handle and legacy edges without handle
         const doToActionEdges = ctx.edges.filter(e => 
           e.source === targetNode.id &&
+          (e.sourceHandle === HandleId.DO_OUTPUT || !e.sourceHandle) &&
           isAct(ctx.nodes.find(n => n.id === e.target)!)
         );
         
@@ -250,22 +374,45 @@ function findTerminalActions(
             thenActionId = doEdge.target;
           }
         }
+        
+        // Also check for DO -> Condition OR DO -> Action connections (inline conditionals - "after do allow conditions")
+        // DO -> Condition: inline condition that evaluates to then/else actions
+        // DO -> Action: direct else action from the inline condition
+        const allDoEdges = ctx.edges.filter(e => 
+          e.source === targetNode.id && 
+          e.sourceHandle === HandleId.DO_CONDITION_OUTPUT
+        );
+        
+        // Check if the do-condition-output goes to a condition (inline conditional) or an action (direct else)
+        const doToConditionEdge = allDoEdges.find(e => isCond(ctx.nodes.find(n => n.id === e.target)!));
+        const doToActionEdge = allDoEdges.find(e => isAct(ctx.nodes.find(n => n.id === e.target)!));
+        
+        if (doToActionEdge && !elseActionId) {
+          // Direct else action - do-condition-output goes directly to an action
+          elseActionId = doToActionEdge.target;
+        } else if (doToConditionEdge) {
+          // Inline conditional - do-condition-output goes to a condition
+          // This will be handled by resolveDoInlineCondition in the main flow
+        }
+        
+        if (doToConditionEdge) {
+          // Find the inline condition and its actions
+          // Note: We don't need to call findTerminalActions here because the main flow
+          // will handle inline conditions via resolveDoInlineCondition
+          // The inline condition will be properly converted to an InlineConditionalAction there
+        }
         continue;
       }
       
       // Regular action nodes
       if (!isAct(targetNode)) continue;
       
-      if (edge.sourceHandle === HandleId.ELSE_OUTPUT || edge.sourceHandle === HandleId.DO_OUTPUT) {
-        // Check if it's actually an else by looking at the branchType of the DO node
-        const targetDoNode = ctx.nodes.find(n => n.id === edge.target);
-        if (targetDoNode?.data?.branchType === BranchType.ELSE) {
-          elseActionId = edge.target;
-        } else {
-          thenActionId = edge.target;
-        }
+      // Check if this is an else path by looking at the sourceHandle
+      if (edge.sourceHandle === HandleId.ELSE_OUTPUT) {
+        // This is an else action
+        elseActionId = edge.target;
       } else {
-        // then-output, condition-output, or output (implicit then)
+        // then-output, condition-output, output (implicit then), or DO_OUTPUT
         thenActionId = edge.target;
       }
     }
@@ -358,27 +505,98 @@ export function parseGraph(
       };
       builder.withIf(conditionGroup);
       
-      // Find terminal actions for this condition group
-      // We need to find actions connected to any condition in the group
-      // For simplicity, we'll check the first condition's terminal actions
-      // In a real implementation, you'd need to track which condition connects to actions
-      const firstConditionId = ctx.edges.find(e => 
-        e.source === groupId && 
-        e.sourceHandle?.startsWith('cond')
-      )?.target;
+      // Find all conditions in this group that have terminal actions
+      const conditionIdsInGroup = ctx.edges
+        .filter(e => e.source === groupId && e.sourceHandle?.startsWith('cond'))
+        .map(e => e.target);
       
-      if (firstConditionId) {
-        const { thenActionId, elseActionId } = findTerminalActions(firstConditionId, ctx);
+
+      
+      let thenAct: Action | ActionGroup | InlineConditionalAction | null = null;
+      let elseAct: Action | ActionGroup | null = null;
+      
+      // Helper function to find all DO nodes reachable from a condition (including through chaining)
+      function findDoNodesFromCondition(startCondId: string): string[] {
+        const doNodeIds: string[] = [];
+        const visited = new Set<string>();
         
-        if (thenActionId) {
-          const thenAct = resolveAction(thenActionId, ctx);
-          if (thenAct) builder.withDo(thenAct);
+        function traverse(condId: string) {
+          if (visited.has(condId)) return;
+          visited.add(condId);
+          
+          // Find DO nodes directly connected to this condition
+          const directDoEdges = ctx.edges.filter(e =>
+            e.source === condId &&
+            (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === 'output' || !e.sourceHandle) &&
+            ctx.nodes.find(n => n.id === e.target && n.type === NodeType.DO)
+          );
+          for (const edge of directDoEdges) {
+            doNodeIds.push(edge.target);
+          }
+          
+          // Follow condition chain edges
+          const chainEdges = ctx.edges.filter(e =>
+            e.source === condId &&
+            (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === HandleId.CONDITION_OUTPUT_LEGACY) &&
+            ctx.nodes.find(n => n.id === e.target && isCond(n))
+          );
+          for (const edge of chainEdges) {
+            traverse(edge.target);
+          }
         }
         
-        if (elseActionId) {
-          const elseAct = resolveAction(elseActionId, ctx);
-          if (elseAct) builder.elseRule(elseAct);
+        traverse(startCondId);
+        return doNodeIds;
+      }
+      
+      for (const condId of conditionIdsInGroup) {
+        // Find all DO nodes reachable from this condition (including through chaining)
+        const doNodeIds = findDoNodesFromCondition(condId);
+        
+        // Check each DO node for inline conditions first
+        for (const doNodeId of doNodeIds) {
+          // Pass the source condition ID so resolveDoInlineCondition can use it
+          const inlineResult = resolveDoInlineCondition(doNodeId, ctx, condId);
+          if (inlineResult?.inlineCondition && !thenAct) {
+            // This DO node has an inline condition - use it directly as the then action
+            // The inline conditional already has its own if/then/else from the DO -> Condition chain
+            thenAct = inlineResult.inlineCondition as Action;
+            
+            // Also get else action from DO_OUTPUT if available
+            const doOutputEdge = ctx.edges.find(e =>
+              e.source === doNodeId &&
+              e.sourceHandle === HandleId.DO_OUTPUT &&
+              ctx.nodes.find(n => n.id === e.target && isAct(n))
+            );
+            if (doOutputEdge && !elseAct) {
+              const resolvedElseAct = resolveAction(doOutputEdge.target, ctx);
+              if (resolvedElseAct) elseAct = resolvedElseAct;
+            }
+          }
         }
+        
+        // Also check for regular terminal actions (if no inline condition was found)
+        const { thenActionId, elseActionId } = findTerminalActions(condId, ctx);
+        
+        if (thenActionId && !thenAct) {
+          const resolvedThenAct = resolveAction(thenActionId, ctx);
+          if (resolvedThenAct) thenAct = resolvedThenAct;
+        }
+        
+        if (elseActionId && !elseAct) {
+          const resolvedElseAct = resolveAction(elseActionId, ctx);
+          if (resolvedElseAct) elseAct = resolvedElseAct;
+        }
+      }
+      
+
+      
+      if (thenAct) {
+        builder.withDo(thenAct);
+      }
+      
+      if (elseAct) {
+        builder.elseRule(elseAct);
       }
     }
   }
@@ -406,8 +624,28 @@ export function parseGraph(
     }
     
     // Check if then/else actions are ActionGroups
-    const thenAct = thenActionId ? resolveAction(thenActionId, ctx) : null;
-    const elseAct = elseActionId ? resolveAction(elseActionId, ctx) : null;
+    let thenAct = thenActionId ? resolveAction(thenActionId, ctx) : null;
+    let elseAct = elseActionId ? resolveAction(elseActionId, ctx) : null;
+    
+    // Check for DO -> Condition connections (inline conditionals - "after do allow conditions")
+    // For each condition that connects to a DO node, check if that DO has an inline condition
+    for (const condId of rootConditions) {
+      const doEdges = ctx.edges.filter(e =>
+        e.source === condId &&
+        (e.sourceHandle === HandleId.CONDITION_OUTPUT || e.sourceHandle === 'output' || !e.sourceHandle) &&
+        ctx.nodes.find(n => n.id === e.target && n.type === NodeType.DO)
+      );
+      
+      for (const doEdge of doEdges) {
+        // Pass the source condition ID so resolveDoInlineCondition can use it
+        const inlineResult = resolveDoInlineCondition(doEdge.target, ctx, condId);
+        if (inlineResult?.inlineCondition) {
+          // This DO node has an inline condition - use it directly as the then action
+          // The inline conditional already has its own if/then/else from the DO -> Condition chain
+          thenAct = inlineResult.inlineCondition as Action;
+        }
+      }
+    }
     
     if (thenAct) {
       builder.withDo(thenAct);

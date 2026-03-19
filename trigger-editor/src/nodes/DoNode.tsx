@@ -20,6 +20,9 @@ import { SelectInput, FormField } from '../components/FormFields';
  * 
  * By default, condition -> action/action_group is implicit DO,
  * but for more complex cases, you can explicitly use a DO node.
+ * 
+ * Also supports "after do allow conditions" - connecting to Condition nodes
+ * for inline conditional actions within the DO branch.
  */
 export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
@@ -39,15 +42,22 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
   const hasActionOutput = edges.some(e => 
     e.source === id && 
     (getNode(e.target)?.type === NodeType.ACTION ||
-     getNode(e.target)?.type === NodeType.ACTION_GROUP
-    )
+     getNode(e.target)?.type === NodeType.ACTION_GROUP)
   );
+  
+  // Check if DoNode has outgoing connection to Condition (for "after do allow conditions")
+  const hasConditionOutput = edges.some(e => 
+    e.source === id && 
+    e.sourceHandle === NodeHandle.DO_CONDITION_OUTPUT &&
+    getNode(e.target)?.type === NodeType.CONDITION
+  );
+  
   // Determine colors based on branch type
   const isElse = data.branchType === BranchType.ELSE;
   
-  //console.log('edges', edges,hasConditionInput,hasActionOutput);
-  // Show output when there's input connection
+  // Show outputs when there's input connection
   const showOutput = hasConditionInput;
+  const showConditionOutput = hasConditionInput; // Show condition output handle when there's input
   const nodeColor = isElse ? '#ff6b6b' : 'var(--do-color, #9b59b6)';
 
   return (
@@ -67,19 +77,37 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
       />
       
       {showOutput && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          id={NodeHandle.DO_OUTPUT}
-          className="node-output-handle"
-          style={{ 
-            background: nodeColor, 
-            border: '2px solid var(--bg-color)', 
-            width: '12px', 
-            height: '12px'
-          }}
-          title="Connect to Action or ActionGroup"
-        />
+        <>
+          {/* Action output handle */}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id={NodeHandle.DO_OUTPUT}
+            className="node-output-handle"
+            style={{ 
+              background: nodeColor, 
+              border: '2px solid var(--bg-color)', 
+              width: '12px', 
+              height: '12px'
+            }}
+            title="Connect to Action or ActionGroup"
+          />
+          {/* Condition output handle - for "after do allow conditions" */}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id={NodeHandle.DO_CONDITION_OUTPUT}
+            className="node-output-handle"
+            style={{ 
+              background: 'var(--condition-color)', 
+              border: '2px solid var(--bg-color)', 
+              width: '12px', 
+              height: '12px',
+              top: '60%'
+            }}
+            title={hasConditionOutput ? 'Condition connected' : 'Add condition after DO (inline if/then/else)'}
+          />
+        </>
       )}
       
       <div className="node-title node-title--do">
@@ -100,7 +128,9 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
           {hasConditionInput 
-            ? (hasActionOutput ? `${isElse ? 'ELSE' : 'DO'} path configured` : 'Connect to Action or ActionGroup')
+            ? (hasActionOutput || hasConditionOutput 
+              ? `${isElse ? 'ELSE' : 'DO'} path configured` 
+              : 'Connect to Action, ActionGroup, or Condition')
             : 'Connect from Condition to start'}
         </div>
       </div>

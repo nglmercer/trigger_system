@@ -249,12 +249,21 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     }
 
     // ============================================================
-    // RULE 9: DO Node - connects to Actions or ActionGroups
+    // RULE 9: DO Node - connects to Actions, ActionGroups, or Conditions
     // ============================================================
     if (sourceNode.type === NodeType.DO) {
-      // DO node can only connect to Action or ActionGroup
+      // DO node can connect to Action or ActionGroup
       if (targetNode.type === NodeType.ACTION || targetNode.type === NodeType.ACTION_GROUP) {
         return true;
+      }
+      // DO node can connect to Condition (for "after do allow conditions")
+      // This enables inline conditionals within the DO branch
+      if (targetNode.type === NodeType.CONDITION) {
+        // Only allow connection via DO_CONDITION_OUTPUT handle
+        if (connection.sourceHandle === NodeHandle.DO_CONDITION_OUTPUT) {
+          return true;
+        }
+        return false;
       }
       // DO cannot connect to other types
       return false;

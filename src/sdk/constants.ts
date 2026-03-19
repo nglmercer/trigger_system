@@ -44,6 +44,8 @@ export const HandleId = {
   // DoNode handles
   DO_INPUT: 'do-input',
   DO_OUTPUT: 'do-output',
+  // DO node can connect to condition for inline conditionals (after do allow conditions)
+  DO_CONDITION_OUTPUT: 'do-condition-output',
 } as const;
 
 export type HandleId = typeof HandleId[keyof typeof HandleId];

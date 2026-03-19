@@ -1,0 +1,30 @@
+- id: rule-u67sv
+  name: New Rule
+  on: "123"
+  if:
+    operator: AND
+    conditions:
+      - field: data
+        operator: EQ
+        value: ""
+      - field: data
+        operator: EQ
+        value: "123"
+  do:
+    mode: ALL
+    actions:
+      - type: log1
+        params: {}
+      - if:
+          field: data
+          operator: EQ
+          value: ""
+      - do:
+          type: log2
+          params: {}
+      - else:
+          type: log3
+          params: {}
+  else:
+    - type: log4
+      params: {}
