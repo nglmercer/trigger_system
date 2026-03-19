@@ -18,13 +18,22 @@
       - if:
           field: data
           operator: EQ
-          value: "subelement"
-      - do:
+          value: subelement
+        do:
           type: log2
           params: {}
-      - else:
+        else:
           type: log3
           params: {}
   else:
-    - type: log4
-      params: {}
+    mode: ALL
+    actions:
+      - type: log4
+        params: {}
+      - if:
+          field: data
+          operator: EQ
+          value: "321"
+        do:
+          type: log5
+          params: {}
