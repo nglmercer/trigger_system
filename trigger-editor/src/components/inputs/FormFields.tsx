@@ -3,8 +3,8 @@ import { useState, useRef } from 'react';
 import { AutocompletePopup, HoverTooltip } from '../AutocompletePopup.tsx';
 import { findVariableAtOffset, findFirstVariable, getHoverInfo } from '../../lsp/engine.ts';
 
-// Re-export HoverTooltip for use in OutputPanel
-export { HoverTooltip };
+// Re-export LSP components for use in other panels
+export { HoverTooltip, AutocompletePopup };
 
 export interface SelectOption {
   value: string;
@@ -60,6 +60,9 @@ interface TextInputProps {
   autocompleteMode?: 'variable' | 'value' | 'none';
   /** Show only primitive values (string, number, boolean) in autocomplete */
   primitiveOnly?: boolean;
+  autoFocus?: boolean;
+  style?: React.CSSProperties;
+  onBlur?: () => void;
 }
 
 export function TextInput({ 
@@ -70,7 +73,10 @@ export function TextInput({
   disabled = false,
   className = 'node-input',
   autocompleteMode = 'variable',
-  primitiveOnly = false
+  primitiveOnly = false,
+  autoFocus = false,
+  style,
+  onBlur
 }: TextInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -131,8 +137,13 @@ export function TextInput({
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         disabled={disabled}
+        autoFocus={autoFocus}
+        style={style}
         onFocus={() => setIsFocused(true)}
-        onBlur={() => setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150)}
+        onBlur={() => {
+          if (onBlur) onBlur();
+          setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150);
+        }}
         onKeyUp={updateCursorVar}
         onClick={updateCursorVar}
         onSelect={updateCursorVar}

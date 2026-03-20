@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronIcon, CopyIcon, LinkIcon, PlusIcon, TrashIcon, CodeIcon, ListIcon } from './Icons.tsx';
-import { AutocompletePopup, HoverTooltip } from './AutocompletePopup.tsx';
+import { TextInput, HoverTooltip, AutocompletePopup } from './inputs/FormFields.tsx';
 import { findVariableAtOffset, findFirstVariable, getHoverInfo } from '../lsp/engine.ts';
 
 /**
@@ -175,30 +175,14 @@ const JsonNode = ({
   const renderValue = () => {
     if (editingField === 'value') {
       return (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
-            <AutocompletePopup
-                value={editValue}
-                onSelect={(v) => { setEditValue(v); }}
-                anchorRef={inputRef}
-                isFocused={true}
-            />
-            <input 
-              ref={inputRef}
+        <div style={{ minWidth: '200px', display: 'inline-block' }}>
+            <TextInput 
               autoFocus
               value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
+              onChange={(val) => setEditValue(String(val))}
               onBlur={commitEdit}
-              onKeyDown={handleKeyDown}
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--primary)',
-                color: 'white',
-                fontSize: '11px',
-                padding: '0 4px',
-                borderRadius: '2px',
-                width: '120px',
-                fontFamily: 'inherit'
-              }}
+              className="params-modal-input"
+              style={{ padding: '4px 8px', fontSize: '11px', width: '300px' }}
             />
         </div>
       );

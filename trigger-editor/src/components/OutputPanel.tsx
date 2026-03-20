@@ -20,43 +20,70 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
   const [hoveredVar, setHoveredVar] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  const getVarAtPoint = useCallback((e: React.MouseEvent) => {
-    // Get the text character position under the mouse
-    const range = document.caretRangeFromPoint?.(e.clientX, e.clientY);
-    if (!range || !preRef.current) return null;
-    const text = preRef.current.textContent || '';
-    // Walk the text nodes to get character offset
-    let offset = 0;
-    const walker = document.createTreeWalker(preRef.current, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-      if (node === range.startContainer) {
-        offset += range.startOffset;
-        break;
-      } else {
-        offset += (node.textContent || '').length;
-      }
-    }
-    // Find if current offset is inside a ${...} expression
-    const regex = /\$\{([a-zA-Z0-9_.]+)\}/g;
-    let m;
-    while ((m = regex.exec(text)) !== null) {
-      if (offset >= m.index && offset <= m.index + m[0].length) {
-        return m[1];
-      }
-    }
-    return null;
-  }, []);
+  // const getVarAtPoint = useCallback((e: React.MouseEvent) => {
+  //   let targetNode: Node | null = null;
+  //   let offsetInNode = 0;
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const found = getVarAtPoint(e);
-    if (found && getHoverInfo(found) !== undefined) {
-      setHoveredVar(found);
-      setTooltipPos({ x: e.clientX, y: e.clientY });
-    } else {
-      setHoveredVar(null);
-    }
-  }, [getVarAtPoint]);
+  //   // 1. Standard API (Modern browsers: Chrome 128+, Firefox 20+, Safari 17.4+)
+  //   if (typeof document.caretPositionFromPoint === 'function') {
+  //     const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+  //     if (pos) {
+  //       targetNode = pos.offsetNode;
+  //       offsetInNode = pos.offset;
+  //     }
+  //   } 
+  //   // 2. Legacy/Deprecated API fallback (Older Chrome, Safari)
+  //   // else if (typeof (document as any).caretRangeFromPoint === 'function') {
+  //   //   const range = (document as any).caretRangeFromPoint(e.clientX, e.clientY);
+  //   //   if (range) {
+  //   //     targetNode = range.startContainer;
+  //   //     offsetInNode = range.startOffset;
+  //   //   }
+  //   // }
+
+  //   if (!targetNode || !preRef.current) return null;
+
+  //   const text = preRef.current.textContent || '';
+  //   let offset = 0;
+  //   const walker = document.createTreeWalker(preRef.current, NodeFilter.SHOW_TEXT);
+  //   let node;
+  //   while ((node = walker.nextNode())) {
+  //     if (node === targetNode) {
+  //       offset += offsetInNode;
+  //       break;
+  //     } else {
+  //       offset += (node.textContent || '').length;
+  //     }
+  //   }
+
+  //   const regex = /\$\{([a-zA-Z0-9_.]+)\}/g;
+  //   let m;
+  //   while ((m = regex.exec(text)) !== null) {
+  //     if (offset >= m.index && offset <= m.index + m[0].length) {
+  //       return m[1];
+  //     }
+  //   }
+  //   return null;
+  // }, []);
+
+  // const hoverTimer = useRef<any>(null);
+
+  // const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  //   const x = e.clientX;
+  //   const y = e.clientY;
+    
+  //   if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    
+  //   const found = getVarAtPoint(e);
+  //   if (found && getHoverInfo(found) !== undefined) {
+  //     hoverTimer.current = setTimeout(() => {
+  //       setHoveredVar(found);
+  //       setTooltipPos({ x, y });
+  //     }, 500); // Consistent 500ms delay
+  //   } else {
+  //     setHoveredVar(null);
+  //   }
+  // }, [getVarAtPoint]);
 
   const renderTooltip = () => {
     if (!hoveredVar) return null;
@@ -94,16 +121,23 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
     const parts: React.ReactNode[] = [];
     let key = 0;
     
-    // Token types and their colors
+    // Token types and their colors (GitHub Dark style)
     const tokenStyles: Record<string, React.CSSProperties> = {
-      key: { color: '#79c0ff', fontWeight: 500 },
-      string: { color: '#a5d6ff' },
-      number: { color: '#79c0ff' },
-      boolean: { color: '#ff7b72', fontWeight: 500 },
+      key: { color: '#7ee787', fontWeight: 500 }, // Greenish for keys
+      string: { color: '#a5d6ff' },               // Light blue
+      number: { color: '#79c0ff' },               // Blue
+      boolean: { color: '#ff7b72' },              // Coral red
       null: { color: '#ff7b72', fontStyle: 'italic' },
       comment: { color: '#8b949e', fontStyle: 'italic' },
-      punctuation: { color: '#8b949e' },
-      variable: { color: '#58a6ff', background: 'rgba(88,166,255,0.12)', borderRadius: '3px', padding: '0 2px', cursor: 'help', borderBottom: '1px dashed rgba(88,166,255,0.5)' },
+      punctuation: { color: '#d1d5da' },          // Gray
+      variable: { 
+        color: '#58a6ff', 
+        background: 'rgba(56, 139, 253, 0.1)', 
+        borderRadius: '3px', 
+        padding: '0 2px', 
+        cursor: 'help',
+        boxShadow: '0 0 0 1px rgba(56, 139, 253, 0.2)'
+      },
       variableUnknown: { color: '#e6edf3' },
     };
 
@@ -147,39 +181,32 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           continue;
         }
         
-        // Numbers
+        // Numbers and versions (e.g. 1.0)
         const currentChar = input[i];
         const nextChar = input[i + 1];
         if (currentChar && (/[0-9]/.test(currentChar) || (currentChar === '-' && nextChar && /[0-9]/.test(nextChar)))) {
           const start = i;
           if (currentChar === '-') i++;
-          while (i < input.length) {
-            const ch = input[i];
-            if (!ch || !/[0-9.]/.test(ch)) break;
-            i++;
-          }
+          while (i < input.length && /[0-9.]/.test(input[i]!)) i++;
           tokens.push({ type: 'number', value: input.slice(start, i) });
           continue;
         }
         
-        // Booleans and null
-        if (currentChar && /[a-zA-Z]/.test(currentChar)) {
+        // Words (keys, booleans, null, or words)
+        if (currentChar && /[a-zA-Z_]/.test(currentChar)) {
           const start = i;
-          while (i < input.length) {
-            const ch = input[i];
-            if (!ch || !/[a-zA-Z0-9_-]/.test(ch)) break;
-            i++;
-          }
+          while (i < input.length && /[a-zA-Z0-9_-]/.test(input[i]!)) i++;
           const word = input.slice(start, i);
+          
           if (word === 'true' || word === 'false') {
             tokens.push({ type: 'boolean', value: word });
           } else if (word === 'null' || word === '~') {
             tokens.push({ type: 'null', value: word });
           } else {
-            // Check if it's a key (followed by :)
-            let j = i;
-            while (j < input.length && input[j] === ' ') j++;
-            if (j < input.length && input[j] === ':') {
+            // Check if followed by colon (is key)
+            let tempI = i;
+            while (tempI < input.length && input[tempI] === ' ') tempI++;
+            if (input[tempI] === ':') {
               tokens.push({ type: 'key', value: word });
             } else {
               tokens.push({ type: 'string', value: word });
@@ -188,14 +215,9 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           continue;
         }
         
-        // Punctuation and whitespace
-        if (currentChar && (/[{}\[\]:,\-|>]/.test(currentChar) || /\s/.test(currentChar))) {
+        if (currentChar && /[{}[\],: \-|>]/.test(currentChar)) {
           const start = i;
-          while (i < input.length) {
-            const ch = input[i];
-            if (!ch || !(/[{}\[\]:,\-|>]/.test(ch) || /\s/.test(ch))) break;
-            i++;
-          }
+          while (i < input.length && /[{}[\],: \-|>]/.test(input[i]!)) i++;
           tokens.push({ type: 'punctuation', value: input.slice(start, i) });
           continue;
         }
@@ -213,14 +235,15 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
     const tokens = tokenize(text);
     
     tokens.forEach((token) => {
-      if (token.type === 'variable') {
-        const hasValue = token.varName ? getHoverInfo(token.varName) !== undefined : false;
+      if (token.type === 'variable' && token.varName) {
+        const varName = token.varName;
+        const hasValue = getHoverInfo(varName) !== undefined;
         parts.push(
           <span
             key={key++}
             onMouseEnter={(e) => {
-              if (hasValue && token.varName) {
-                setHoveredVar(token.varName);
+              if (hasValue) {
+                setHoveredVar(varName);
                 setTooltipPos({ x: e.clientX, y: e.clientY });
               }
             }}

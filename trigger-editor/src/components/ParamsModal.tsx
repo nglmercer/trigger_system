@@ -4,6 +4,7 @@ import { TextInput, TextAreaInput } from './inputs/FormFields.tsx';
 import { JsonPreview } from './JsonPreview.tsx';
 import type { ParamEntry, JsonValue } from '../utils/getData.ts';
 import { getValueType, stringToValue, valueToString, generateId, parseParams } from '../utils/getData.ts';
+import { TrashIcon } from './Icons.tsx'
 export const openParamsModal = (value: string, onChange: (val: string) => void) => {
   window.dispatchEvent(new CustomEvent('open-params-modal', { detail: { value, onChange } }));
 };
@@ -130,15 +131,53 @@ export function ParamsModal() {
       <div 
         className="params-modal-content nodrag nopan"
         style={{
-          backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)',
-          borderRadius: '8px', padding: '16px', width: '500px', maxWidth: '90vw', maxHeight: '80vh',
-          overflowY: 'auto', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px'
+          backgroundColor: 'var(--bg-color)', 
+          border: '1px solid var(--border-color)',
+          borderRadius: '12px', 
+          padding: '24px', 
+          width: '850px', // Larger size
+          maxWidth: '95vw', 
+          maxHeight: '90vh',
+          overflowY: 'auto', 
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
+          position: 'relative', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '20px',
+          animation: 'modalSlideIn 0.3s ease-out'
         }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
       >
+        <style>
+          {`
+            @keyframes modalSlideIn {
+              from { opacity: 0; transform: translateY(20px) scale(0.98); }
+              to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .params-builder__entry {
+              display: grid;
+              grid-template-columns: 1.2fr 110px 1.8fr auto;
+              gap: 16px;
+              align-items: center;
+              padding: 12px;
+              border-radius: 10px;
+              background: rgba(255, 255, 255, 0.04);
+              border: 1px solid rgba(255, 255, 255, 0.05);
+              transition: all 0.2s;
+            }
+            .params-builder__entry:hover {
+              background: rgba(255, 255, 255, 0.08);
+              border-color: rgba(255, 255, 255, 0.15);
+            }
+            .params-modal-input {
+              font-size: 13px !important;
+              padding: 10px 14px !important;
+              background: rgba(0, 0, 0, 0.3) !important;
+            }
+          `}
+        </style>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-color)', fontWeight: 600 }}>Edit Parameters</h3>
           <button 
@@ -149,56 +188,98 @@ export function ParamsModal() {
         </div>
         
         <div className="params-builder">
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
-            <button type="button" className={`node-btn ${viewMode === 'builder' ? 'node-btn--primary' : ''}`} onClick={() => setViewMode('builder')} style={{ flex: 1, fontSize: '11px', padding: '4px 8px' }}>Builder</button>
-            <button type="button" className={`node-btn ${viewMode === 'json' ? 'node-btn--primary' : ''}`} onClick={() => setViewMode('json')} style={{ flex: 1, fontSize: '11px', padding: '4px 8px' }}>JSON</button>
+          <div style={{ 
+            display: 'flex', 
+            background: 'var(--bg-secondary)', 
+            padding: '4px', 
+            borderRadius: '8px', 
+            marginBottom: '16px',
+            border: '1px solid var(--border)'
+          }}>
+            <button 
+              type="button" 
+              className={`node-btn ${viewMode === 'builder' ? 'node-btn--primary' : ''}`} 
+              onClick={() => setViewMode('builder')} 
+              style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '6px' }}
+            >
+              Builder View
+            </button>
+            <button 
+              type="button" 
+              className={`node-btn ${viewMode === 'json' ? 'node-btn--primary' : ''}`} 
+              onClick={() => setViewMode('json')} 
+              style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '6px' }}
+            >
+              JSON / Tree View
+            </button>
           </div>
 
           {viewMode === 'builder' ? (
-            <div className="params-builder__list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="params-builder__list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 110px 1.8fr 36px', gap: '16px', padding: '0 12px', color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
+                <span>Parameter Name</span>
+                <span>Type</span>
+                <span>Value / Variable</span>
+                <span></span>
+              </div>
               {entries.map((entry) => (
-                <div key={entry.id} className="params-builder__entry" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                <div key={entry.id} className="params-builder__entry">
+                  <div style={{ minWidth: 0 }}>
                     <TextInput 
+                      className="params-modal-input"
                       value={entry.key} 
                       onChange={(val) => updateEntry(entry.id, { key: String(val) })} 
-                      placeholder="key" 
+                      placeholder="e.g. user.id" 
                     />
                   </div>
-                  <select className="node-input" value={entry.type} onChange={(e) => {
+                  <select className="node-input params-modal-input" value={entry.type} onChange={(e) => {
                     const newType = e.target.value as ParamEntry['type'];
                     const defaultVal = newType === 'string' ? '' : newType === 'number' ? 0 : newType === 'boolean' ? false : newType === 'array' ? [] : newType === 'object' ? {} : null;
                     updateEntry(entry.id, { type: newType, value: defaultVal });
-                  }} style={{ width: '70px', fontSize: '11px', padding: '4px' }}>
-                    <option value="string">Text</option><option value="number">Number</option><option value="boolean">Bool</option><option value="array">Array</option><option value="object">Object</option>
+                  }}>
+                    <option value="string">Text</option>
+                    <option value="number">Number</option>
+                    <option value="boolean">Bool</option>
+                    <option value="array">Array</option>
+                    <option value="object">Object</option>
                   </select>
-                  {entry.type === 'boolean' ? (
-                    <select className="node-input" value={String(entry.value)} onChange={(e) => updateEntry(entry.id, { value: e.target.value === 'true' })} style={{ width: '60px', fontSize: '11px', padding: '4px' }}>
-                      <option value="true">true</option><option value="false">false</option>
-                    </select>
-                  ) : entry.type === 'array' || entry.type === 'object' ? (
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                  
+                  <div style={{ minWidth: 0 }}>
+                    {entry.type === 'boolean' ? (
+                      <select className="node-input params-modal-input" value={String(entry.value)} onChange={(e) => updateEntry(entry.id, { value: e.target.value === 'true' })}>
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                      </select>
+                    ) : entry.type === 'array' || entry.type === 'object' ? (
                       <TextInput 
-                        value={JSON.stringify(entry.value)} 
+                        className="params-modal-input"
+                        value={typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value)} 
                         onChange={(val) => updateEntry(entry.id, { value: stringToValue(String(val), entry.type) })} 
-                        placeholder={entry.type === 'array' ? '[]' : '{}'} 
+                        placeholder={entry.type === 'array' ? '[...]' : '{...}'} 
                       />
-                    </div>
-                  ) : (
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    ) : (
                       <TextInput 
+                        className="params-modal-input"
                         type={entry.type === 'number' ? 'number' : 'text'} 
                         value={valueToString(entry.value)} 
                         onChange={(val) => updateEntry(entry.id, { value: stringToValue(String(val), entry.type) })} 
-                        placeholder={entry.type === 'number' ? '0' : 'value'} 
+                        placeholder={entry.type === 'number' ? '0' : 'Enter value...'} 
                       />
-                    </div>
-                  )}
-                  <button type="button" onClick={() => removeEntry(entry.id)} className="node-btn node-btn--danger" style={{ padding: '4px 6px', fontSize: '12px' }} title="Remove">×</button>
+                    )}
+                  </div>
+                  
+                  <button type="button" onClick={() => removeEntry(entry.id)} className="node-btn node-btn--danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '6px' }} title="Remove"><TrashIcon /></button>
                 </div>
               ))}
-              {entries.length === 0 && <div className="params-builder__empty" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-secondary)', fontSize: '12px' }}>No parameters defined</div>}
-              <button type="button" onClick={addEntry} className="node-btn node-btn--secondary" style={{ width: '100%', marginTop: '8px', fontSize: '12px' }}>+ Add Parameter</button>
+              {entries.length === 0 && <div className="params-builder__empty" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', fontSize: '13px', border: '1px dashed var(--border)', borderRadius: '8px' }}>No parameters defined yet. Start by adding one.</div>}
+              <button 
+                type="button" 
+                onClick={addEntry} 
+                className="node-btn node-btn--secondary" 
+                style={{ width: '100%', marginTop: '12px', padding: '10px', fontSize: '13px', borderStyle: 'dashed' }}
+              >
+                + Add New Parameter
+              </button>
             </div>
           ) : (
             <div className="params-builder__json">
@@ -208,7 +289,7 @@ export function ParamsModal() {
                   })()} 
                   editable={true}
                   onChange={handleJsonUpdate}
-                  maxHeight="450px"
+                  maxHeight="600px"
                 />
             </div>
           )}
