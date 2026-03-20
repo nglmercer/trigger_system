@@ -49,6 +49,7 @@ import {
   errorResponse,
 } from './importExportTypes';
 import { createYamlFilePicker } from './filePicker';
+import { sanitizeEdgesForImport } from './exportImport';
 
 // ============================================================================
 // YAML to Nodes Conversion
@@ -177,12 +178,15 @@ export function parseYamlContent(
     // The SDK nodes use 'event', 'condition', etc. but we need to map to NodeType
     const nodes: AppNodes = nodesResult.nodes.map(node => ({
       ...node,
-      type: node.type as any, // Will be mapped by React Flow
+      type: node.type as NodeType, // Will be mapped by React Flow
     })) as AppNodes;
     
-    const edges: AppEdges = nodesResult.edges.map(edge => ({
+    const rawEdges = nodesResult.edges.map(edge => ({
       ...edge,
-    })) as AppEdges;
+    }));
+    
+    // Sanitize edges to ensure they have correct handles for the editor
+    const edges = sanitizeEdgesForImport(rawEdges as Edge[], nodes as AppNodes) as AppEdges;
     
     // Create the import result
     const result = createImportResult(nodes, edges, {
@@ -212,7 +216,7 @@ export function parseYamlContent(
  * Parse YAML from a file (string content)
  * Used by the file picker
  */
-export function parseYamlFile(content: string, filename: string): ImportResponse {
+export function parseYamlFile(content: string): ImportResponse {
   return parseYamlContent(content, content);
 }
 

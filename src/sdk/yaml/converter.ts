@@ -312,86 +312,42 @@ export function triggerRuleToNodes(
       // Process DO actions (then branch)
       const doActions = ensureArray(rule.do);
       if (doActions.length > 0) {
-        // For AND group, connect all condition nodes to actions
-        // For OR group, only connect the last condition (any branch leads to actions)
-        const isAndGroup = groupNodeId && conditions.length > 0 && 
-          (() => {
-            const groupCond = conditions.find(utilsIsConditionGroup);
-            return groupCond && utilsIsConditionGroup(groupCond) && groupCond.operator === 'AND';
-          })();
+        // For AND groups with sequential conditions, use the last condition node as source
+        // This ensures the flow is: event -> condition_group -> condition1 -> condition2 -> ... -> action_group
+        const lastCondNode = conditionNodes.length > 0 
+          ? conditionNodes[conditionNodes.length - 1]!.id 
+          : groupNodeId || eventNode.id;
         
-        if (isAndGroup && conditionNodes.length > 0) {
-          // Connect all conditions to the action_group
-          // The first condition will be the entry point, but we need edges from ALL conditions
-          const firstCondNode = conditionNodes[0]!.id;
-          
-          // Create a virtual connection from all other conditions to the action group
-          // by connecting from the condition group node (which all conditions connect to)
-          // Instead, we'll use the group node as the source for actions
-          processActions(
-            doActions,
-            nodes,
-            edges,
-            groupNodeId!, // Use group node as source for AND conditions
-            getNodeId,
-            getEdgeId,
-            getPosition,
-            'do'
-          );
-        } else {
-          const lastCondNode = conditionNodes.length > 0 
-            ? conditionNodes[conditionNodes.length - 1]!.id 
-            : groupNodeId || eventNode.id;
-          
-          processActions(
-            doActions,
-            nodes,
-            edges,
-            lastCondNode,
-            getNodeId,
-            getEdgeId,
-            getPosition,
-            'do'
-          );
-        }
+        processActions(
+          doActions,
+          nodes,
+          edges,
+          lastCondNode,
+          getNodeId,
+          getEdgeId,
+          getPosition,
+          'do'
+        );
       }
       
       // Process ELSE actions
       const elseActions = ensureArray(rule.else);
       if (elseActions.length > 0) {
-        const isAndGroup = groupNodeId && conditions.length > 0 && 
-          (() => {
-            const groupCond = conditions.find(utilsIsConditionGroup);
-            return groupCond && utilsIsConditionGroup(groupCond) && groupCond.operator === 'AND';
-          })();
+        // For AND groups with sequential conditions, use the last condition node as source
+        const lastCondNode = conditionNodes.length > 0 
+          ? conditionNodes[conditionNodes.length - 1]!.id 
+          : groupNodeId || eventNode.id;
         
-        if (isAndGroup && conditionNodes.length > 0) {
-          processActions(
-            elseActions,
-            nodes,
-            edges,
-            groupNodeId!,
-            getNodeId,
-            getEdgeId,
-            getPosition,
-            'else'
-          );
-        } else {
-          const lastCondNode = conditionNodes.length > 0 
-            ? conditionNodes[conditionNodes.length - 1]!.id 
-            : groupNodeId || eventNode.id;
-          
-          processActions(
-            elseActions,
-            nodes,
-            edges,
-            lastCondNode,
-            getNodeId,
-            getEdgeId,
-            getPosition,
-            'else'
-          );
-        }
+        processActions(
+          elseActions,
+          nodes,
+          edges,
+          lastCondNode,
+          getNodeId,
+          getEdgeId,
+          getPosition,
+          'else'
+        );
       }
     } else {
       // No conditions - process actions directly from event
@@ -468,42 +424,62 @@ function processConditions(
     edges.push(buildEdge(eventNodeId, groupNodeId, null, 'input', undefined));
     
     // Process each condition
+    // Track the previous condition node to chain them sequentially
+    let previousCondNodeId: string | null = null;
+    
     conditions.forEach((cond, idx) => {
+      let currentCondNodeId: string;
+      let currentCondNode: EditorNode;
+      
       if (utilsIsConditionGroup(cond)) {
         // Skip logical conditions as they define the group, process their nested conditions
         if (cond.conditions) {
           cond.conditions.forEach((nestedCond: RuleCondition, nestedIdx: number) => {
             if (utilsIsConditionGroup(nestedCond)) return; // Skip nested groups for now
             
-            const condNodeId = getNodeId();
-            const condNode = buildConditionNode(
+            currentCondNodeId = getNodeId();
+            currentCondNode = buildConditionNode(
               getConditionField(nestedCond),
               getConditionOperator(nestedCond),
               getConditionValue(nestedCond),
-              condNodeId,
+              currentCondNodeId,
               getPosition(2, idx * 2 + nestedIdx, conditions.length * 2)
             );
-            nodes.push(condNode);
-            conditionNodes.push(condNode);
+            nodes.push(currentCondNode);
+            conditionNodes.push(currentCondNode);
             
-            // Connect group to condition
-            edges.push(buildEdge(groupNodeId!, condNodeId, `cond-${nestedIdx}`, 'condition-input', undefined));
+            // Chain conditions sequentially: previous condition -> current condition
+            if (previousCondNodeId) {
+              edges.push(buildEdge(previousCondNodeId, currentCondNodeId, 'output', 'condition-input', undefined));
+            } else {
+              // First condition - connect from condition group
+              edges.push(buildEdge(groupNodeId!, currentCondNodeId, 'cond-output', 'condition-input', undefined));
+            }
+            
+            previousCondNodeId = currentCondNodeId;
           });
         }
       } else {
-        const condNodeId = getNodeId();
-        const condNode = buildConditionNode(
+        currentCondNodeId = getNodeId();
+        currentCondNode = buildConditionNode(
           getConditionField(cond),
           getConditionOperator(cond),
           getConditionValue(cond),
-          condNodeId,
+          currentCondNodeId,
           getPosition(2, idx, conditions.length)
         );
-        nodes.push(condNode);
-        conditionNodes.push(condNode);
+        nodes.push(currentCondNode);
+        conditionNodes.push(currentCondNode);
         
-        // Connect group to condition
-        edges.push(buildEdge(groupNodeId!, condNodeId, `cond-${idx}`, 'condition-input', undefined));
+        // Chain conditions sequentially: previous condition -> current condition
+        if (previousCondNodeId) {
+          edges.push(buildEdge(previousCondNodeId, currentCondNodeId, 'output', 'condition-input', undefined));
+        } else {
+          // First condition - connect from condition group
+          edges.push(buildEdge(groupNodeId!, currentCondNodeId, 'cond-output', 'condition-input', undefined));
+        }
+        
+        previousCondNodeId = currentCondNodeId;
       }
     });
   } else {

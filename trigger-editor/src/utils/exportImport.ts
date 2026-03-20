@@ -7,6 +7,7 @@ import type {
   ActionGroupNodeData,
   DoNodeData,
 } from '../types';
+import { NodeType, NodeHandle } from '../constants';
 
 export type AppNode = Node<
   | EventNodeData
@@ -168,6 +169,122 @@ export function sanitizeNodesForImport(
       onChange: (val: any, f: string) => onNodeDataChange(node.id, val, f),
     },
   }));
+}
+
+/**
+ * Map of node types to their expected handle configurations
+ * This ensures edges have the correct handles when importing from external sources
+ * Uses NodeType and NodeHandle enums from constants
+ */
+const NODE_HANDLE_MAP: Record<string, { source?: string; target?: string }> = {
+  [NodeType.EVENT]: {
+    source: NodeHandle.EVENT_OUTPUT,
+  },
+  [NodeType.CONDITION]: {
+    source: NodeHandle.CONDITION_OUTPUT,
+    target: NodeHandle.CONDITION_INPUT,
+  },
+  [NodeType.CONDITION_GROUP]: {
+    source: NodeHandle.CONDITION_GROUP_OUTPUT,
+    target: NodeHandle.CONDITION_GROUP_INPUT,
+  },
+  [NodeType.ACTION]: {
+    source: NodeHandle.ACTION_OUTPUT,
+    target: NodeHandle.ACTION_INPUT,
+  },
+  [NodeType.ACTION_GROUP]: {
+    source: NodeHandle.ACTION_GROUP_OUTPUT,
+    target: NodeHandle.ACTION_GROUP_INPUT,
+  },
+  [NodeType.DO]: {
+    source: NodeHandle.DO_OUTPUT,
+    target: NodeHandle.DO_INPUT,
+  },
+};
+
+/**
+ * Fix edge handles based on source/target node types
+ * This ensures imported edges have the correct handle names for the editor
+ */
+export function sanitizeEdgesForImport(
+  edges: Edge[],
+  nodes: AppNode[]
+): Edge[] {
+  // Create a map of node IDs to their types for quick lookup
+  const nodeTypeMap = new Map<string, string>();
+  nodes.forEach(node => nodeTypeMap.set(node.id, node.type || ''));
+
+  return edges.map(edge => {
+    const sourceType = nodeTypeMap.get(edge.source) || '';
+    const targetType = nodeTypeMap.get(edge.target) || '';
+
+    const sourceHandles = NODE_HANDLE_MAP[sourceType];
+    const targetHandles = NODE_HANDLE_MAP[targetType];
+
+    let sourceHandle = edge.sourceHandle;
+    let targetHandle = edge.targetHandle;
+
+    // Fix source handle if needed
+    if (sourceHandles?.source && !sourceHandle) {
+      sourceHandle = sourceHandles.source as string;
+    }
+
+    // Fix target handle if needed
+    if (targetHandles?.target && !targetHandle) {
+      targetHandle = targetHandles.target as string;
+    }
+
+    // Handle special cases for condition group outputs
+    if (sourceType === NodeType.CONDITION_GROUP && targetType === NodeType.CONDITION) {
+      // Condition group outputs should use cond-* handles
+      if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT) {
+        // Use the existing handle or default to cond-0
+        sourceHandle = sourceHandle || 'cond-0';
+      }
+    }
+
+    // Handle do node special outputs
+    if (sourceType === NodeType.DO) {
+      if (targetType === NodeType.CONDITION) {
+        // DO node to condition uses do-condition-output
+        sourceHandle = NodeHandle.DO_CONDITION_OUTPUT;
+      } else if (targetType === NodeType.ACTION) {
+        // DO node to action uses do-output
+        sourceHandle = sourceHandle || NodeHandle.DO_OUTPUT;
+      }
+    }
+
+    // Handle condition node outputs for inline conditionals (then/else branches)
+    if (sourceType === NodeType.CONDITION && targetType === NodeType.ACTION) {
+      // For condition → action, we need to determine if it's then or else branch
+      // Check if there's another edge from this condition with else-output
+      const hasElseBranch = edges.some(e => 
+        e.source === edge.source && 
+        e.target !== edge.target && 
+        (e.sourceHandle === NodeHandle.ELSE_OUTPUT || e.sourceHandle === 'else')
+      );
+      
+      if (hasElseBranch) {
+        // This is the else branch - use 'else-output' for the else branch
+        sourceHandle = sourceHandle || NodeHandle.ELSE_OUTPUT;
+      } else {
+        // This is likely the then/do branch
+        sourceHandle = sourceHandle || NodeHandle.DO_OUTPUT;
+      }
+    }
+
+    // Handle action_group conditional outputs
+    if (sourceType === NodeType.ACTION_GROUP && (targetType === NodeType.ACTION || targetType === NodeType.DO)) {
+      // Default to then-output for action groups
+      sourceHandle = sourceHandle || NodeHandle.THEN_OUTPUT;
+    }
+
+    return {
+      ...edge,
+      sourceHandle: sourceHandle ?? null,
+      targetHandle: targetHandle ?? null,
+    };
+  });
 }
 
 /**

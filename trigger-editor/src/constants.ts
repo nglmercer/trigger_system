@@ -39,6 +39,11 @@ export enum NodeHandle {
   // Condition node handles
   CONDITION_INPUT = 'condition-input',
   CONDITION_OUTPUT = 'output',
+  // Then/Else outputs for condition nodes in inline conditionals
+  THEN_OUTPUT = 'then-output',
+  ELSE_OUTPUT = 'else-output',
+  // Legacy alias
+  CONDITION_OUTPUT_LEGACY = 'condition-output',
   
   // ConditionGroup node handles
   CONDITION_GROUP_INPUT = 'input',
@@ -47,6 +52,8 @@ export enum NodeHandle {
   // Action node handles
   ACTION_INPUT = 'action-input',
   ACTION_OUTPUT = 'action-output',
+  // Legacy alias
+  ACTION_OUTPUT_LEGACY = 'action-group-output',
   
   // ActionGroup node handles
   ACTION_GROUP_INPUT = 'input',

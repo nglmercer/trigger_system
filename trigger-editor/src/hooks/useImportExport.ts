@@ -7,6 +7,7 @@ import {
   downloadYaml, 
   createImportPicker, 
   sanitizeNodesForImport,
+  sanitizeEdgesForImport,
   generateShareUrl,
   getSharedDataFromUrl,
   clearShareDataFromUrl,
@@ -49,7 +50,10 @@ export function useImportExport(
     // Sanitize nodes to ensure they have proper onChange handlers
     const sanitizedNodes = sanitizeNodesForImport(data.nodes, onNodeDataChange);
     
-    setGraph(sanitizedNodes, data.edges || []);
+    // Sanitize edges to ensure they have correct handles
+    const sanitizedEdges = sanitizeEdgesForImport(data.edges || [], sanitizedNodes);
+    
+    setGraph(sanitizedNodes, sanitizedEdges);
   }, [onNodeDataChange, setGraph]);
 
   // Import from YAML
@@ -67,7 +71,10 @@ export function useImportExport(
     // Sanitize nodes to ensure they have proper onChange handlers
     const sanitizedNodes = sanitizeNodesForImport(yamlNodes, onNodeDataChange);
     
-    setGraph(sanitizedNodes, yamlEdges || []);
+    // Sanitize edges to ensure they have correct handles
+    const sanitizedEdges = sanitizeEdgesForImport(yamlEdges || [], sanitizedNodes);
+    
+    setGraph(sanitizedNodes, sanitizedEdges);
     
     success('YAML imported successfully!', { title: 'Import Complete' });
   }, [onNodeDataChange, setGraph, success]);
