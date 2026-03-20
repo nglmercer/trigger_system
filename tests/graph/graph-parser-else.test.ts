@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'bun:test';
-import { parseGraph } from '../src/sdk/graph-parser';
-import { RuleBuilder } from '../src/sdk/builder';
-import { RuleExporter } from '../src/sdk/exporter';
-import type { SDKGraphNode, SDKGraphEdge } from '../src/types';
+import { parseGraph } from '../../src/sdk/graph-parser';
+import { RuleBuilder } from '../../src/sdk/builder';
+import { RuleExporter } from '../../src/sdk/exporter';
+import type { SDKGraphNode, SDKGraphEdge } from '../../src/types';
 
 describe('graph-parser else detection', () => {
   it('should detect both then and else actions from condition node', () => {

@@ -113,35 +113,10 @@ function buildInlineConditional(
   // Use local findTerminalActions to properly handle DO nodes
   let { thenActionId, elseActionId } = findTerminalActions(conditionToUse, ctx);
   
-  // Also check for DO nodes from source condition
-  if (sourceConditionId) {
-    const doEdgesFromCondition = findEdgesBySource(ctx, sourceConditionId, HandleFilters.ANY)
-      .filter(e => {
-        const target = ctx.nodes.find(n => n.id === e.target);
-        return target && isDo(target);
-      });
-    
-    for (const doEdge of doEdgesFromCondition) {
-      const doNode = ctx.nodes.find(n => n.id === doEdge.target);
-      if (!doNode || !isDo(doNode)) continue;
-      
-      const branchType = getDoBranchType(doNode);
-      
-      const doToActionEdges = findEdgesBySource(ctx, doNode.id, HandleFilters.DO_OUTPUT)
-        .filter(e => {
-          const target = ctx.nodes.find(n => n.id === e.target);
-          return target && (ctx.options.isActNode?.(target) ?? defaultIsActNode(target));
-        });
-      
-      for (const actionEdge of doToActionEdges) {
-        if (branchType === BranchType.ELSE && !elseActionId) {
-          elseActionId = actionEdge.target;
-        } else if (branchType === BranchType.DO && !thenActionId) {
-          thenActionId = actionEdge.target;
-        }
-      }
-    }
-  }
+  // NOTE: We no longer check for DO nodes from source condition here.
+  // The inline conditional should only include actions reachable from the 
+  // condition connected via do-condition-output, not from sibling DO branches.
+  // The rule's else should be handled separately at a higher level.
   
   // Check for direct do-condition-output to action
   const directToAction = findEdgesBySource(ctx, doNodeId, [HandleId.DO_CONDITION_OUTPUT])

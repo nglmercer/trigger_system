@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'bun:test';
-import { RuleBuilder } from '../src/sdk/builder';
-import { RuleExporter } from '../src/sdk/exporter';
-import type { SDKGraphNode, SDKGraphEdge, TriggerRule, ActionGroup, InlineConditionalAction } from '../src/types';
+import { RuleBuilder } from '../../src/sdk/builder';
+import { RuleExporter } from '../../src/sdk/exporter';
+import type { SDKGraphNode, SDKGraphEdge, TriggerRule, ActionGroup, InlineConditionalAction } from '../../src/types';
 
 /**
  * Test Graph Structure:
