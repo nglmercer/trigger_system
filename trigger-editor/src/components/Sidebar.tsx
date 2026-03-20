@@ -1,10 +1,11 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
-import { EventIcon, ConditionIcon, ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon, ShareIcon, DoIcon } from './Icons.tsx';
-import { IfIcon,StarIcon } from './Icons.tsx';
+import { ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon, DoIcon } from './Icons.tsx';
+import { IfIcon, StarIcon } from './Icons.tsx';
 import { Modal } from './Modal.tsx';
 import { ImportList } from './ImportList.tsx';
+import { ExchangeModals } from './ExchangeModals.tsx';
 
 interface SidebarProps {
   onClear: () => void;
@@ -19,6 +20,8 @@ interface SidebarProps {
 export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onImportYaml, onShare, hasNodes }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData(DRAG_DATA_FORMAT, nodeType);
@@ -113,6 +116,14 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                   <span className="drag-desc">Filter by field value</span>
                 </div>
               </div>
+              
+              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.DO)}>
+                <span className="drag-icon drag-icon--do"><DoIcon /></span>
+                <div className="drag-info">
+                  <span className="drag-name">DO</span>
+                  <span className="drag-desc">Explicit then path</span>
+                </div>
+              </div>
 
               <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}>
                 <span className="drag-icon drag-icon--action-group"><ActionGroupIcon /></span>
@@ -130,177 +141,111 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 </div>
               </div>
 
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.DO)}>
-                <span className="drag-icon drag-icon--do"><DoIcon /></span>
-                <div className="drag-info">
-                  <span className="drag-name">DO</span>
-                  <span className="drag-desc">Explicit then path</span>
-                </div>
-              </div>
-
             </div>
 
             <div className="sidebar-divider"></div>
             
-            {/* Data Imports Section - Opens Modal */}
-            <div style={{ padding: '0 20px', marginBottom: '16px' }}>
+            {/* Context Data Section */}
+            <div style={{ padding: '0 20px', marginBottom: '24px' }}>
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'space-between',
-                marginBottom: '8px'
+                marginBottom: '12px'
               }}>
                 <span style={{ 
-                  fontSize: '12px', 
-                  fontWeight: 600, 
-                  color: 'var(--text-secondary)',
+                  fontSize: '11px', 
+                  fontWeight: 700, 
+                  color: 'var(--text-muted)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
+                  letterSpacing: '1px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
                 }}>
-                  <DatabaseIcon size={14} />
-                  Data Imports
+                  <DatabaseIcon size={12} /> Data Context
                 </span>
                 <button
                   onClick={() => setIsModalOpen(true)}
                   style={{
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
+                    background: 'rgba(88, 166, 255, 0.1)',
+                    border: '1px solid rgba(88, 166, 255, 0.2)',
+                    color: 'var(--accent)',
                     cursor: 'pointer',
-                    padding: '4px 10px',
-                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    fontSize: '12px'
+                    fontSize: '11px',
+                    fontWeight: 600,
                   }}
+                  title="Configure definitions for autocomplete and hover"
                 >
                   <SettingsIcon size={12} /> Config
                 </button>
               </div>
-              
-              {/* Quick info card */}
               <div style={{
-                background: 'var(--bg-tertiary)',
-                borderRadius: '8px',
+                background: 'linear-gradient(180deg, rgba(48, 54, 61, 0.2) 0%, rgba(48, 54, 61, 0.4) 100%)',
+                borderRadius: '10px',
                 padding: '12px',
-                border: '1px solid var(--border)'
+                border: '1px solid var(--border)',
+                fontSize: '11px',
+                color: 'var(--text-secondary)',
+                lineHeight: '1.5'
               }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px',
-                  marginBottom: '8px'
-                }}>
-                  <DatabaseIcon size={16} />
-                  <span style={{ 
-                    fontSize: '13px', 
-                    fontWeight: 500, 
-                    color: 'var(--text-primary)'
-                  }}>
-                    Configure JSON Data
-                  </span>
-                </div>
-                <div style={{
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)',
-                  lineHeight: '1.5'
-                }}>
-                  Load unlimited JSON files to use in condition values and action types with autocomplete.
-                </div>
+                Load external JSON definitions to enable <strong>autocompletion</strong> and <strong>hover previews</strong>.
               </div>
             </div>
 
             <div className="sidebar-footer">
-            
-              {/* Export/Import/Share Section */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '8px', 
-                marginBottom: '8px',
-                paddingTop: '8px',
-                borderTop: '1px solid var(--border)'
-              }}>
-
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  className="btn btn-secondary" 
-                  onClick={onShare}
+                  className="btn btn-primary" 
+                  onClick={() => setIsExportModalOpen(true)}
                   disabled={!hasNodes}
-                  style={{ width: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  title="Share project via link"
+                  style={{ flex: 1 }}
                 >
-                  <ShareIcon size={14} />Share
+                  <DownloadIcon size={14} /> Export
                 </button>
-              </div>
-
-              <div style={{ 
-                display: 'flex', 
-                gap: '8px', 
-                marginBottom: '8px',
-                paddingTop: '8px',
-                borderTop: '1px solid var(--border)'
-              }}>
-
                 <button 
                   className="btn btn-secondary" 
-                  onClick={onExportJson}
-                  disabled={!hasNodes}
-                  style={{ width: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  title="Export as JSON (for re-import)"
-                >
-                  <DownloadIcon size={14} />Export
-                </button>
-              
-
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={onImport}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  title="Import from JSON file"
+                  onClick={() => setIsImportModalOpen(true)}
+                  style={{ flex: 1 }}
                 >
                   <UploadIcon size={14} /> Import
                 </button>
-
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={onImportYaml}
-                  disabled={!hasNodes}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  title="Import from YAML file"
-                >
-                  <UploadIcon size={14} /> YAML
-                </button>
               </div>
-             <button 
-                className="btn btn-secondary" 
-                onClick={onExportYaml}
-                disabled={!hasNodes}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                title="Export as YAML (configuration only)"
-              >
-                <DownloadIcon size={14} />  Download YAML
-              </button>
 
+              <div className="sidebar-divider" style={{ margin: '12px 0 8px 0' }}></div>
               
-              <button id="btn-clear" className="btn btn-secondary" onClick={onClear} style={{ marginTop: '8px' }}>
-                <ClearIcon /> Clear
+              <button id="btn-clear" className="btn btn-secondary" onClick={onClear} style={{ fontSize: '11px', marginTop: '4px' }}>
+                <ClearIcon size={13} /> Reset Canvas
               </button>
             </div>
           </>
         )}
       </aside>
 
-      {/* Import Configuration Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Data Imports"
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title="Data Context Config"
       >
         <ImportList />
       </Modal>
+
+      <ExchangeModals 
+        isImportOpen={isImportModalOpen}
+        isExportOpen={isExportModalOpen}
+        onCloseImport={() => setIsImportModalOpen(false)}
+        onCloseExport={() => setIsExportModalOpen(false)}
+        onImportJson={onImport}
+        onImportYaml={onImportYaml}
+        onExportJson={onExportJson}
+        onExportYaml={onExportYaml}
+        onShare={onShare}
+      />
     </>
   );
 }

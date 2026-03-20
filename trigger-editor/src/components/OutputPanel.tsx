@@ -319,7 +319,7 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
             <>
               <div className="output-header-left">
                 <span className="output-title">Output</span>
-                <div style={{ display: 'flex', gap: '4px', marginLeft: '12px' }}>
+                <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
                   <button 
                     onClick={() => setViewMode('yaml')}
                     style={{ 

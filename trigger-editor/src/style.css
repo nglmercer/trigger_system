@@ -9,7 +9,9 @@
   --text-primary: #c9d1d9;
   --text-secondary: #8b949e;
   --text-muted: #484f58;
-
+  --primary: #58a6ff;
+  --bg-primary: #161b22;
+  --bg-secondary: #181818;
   /* Node Colors - Distinct palette for each type */
   --event-color: #0f0bf5;
   --event-color-light: #2452fb;
@@ -68,7 +70,11 @@ body {
   border-right: none;
   border-left: 1px solid var(--border);
 }
-
+.output-header-left {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr 1fr;
+}
 /* ─── Sidebar Content ────────────────────────────────────────────────────── */
 .sidebar-header {
   padding: 24px 20px;
@@ -400,11 +406,7 @@ body {
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 .node-title--do {
-  background: linear-gradient(
-    135deg,
-    var(--do-color-dark),
-    var(--do-color)
-  );
+  background: linear-gradient(135deg, var(--do-color-dark), var(--do-color));
   border-bottom: 2px solid rgba(0, 0, 0, 0.2);
   box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
 }

@@ -442,17 +442,6 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, imp.id)}
               >
-                {/* Status indicator line */}
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: '20%',
-                  bottom: '20%',
-                  width: '3px',
-                  background: isLoaded ? '#238636' : 'var(--border)',
-                  borderRadius: '0 3px 3px 0'
-                }} />
-
                 {/* Top row: alias + mode + status + delete */}
                 <div style={{
                   display: 'flex',
@@ -667,10 +656,6 @@ export function ImportList({ onImportsChange }: ImportListProps) {
           fontSize: '13px',
           color: 'var(--text-secondary)',
         }}>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '4px', height: '14px', background: 'var(--action-color)', borderRadius: '2px' }} />
-            Usage Guide
-          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <strong>Path Mode</strong>
@@ -678,13 +663,13 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                 <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--action-color)' }}>
                   {`\${alias.prop}`}
                 </code>
-                <span>Reference nested keys</span>
+                <span>Reference key</span>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <strong>Value Mode</strong>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ opacity: 0.8 }}>Inserts raw values directly (1, true, "foo")</span>
+                <span style={{ opacity: 0.8 }}>Inserts values (1, true, "foo")</span>
               </div>
             </div>
           </div>
