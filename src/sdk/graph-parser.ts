@@ -46,12 +46,19 @@ export function createParserContext(
   options: GraphParserOptions = {},
   transformers?: GraphParserContext['transformers']
 ): GraphParserContext {
+  // Ensure default resolvers are available in options for recursive calls
+  const contextOptions = {
+    ...options,
+    resolveCondition: options.resolveCondition || resolveConditionInternal,
+    resolveAction: options.resolveAction || resolveActionInternal,
+  };
+
   return { 
     nodes, 
     edges, 
     visitedConds: new Set(), 
     visitedActs: new Set(), 
-    options,
+    options: contextOptions,
     transformers 
   };
 }
@@ -251,14 +258,9 @@ export function findTerminalActions(
         continue;
       }
       
-      // Handle ActionGroup nodes - collect actions from the group
+      // Handle ActionGroup nodes
       if (targetNode.type === NodeType.ACTION_GROUP) {
-        const { actions } = collectActionsForGroup(edge.target, ctx);
-        if (actions.length > 0) {
-          // Use the action_group node's ID as the thenAction
-          // The builder will handle extracting the actual actions
-          thenActionId = edge.target;
-        }
+        thenActionId = edge.target;
         continue;
       }
       
@@ -546,21 +548,10 @@ export function parseGraph(
       });
       
       if (conditionEdges.length > 0) {
-        collectActionsForGroup(groupId, ctx);
-        
-        for (const condEdge of conditionEdges) {
-          const condition = resolveConditionInternal(condEdge.target, ctx);
-          if (!condition) continue;
-          
-          const terminal = findTerminalActions(condEdge.target, ctx);
-          
-          const inlineConditional: InlineConditionalAction = {
-            if: condition,
-            do: terminal.thenActionId ? resolveActionInternal(terminal.thenActionId, ctx) ?? undefined : undefined,
-            else: terminal.elseActionId ? resolveActionInternal(terminal.elseActionId, ctx) ?? undefined : undefined
-          };
-          
-          builder.withDo(inlineConditional);
+        const { actions, mode } = collectActionsForGroup(groupId, ctx);
+        if (actions.length > 0) {
+          const actionGroup: ActionGroup = { mode, actions };
+          builder.withDo(actionGroup);
         }
       } else {
         const { actions, mode } = collectActionsForGroup(groupId, ctx);

@@ -7,6 +7,7 @@ import { NodeType, HandleId, BranchType } from '../constants';
 import { findEdgesBySource, HandleFilters, type HandleArray } from './traversal';
 import { nodeToAction, parseActionParams } from './converters';
 import { getDoBranchType, defaultIsActNode } from './node-filters';
+import { findTerminalConditions } from './condition-resolver';
 import type { 
   SDKGraphNode, 
   SDKGraphEdge, 
@@ -118,7 +119,8 @@ export function collectActionsForGroup(
     HandleId.ACTION_GROUP_OUTPUT,
     HandleId.DO_OUTPUT,
     'do-output',
-    'action-output'
+    'action-output',
+    'action-group-output'
   ])
     .filter(e => {
       const target = ctx.nodes.find(n => n.id === e.target);
@@ -136,21 +138,13 @@ export function collectActionsForGroup(
   ]);
 
   for (const edge of conditionEdges) {
-    if (ctx.options.resolveCondition) {
-      const condition = ctx.options.resolveCondition(edge.target, ctx);
-      if (condition) {
-        // Find terminal nodes for this condition to build the inline conditional
-        // We'll need a way to find terminal actions from here
-        // For now, if we have a resolveAction function, we can try to find terminal actions
-        // (This part might need more SDK infrastructure but let's try to handle basic case)
-        
-        // Use a simplified version of findTerminalActions or assume resolveAction handles it
-        const terminalAction = ctx.options.resolveAction ? ctx.options.resolveAction(edge.target, ctx) : null;
-        
-        if (terminalAction) {
-          actions.push(terminalAction);
-        }
-      }
+    const action = resolveAction(edge.target, ctx);
+    
+    if (action) {
+      console.log(`[DEBUG] Resolved nested action for ${edge.target} in group ${groupId}`);
+      actions.push(action);
+    } else {
+      console.log(`[DEBUG] Failed to resolve nested action for ${edge.target} in group ${groupId}`);
     }
   }
 
@@ -164,19 +158,20 @@ export function resolveAction(
   id: string, 
   ctx: ActionResolverContext
 ): Action | ActionGroup | null {
-  if (ctx.options.resolveAction) {
+  if (ctx.options.resolveAction && ctx.options.resolveAction !== resolveAction) {
     return ctx.options.resolveAction(id, ctx);
   }
-
-  if (ctx.visitedActs?.has(id)) return null;
-  ctx.visitedActs?.add(id);
 
   const node = ctx.nodes.find(n => n.id === id);
   if (!node) return null;
 
   // Handle Action Groups
   if (node.type === NodeType.ACTION_GROUP) {
+    if (ctx.visitedActs?.has(id)) return null;
+    ctx.visitedActs?.add(id);
+
     const { actions, mode } = collectActionsForGroup(id, ctx);
+    console.log(`[DEBUG] ActionGroup ${id} resolved with ${actions.length} actions`);
     if (actions.length === 0) return null;
     return { mode, actions };
   }
@@ -211,10 +206,22 @@ export function resolveAction(
           }
         }
         
+        // Fallback to direct actions if no DO branches found
+        if (!thenAct && !elseAct) {
+          const terminal = findTerminalConditions(id, ctx);
+          if (terminal.thenActionId) {
+            thenAct = resolveAction(terminal.thenActionId, ctx);
+          }
+          if (terminal.elseActionId) {
+            elseAct = resolveAction(terminal.elseActionId, ctx);
+          }
+        }
+        
         if (thenAct || elseAct) {
           return {
             if: condition,
             then: thenAct ?? undefined,
+            do: thenAct ?? undefined,
             else: elseAct ?? undefined
           } as any;
         }
@@ -224,6 +231,9 @@ export function resolveAction(
 
   const isAct = ctx.options.isActNode || defaultIsActNode;
   if (!isAct(node)) return null;
+
+  if (ctx.visitedActs?.has(id)) return null;
+  ctx.visitedActs?.add(id);
 
   const action = nodeToAction(node);
 
@@ -246,10 +256,11 @@ export function collectActionsFromDoNode(
   const isAct = ctx.options.isActNode || defaultIsActNode;
   const actions: (Action | ActionGroup)[] = [];
   
-  // Find actions directly connected to the DO node
   const directEdges = findEdgesBySource(ctx, doNodeId, [
     HandleId.DO_OUTPUT,
+    HandleId.ELSE_OUTPUT,
     'do-output',
+    'else-output',
     'action-output',
     ''
   ])
@@ -311,10 +322,12 @@ export function categorizeDoNodesByBranch(
       
       if (branchType === BranchType.ELSE) {
         if (!elseBranches.includes(edge.target)) {
+          console.log(`[DEBUG] Found ELSE branch ${edge.target} for condition ${condId}`);
           elseBranches.push(edge.target);
         }
       } else {
         if (!doBranches.includes(edge.target)) {
+          console.log(`[DEBUG] Found DO branch ${edge.target} for condition ${condId}`);
           doBranches.push(edge.target);
         }
       }

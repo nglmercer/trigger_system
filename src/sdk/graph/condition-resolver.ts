@@ -124,7 +124,7 @@ export function resolveCondition(
   id: string, 
   ctx: ConditionResolverContext
 ): RuleCondition | null {
-  if (ctx.options.resolveCondition) {
+  if (ctx.options.resolveCondition && ctx.options.resolveCondition !== resolveCondition) {
     return ctx.options.resolveCondition(id, ctx);
   }
 

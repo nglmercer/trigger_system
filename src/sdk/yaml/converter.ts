@@ -545,7 +545,7 @@ function processActions(
       } else if (sourceNode?.type === NodeType.ACTION_GROUP) {
         sourceHandle = HandleId.ACTION_GROUP_OUTPUT;
       } else if (sourceNode?.type === NodeType.DO) {
-        sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
+        sourceHandle = HandleId.DO_OUTPUT;
       } else {
         sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
       }
@@ -596,9 +596,9 @@ function processActions(
         } else if (sourceNodeForCond?.type === NodeType.CONDITION) {
           sourceHandleForCond = HandleId.CONDITION_OUTPUT;
         } else if (sourceNodeForCond?.type === NodeType.DO) {
-          sourceHandleForCond = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
+          sourceHandleForCond = HandleId.DO_OUTPUT;
         } else {
-          sourceHandleForCond = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
+          sourceHandleForCond = branchType === BranchType.ELSE ? HandleId.CONDITION_OUTPUT : HandleId.CONDITION_OUTPUT;
         }
         
         edges.push(buildEdge(sourceId, condNodeId, sourceHandleForCond, HandleId.CONDITION_INPUT, getEdgeId));
@@ -696,9 +696,9 @@ function processActions(
     } else if (sourceNode?.type === NodeType.ACTION_GROUP) {
       sourceHandle = HandleId.ACTION_GROUP_OUTPUT;
     } else if (sourceNode?.type === NodeType.DO) {
-      sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
+      sourceHandle = HandleId.DO_OUTPUT;
     } else {
-      sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
+      sourceHandle = branchType === BranchType.ELSE ? HandleId.CONDITION_OUTPUT : HandleId.CONDITION_OUTPUT;
     }
     
     // Connect source to action
