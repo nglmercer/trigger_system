@@ -268,17 +268,16 @@ export function normalizeAction(raw: Record<string, unknown>): Action | InlineCo
     return conditional;
   }
   
-  // Regular action - copy fields as-is
-  const result: Action = {
-    type: action.type as string | undefined,
-    params: action.params as ActionParams | undefined,
-    run: action.run as string | undefined,
-    delay: action.delay as number | undefined,
-    probability: action.probability as number | undefined,
-    name: action.name as string | undefined,
-  };
+  // Regular action - copy fields only if they exist
+  const result: Action = {};
   
-  // Copy any other known action fields
+  // Only include properties that exist in the original action
+  if ('type' in action) result.type = action.type as string;
+  if ('params' in action) result.params = action.params as ActionParams;
+  if ('run' in action) result.run = action.run as string;
+  if ('delay' in action) result.delay = action.delay as number;
+  if ('probability' in action) result.probability = action.probability as number;
+  if ('name' in action) result.name = action.name as string;
   if ('break' in action) result.break = action.break as boolean;
   if ('continue' in action) result.continue = action.continue as boolean;
   
