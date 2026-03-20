@@ -13,9 +13,10 @@ export {
 // RuleBuilder is the main class - kept here for convenience
 import { 
   type GraphParserOptions, 
-  type GraphParserContext 
-} from './graph/types';
-import { parseGraph } from './graph-parser';
+  type GraphParserContext,
+  parseGraph,
+  parseGraphToRules 
+} from './graph-parser';
 import { optimizeCondition, optimizeAction, type OptimizeOptions } from './optimize';
 import type {
   TriggerRule,
@@ -53,6 +54,21 @@ export class RuleBuilder {
     transformers?: GraphParserContext['transformers']
   ): RuleBuilder {
     return parseGraph(nodes, edges, options, transformers);
+  }
+
+  /**
+   * Build multiple TriggerRules from a graph with multiple Event nodes.
+   * This allows editing multiple rules in a single editor view.
+   * 
+   * @returns Array of TriggerRules, one for each Event node found
+   */
+  static fromGraphMultiple(
+    nodes: SDKGraphNode[], 
+    edges: SDKGraphEdge[], 
+    options?: GraphParserOptions,
+    transformers?: GraphParserContext['transformers']
+  ): { rules: TriggerRule[]; errors: string[] } {
+    return parseGraphToRules(nodes, edges, options, transformers);
   }
 
   withId(id: string): this {

@@ -326,9 +326,10 @@ export function sanitizeEdgesForImport(
 
     // Handle condition to action_group connection (then path)
     if (sourceType === NodeType.CONDITION && targetType === NodeType.ACTION_GROUP) {
-      // Condition to action group uses then-output handle
-      if (!sourceHandle) {
-        sourceHandle = NodeHandle.THEN_OUTPUT;
+      // Condition to action group - use CONDITION_OUTPUT handle for proper visualization
+      // The condition node only has 'output' handle, not 'then-output'
+      if (!sourceHandle || sourceHandle === NodeHandle.THEN_OUTPUT) {
+        sourceHandle = NodeHandle.CONDITION_OUTPUT;
       }
       // Ensure target handle is set for action group input
       if (!targetHandle) {

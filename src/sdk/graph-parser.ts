@@ -575,3 +575,72 @@ export function parseGraph(
 
   return builder;
 }
+
+/**
+ * Parse a graph with multiple event nodes and return multiple rules.
+ * This allows editing multiple rules in a single editor view.
+ * 
+ * Each Event node in the graph becomes a separate TriggerRule.
+ */
+export function parseGraphToRules(
+  nodes: SDKGraphNode[], 
+  edges: SDKGraphEdge[],
+  options: GraphParserOptions = {},
+  transformers?: GraphParserContext['transformers']
+): { rules: TriggerRule[]; errors: string[] } {
+  const isEvent = options.isEventNode || defaultIsEventNode;
+  
+  // Find all event nodes
+  const eventNodes = nodes.filter(n => isEvent(n));
+  
+  if (eventNodes.length === 0) {
+    return { 
+      rules: [], 
+      errors: ['No Event nodes found in the graph'] 
+    };
+  }
+  
+  const rules: TriggerRule[] = [];
+  const errors: string[] = [];
+  
+  // Process each event node as a separate rule
+  for (const eventNode of eventNodes) {
+    try {
+      // Create subgraph with just this event node and its descendants
+      const eventId = eventNode.id;
+      
+      // Find all nodes reachable from this event (for graph traversal)
+      const reachableNodeIds = new Set<string>([eventId]);
+      
+      // BFS to find all reachable nodes
+      const queue = [eventId];
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        const outgoingEdges = edges.filter(e => e.source === currentId);
+        for (const edge of outgoingEdges) {
+          if (!reachableNodeIds.has(edge.target)) {
+            reachableNodeIds.add(edge.target);
+            queue.push(edge.target);
+          }
+        }
+      }
+      
+      // Filter nodes and edges to only include reachable ones
+      const subgraphNodes = nodes.filter(n => reachableNodeIds.has(n.id));
+      const subgraphEdges = edges.filter(e => 
+        reachableNodeIds.has(e.source) && reachableNodeIds.has(e.target)
+      );
+      
+      // Build the rule for this event
+      const builder = parseGraph(subgraphNodes, subgraphEdges, options, transformers);
+      const rule = builder.build();
+      rules.push(rule);
+      
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`Failed to parse rule for event ${eventNode.id}: ${msg}`);
+    }
+  }
+  
+  return { rules, errors };
+}

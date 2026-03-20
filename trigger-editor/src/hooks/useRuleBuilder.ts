@@ -6,11 +6,15 @@ import type { GraphParserContext, GraphParserOptions } from '../../../src/sdk/gr
 import type { TriggerRule } from '../../../src/types.ts';
 
 export interface BuildResult {
-  rule: TriggerRule | null;
+  rules: TriggerRule[];
   errors: string[];
   yaml: string;
 }
 
+/**
+ * Hook to build rules from graph nodes.
+ * Supports both single-rule and multi-rule graphs.
+ */
 export function useRuleBuilder(nodes: Node[], edges: Edge[], options?: GraphParserOptions, transformers?: GraphParserContext['transformers']) {
   const buildRule = useCallback((): BuildResult => {
     try {
@@ -26,16 +30,25 @@ export function useRuleBuilder(nodes: Node[], edges: Edge[], options?: GraphPars
         sourceHandle: e.sourceHandle,
         targetHandle: e.targetHandle
       }));
-      // Pass the Nodes and Edges directly to the SDK
-      const builder = RuleBuilder.fromGraph(sdkNodes, sdkEdges, options, transformers);
-      console.log(sdkEdges,JSON.stringify(sdkNodes,null,2))
-      const rule = builder.build();
-      console.log(rule)
-      //console.log({sdkNodes, sdkEdges, options, transformers,rule})
-      return { rule, errors: [], yaml: RuleExporter.toCleanYaml(rule) };
+      
+      // Use fromGraphMultiple to support multiple Event nodes (rules)
+      const { rules, errors } = RuleBuilder.fromGraphMultiple(sdkNodes, sdkEdges, options, transformers);
+      
+      if (errors.length > 0) {
+        return { rules: [], errors, yaml: '' };
+      }
+      
+      if (rules.length === 0) {
+        return { rules: [], errors: ['No rules found in graph'], yaml: '' };
+      }
+      
+      // Convert all rules to YAML
+      const yaml = RuleExporter.toCleanYaml(rules);
+      
+      return { rules, errors: [], yaml };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      return { rule: null, errors: [msg], yaml: '' };
+      return { rules: [], errors: [msg], yaml: '' };
     }
   }, [nodes, edges, options, transformers]);
 

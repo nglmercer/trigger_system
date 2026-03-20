@@ -529,9 +529,19 @@ function processActions(
       
       // Determine the correct source handle based on the source node type
       const sourceNode = nodes.find(n => n.id === sourceId);
-      const sourceHandle = sourceNode?.type === NodeType.EVENT 
-        ? HandleId.EVENT_OUTPUT 
-        : (branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT);
+      // Use CONDITION_OUTPUT for condition nodes (the condition node only has 'output' handle)
+      // Use THEN_OUTPUT for DO nodes (they have then/else path handles)
+      // Use EVENT_OUTPUT for event nodes
+      let sourceHandle: string;
+      if (sourceNode?.type === NodeType.EVENT) {
+        sourceHandle = HandleId.EVENT_OUTPUT;
+      } else if (sourceNode?.type === NodeType.CONDITION) {
+        sourceHandle = HandleId.CONDITION_OUTPUT; // Use 'output' handle for condition nodes
+      } else if (sourceNode?.type === NodeType.DO) {
+        sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
+      } else {
+        sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
+      }
       
       // Connect source to group
       edges.push(buildEdge(sourceId, groupNodeId, sourceHandle, HandleId.ACTION_GROUP_INPUT, getEdgeId));
@@ -560,9 +570,16 @@ function processActions(
       
       // Determine the correct source handle based on the source node type
       const sourceNodeForDo = nodes.find(n => n.id === sourceId);
-      const sourceHandleForDo = sourceNodeForDo?.type === NodeType.EVENT 
-        ? HandleId.EVENT_OUTPUT 
-        : (branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT);
+      let sourceHandleForDo: string;
+      if (sourceNodeForDo?.type === NodeType.EVENT) {
+        sourceHandleForDo = HandleId.EVENT_OUTPUT;
+      } else if (sourceNodeForDo?.type === NodeType.ACTION_GROUP) {
+        sourceHandleForDo = HandleId.ACTION_GROUP_OUTPUT;
+      } else if (sourceNodeForDo?.type === NodeType.CONDITION) {
+        sourceHandleForDo = HandleId.CONDITION_OUTPUT;
+      } else {
+        sourceHandleForDo = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
+      }
       
       // Connect source to DO node
       edges.push(buildEdge(sourceId, doNodeId, sourceHandleForDo, HandleId.DO_INPUT, getEdgeId));
@@ -625,11 +642,20 @@ function processActions(
     nodes.push(actionNode);
     
     // Determine the correct source handle based on the source node type
-    // If source is an event node, use 'event-output', otherwise use 'do-output' or 'else-output'
+    // If source is an event node, use 'event-output'
+    // If source is an action_group, use 'action-output'
+    // Otherwise use 'do-output' or 'else-output'
     const sourceNode = nodes.find(n => n.id === sourceId);
-    const sourceHandle = sourceNode?.type === NodeType.EVENT 
-      ? HandleId.EVENT_OUTPUT 
-      : (branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT);
+    let sourceHandle: string;
+    if (sourceNode?.type === NodeType.EVENT) {
+      sourceHandle = HandleId.EVENT_OUTPUT;
+    } else if (sourceNode?.type === NodeType.ACTION_GROUP) {
+      sourceHandle = HandleId.ACTION_GROUP_OUTPUT;
+    } else if (sourceNode?.type === NodeType.CONDITION) {
+      sourceHandle = HandleId.CONDITION_OUTPUT;
+    } else {
+      sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
+    }
     
     // Connect source to action
     edges.push(buildEdge(sourceId, actionNodeId, sourceHandle, HandleId.ACTION_INPUT, getEdgeId));

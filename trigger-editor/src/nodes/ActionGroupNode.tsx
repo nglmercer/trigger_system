@@ -24,9 +24,10 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
   );
   
   // Check if this ActionGroup has incoming connection from Condition (for inline conditionals)
+  // Also check for ACTION_GROUP_INPUT since condition -> action_group uses 'input' handle
   const hasConditionInput = edges.some(e => 
     e.target === id && 
-    e.targetHandle === NodeHandle.CONDITION_INPUT &&
+    (e.targetHandle === NodeHandle.CONDITION_INPUT || e.targetHandle === NodeHandle.ACTION_GROUP_INPUT) &&
     getNode(e.source)?.type === NodeType.CONDITION
   );
   

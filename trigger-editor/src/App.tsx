@@ -102,8 +102,8 @@ function NodeEditor() {
 
   const buildRule = useRuleBuilder(nodes, edges);
   
-  // Compute rule, yaml and errors in real-time
-  const { rule, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
+  // Compute rules, yaml and errors in real-time
+  const { rules, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
 
   // Screen to flow position hook
   const { screenToFlowPosition } = useReactFlow();
