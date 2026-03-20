@@ -351,16 +351,38 @@ export function sanitizeEdgesForImport(
     // Handle do node special outputs
     if (sourceType === NodeType.DO) {
       if (targetType === NodeType.CONDITION) {
-        // DO node to condition uses do-condition-output
-        sourceHandle = NodeHandle.DO_CONDITION_OUTPUT;
+        // DO node to condition uses do-condition-output for inline conditionals
+        // Only set if not already specified (preserve explicit handles)
+        if (!sourceHandle) {
+          sourceHandle = NodeHandle.DO_CONDITION_OUTPUT;
+        }
         // Ensure target handle is set
         if (!targetHandle) {
           targetHandle = NodeHandle.CONDITION_INPUT;
         }
       } else if (targetType === NodeType.ACTION) {
-        // DO node to action - preserve explicit else-output, default to do-output
-        if (sourceHandle !== NodeHandle.ELSE_OUTPUT) {
-          sourceHandle = sourceHandle || NodeHandle.DO_OUTPUT;
+        // DO node to action - determine if it's then or else branch
+        // Check if there's another edge from this DO node with else-output
+        const hasElseBranch = edges.some(e => 
+          e.source === edge.source && 
+          e.target !== edge.target && 
+          (e.sourceHandle === NodeHandle.ELSE_OUTPUT || e.sourceHandle === 'else')
+        );
+        
+        if (hasElseBranch) {
+          // There's an else branch - this edge could be either then or else
+          if (sourceHandle === NodeHandle.ELSE_OUTPUT || sourceHandle === 'else') {
+            // This IS the else branch
+            sourceHandle = NodeHandle.ELSE_OUTPUT;
+          } else {
+            // This is the then branch
+            sourceHandle = sourceHandle || NodeHandle.THEN_OUTPUT;
+          }
+        } else {
+          // No else branch - use then-output for the action path
+          if (sourceHandle !== NodeHandle.ELSE_OUTPUT) {
+            sourceHandle = sourceHandle || NodeHandle.THEN_OUTPUT;
+          }
         }
         // Ensure target handle is set
         if (!targetHandle) {
@@ -379,12 +401,20 @@ export function sanitizeEdgesForImport(
         (e.sourceHandle === NodeHandle.ELSE_OUTPUT || e.sourceHandle === 'else')
       );
       
+      // If there's an else branch, this edge is the THEN branch (the else is the OTHER edge)
+      // If there's no else branch, this is the only action (treated as then)
       if (hasElseBranch) {
-        // This is the else branch - use 'else-output' for the else branch
-        sourceHandle = sourceHandle || NodeHandle.ELSE_OUTPUT;
+        if (sourceHandle === NodeHandle.ELSE_OUTPUT || sourceHandle === 'else') {
+          // This IS the else branch - keep explicit else-output
+          sourceHandle = NodeHandle.ELSE_OUTPUT;
+        } else {
+          // This is the then branch (the else branch exists on another edge)
+          sourceHandle = sourceHandle || NodeHandle.THEN_OUTPUT;
+        }
       } else {
-        // This is likely the then/do branch
-        sourceHandle = sourceHandle || NodeHandle.DO_OUTPUT;
+        // No else branch exists - this is the primary action path
+        // Use THEN_OUTPUT for consistency (DO_OUTPUT is legacy)
+        sourceHandle = sourceHandle || NodeHandle.THEN_OUTPUT;
       }
       // Ensure target handle is set for action input
       if (!targetHandle) {

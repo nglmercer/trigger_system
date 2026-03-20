@@ -111,7 +111,7 @@ export function yamlToNodes(
       idMap.set(node.id, newId);
     }
     
-    // Apply ID mapping
+    // Apply ID mapping to both nodes AND edges
     for (const node of conversionResult.nodes) {
       allNodes.push({
         ...node,
@@ -120,8 +120,11 @@ export function yamlToNodes(
     }
     
     for (const edge of conversionResult.edges) {
+      // Generate a unique edge ID by prefixing with the rule ID
+      const newEdgeId = `${rule.id}-${edge.id}`;
       allEdges.push({
         ...edge,
+        id: newEdgeId,
         source: idMap.get(edge.source) || edge.source,
         target: idMap.get(edge.target) || edge.target,
       });
