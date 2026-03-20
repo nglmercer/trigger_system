@@ -49,7 +49,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
     e.sourceHandle === NodeHandle.ACTION_GROUP_CONDITION_OUTPUT &&
     getNode(e.target)?.type === NodeType.CONDITION
   );
-
+  
   // Show output handles when there's any input connection
   const showOutputHandles = hasEventInput || hasConditionInput || hasActionOutput || hasConditionOutput || hasDoInput;
 
@@ -73,6 +73,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
       />
       
       {/* Output handles - for chaining actions or inline conditionals */}
+      {/* Always show output handles so users can connect actions from the start */}
       {showOutputHandles && (
         <>
           {/* Action output - for chaining actions within the group */}

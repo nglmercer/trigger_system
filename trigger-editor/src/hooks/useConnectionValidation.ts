@@ -64,13 +64,25 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     }
 
     // ============================================================
-    // RULE 2: ActionGroup - Input accepts from Event or DO node (for running actions)
+    // RULE 2: ActionGroup - Input accepts from Event, Condition, DO, Action or ActionGroup (for running actions)
     // ============================================================
-    if (targetNode.type === NodeType.ACTION_GROUP && connection.targetHandle === NodeHandle.ACTION_GROUP_INPUT) {
-      // ActionGroup input can accept from Event (for triggering the action group)
-      // or from DO node (explicit DO path)
-      if (sourceNode.type !== NodeType.EVENT && sourceNode.type !== NodeType.DO) {
-        return false;
+    // This rule applies when targetHandle is undefined (user didn't specify)
+    // or when it's the specific ACTION_GROUP_INPUT handle
+    if (targetNode.type === NodeType.ACTION_GROUP) {
+      // If targetHandle is specified and it's NOT ACTION_GROUP_INPUT, skip this rule
+      if (connection.targetHandle && connection.targetHandle !== NodeHandle.ACTION_GROUP_INPUT) {
+        // Let other rules handle it
+      } else {
+        // Allow connection if source is Event, Condition, DO, Action, or ActionGroup
+        const isValidSource = 
+          sourceNode.type === NodeType.EVENT || 
+          sourceNode.type === NodeType.CONDITION ||
+          sourceNode.type === NodeType.DO ||
+          sourceNode.type === NodeType.ACTION ||
+          sourceNode.type === NodeType.ACTION_GROUP;
+        if (!isValidSource) {
+          return false;
+        }
       }
     }
 
@@ -154,19 +166,20 @@ export function useConnectionValidation(nodes: AppNode[], edges: Edge[]) {
     }
 
     // ============================================================
-    // RULE 5: Action Group and Action - Input can accept from Event, Condition, ConditionGroup, Action, or DO
+    // RULE 5: Action Group and Action - Input can accept from Event, Condition, ConditionGroup, Action, ActionGroup, or DO
     // (Action can connect directly to ActionGroup for grouping)
     // ============================================================
     if (targetNode.type === NodeType.ACTION_GROUP || targetNode.type === NodeType.ACTION) {
-      // ActionGroup and Action can receive from Event, Condition, ConditionGroup, Action, or DO node
+      // ActionGroup and Action can receive from Event, Condition, ConditionGroup, Action, ActionGroup, or DO node
       const isValidSource = 
         sourceNode.type === NodeType.EVENT || 
         sourceNode.type === NodeType.CONDITION || 
         sourceNode.type === NodeType.CONDITION_GROUP ||
         sourceNode.type === NodeType.ACTION ||
+        sourceNode.type === NodeType.ACTION_GROUP ||
         sourceNode.type === NodeType.DO;
       if (!isValidSource) {
-        return false; // Action/ActionGroup can only receive from Event/Condition/ConditionGroup/Action/DO
+        return false; // Action/ActionGroup can only receive from Event/Condition/ConditionGroup/Action/ActionGroup/DO
       }
     }
 

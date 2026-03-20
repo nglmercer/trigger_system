@@ -86,13 +86,13 @@ function buildInlineConditional(
       return target && isCond(target);
     });
   
-  // Determine which condition to use
+  // Determine which condition to use - only use explicit do-condition-output edge
+  // Do NOT fall back to sourceConditionId for inline conditionals
+  // (sourceConditionId is only used for finding terminal actions, not for creating inline conditionals)
   let conditionToUse: string | undefined;
   
   if (conditionEdge) {
     conditionToUse = conditionEdge.target;
-  } else if (sourceConditionId) {
-    conditionToUse = sourceConditionId;
   }
   
   if (!conditionToUse) {
@@ -486,6 +486,37 @@ export function parseGraph(
     }
     
     // Also check for ActionGroup connections directly from conditions
+    // Only process if we haven't already set do actions from DO nodes
+    if (!thenActionId && !doActions.length) {
+      for (const condId of rootConditions) {
+        const actionGroupEdges = findEdgesBySource(ctx, condId, [
+          HandleId.CONDITION_OUTPUT, 
+          'condition-output', 
+          'output', 
+          ''
+        ]).filter(e => {
+          const target = ctx.nodes.find(n => n.id === e.target);
+          return target?.type === NodeType.ACTION_GROUP;
+        });
+        
+        for (const agEdge of actionGroupEdges) {
+          const { actions, mode } = collectActionsForGroup(agEdge.target, ctx);
+          if (actions.length > 0) {
+            const actionGroup: ActionGroup = { mode, actions };
+            builder.withDo(actionGroup);
+            break; // Only process first action group to avoid duplicates
+          }
+        }
+      }
+    }
+  }
+
+  // Process action groups
+  // Only process if not already processed from conditions
+  const processedActionGroupIds = new Set<string>();
+  
+  // Track action groups already processed from conditions
+  if (rootConditions.length > 0 && rootConditionGroups.length === 0) {
     for (const condId of rootConditions) {
       const actionGroupEdges = findEdgesBySource(ctx, condId, [
         HandleId.CONDITION_OUTPUT, 
@@ -498,20 +529,16 @@ export function parseGraph(
       });
       
       for (const agEdge of actionGroupEdges) {
-        const { actions, mode } = collectActionsForGroup(agEdge.target, ctx);
-        if (actions.length > 0) {
-          const actionGroup: ActionGroup = { mode, actions };
-          if (!thenActionId) {
-            builder.withDo(actionGroup);
-          }
-        }
+        processedActionGroupIds.add(agEdge.target);
       }
     }
   }
-
-  // Process action groups
-  if (rootActionGroups.length > 0) {
-    for (const groupId of rootActionGroups) {
+  
+  // Filter out already processed action groups
+  const unprocessedRootActionGroups = rootActionGroups.filter(id => !processedActionGroupIds.has(id));
+  
+  if (unprocessedRootActionGroups.length > 0) {
+    for (const groupId of unprocessedRootActionGroups) {
       const conditionEdges = findEdgesBySource(ctx, groupId, [
         HandleId.ACTION_GROUP_CONDITION_OUTPUT, 
         'condition-output'
