@@ -124,39 +124,46 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
     // Token types and their colors (GitHub Dark style)
     const tokenStyles: Record<string, React.CSSProperties> = {
       key: { color: '#7ee787', fontWeight: 500 }, // Greenish for keys
-      string: { color: '#a5d6ff' },               // Light blue
-      number: { color: '#79c0ff' },               // Blue
-      boolean: { color: '#ff7b72' },              // Coral red
+      string: { color: '#a5d6ff' },               // Light blue for strings/values
+      number: { color: '#d2a8ff' },               // Purple for numbers
+      boolean: { color: '#ff7b72' },              // Coral red for booleans
       null: { color: '#ff7b72', fontStyle: 'italic' },
       comment: { color: '#8b949e', fontStyle: 'italic' },
-      punctuation: { color: '#d1d5da' },          // Gray
+      punctuation: { color: '#8b949e' },          // Gray for operators/punctuation
       variable: { 
-        color: '#58a6ff', 
-        background: 'rgba(56, 139, 253, 0.1)', 
-        borderRadius: '3px', 
-        padding: '0 2px', 
+        color: '#79c0ff', 
+        background: 'rgba(56, 139, 253, 0.15)', 
+        borderRadius: '5px', 
+        padding: '0 4px', 
+        margin: '0 -1px',
         cursor: 'help',
-        boxShadow: '0 0 0 1px rgba(56, 139, 253, 0.2)'
+        boxShadow: '0 0 0 1px rgba(56, 139, 253, 0.25)',
+        fontWeight: 600,
+        display: 'inline-block',
+        lineHeight: '1.2'
       },
-      variableUnknown: { color: '#e6edf3' },
+      variableUnknown: { color: '#e6edf3', opacity: 0.6 },
     };
 
-    // Tokenize the YAML text
+    // Tokenize the YAML text with a more robust logic
     const tokenize = (input: string): Array<{ type: string; value: string; varName?: string }> => {
       const tokens: Array<{ type: string; value: string; varName?: string }> = [];
       let i = 0;
       
       while (i < input.length) {
-        // Comments
-        if (input[i] === '#') {
+        const currentChar = input[i]!;
+        const nextChar = input[i + 1] || '';
+
+        // 1. Comments
+        if (currentChar === '#') {
           const start = i;
           while (i < input.length && input[i] !== '\n') i++;
           tokens.push({ type: 'comment', value: input.slice(start, i) });
           continue;
         }
         
-        // ${...} variables
-        if (input[i] === '$' && input[i + 1] === '{') {
+        // 2. ${...} variables
+        if (currentChar === '$' && nextChar === '{') {
           const start = i;
           i += 2;
           while (i < input.length && input[i] !== '}') i++;
@@ -167,9 +174,9 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           continue;
         }
         
-        // Quoted strings (single or double)
-        if (input[i] === '"' || input[i] === "'") {
-          const quote = input[i];
+        // 3. Quoted strings (single or double)
+        if (currentChar === '"' || currentChar === "'") {
+          const quote = currentChar;
           const start = i;
           i++;
           while (i < input.length && input[i] !== quote) {
@@ -181,20 +188,26 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           continue;
         }
         
-        // Numbers and versions (e.g. 1.0)
-        const currentChar = input[i];
-        const nextChar = input[i + 1];
-        if (currentChar && (/[0-9]/.test(currentChar) || (currentChar === '-' && nextChar && /[0-9]/.test(nextChar)))) {
-          const start = i;
-          if (currentChar === '-') i++;
-          while (i < input.length && /[0-9.]/.test(input[i]!)) i++;
-          tokens.push({ type: 'number', value: input.slice(start, i) });
-          continue;
+        // 4. Numbers (only if pure numeric/version-like and NOT part of a UUID/word)
+        if (/[0-9]/.test(currentChar) || (currentChar === '-' && /[0-9]/.test(nextChar))) {
+          // Look ahead to check if this is actually a word (contains letters later)
+          let j = i;
+          if (input[j] === '-') j++;
+          while (j < input.length && /[0-9.]/.test(input[j]!)) j++;
+          
+          const followedByLetter = j < input.length && /[a-zA-Z_]/.test(input[j]!);
+          if (!followedByLetter && j > i) {
+            tokens.push({ type: 'number', value: input.slice(i, j) });
+            i = j;
+            continue;
+          }
+          // If followed by letter, fall through to word handler
         }
         
-        // Words (keys, booleans, null, or words)
-        if (currentChar && /[a-zA-Z_]/.test(currentChar)) {
+        // 5. Alphanumeric words (keys, booleans, null, or unquoted strings)
+        if (/[a-zA-Z0-9_]/.test(currentChar)) {
           const start = i;
+          // Consume word characters including dashes (common in UUIDs and slug-like values)
           while (i < input.length && /[a-zA-Z0-9_-]/.test(input[i]!)) i++;
           const word = input.slice(start, i);
           
@@ -215,17 +228,18 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           continue;
         }
         
-        if (currentChar && /[{}[\],: \-|>]/.test(currentChar)) {
+        // 6. Punctuation and whitespace
+        // Grouping common punctuation and whitespaces
+        const puncRegex = /[{}[\],: \-|>\n]/;
+        if (puncRegex.test(currentChar)) {
           const start = i;
-          while (i < input.length && /[{}[\],: \-|>]/.test(input[i]!)) i++;
+          while (i < input.length && puncRegex.test(input[i]!)) i++;
           tokens.push({ type: 'punctuation', value: input.slice(start, i) });
           continue;
         }
         
-        // Any other character
-        if (currentChar) {
-          tokens.push({ type: 'string', value: currentChar });
-        }
+        // 7. Fallback (any other character)
+        tokens.push({ type: 'string', value: currentChar });
         i++;
       }
       
