@@ -141,10 +141,7 @@ export function collectActionsForGroup(
     const action = resolveAction(edge.target, ctx);
     
     if (action) {
-      console.log(`[DEBUG] Resolved nested action for ${edge.target} in group ${groupId}`);
       actions.push(action);
-    } else {
-      console.log(`[DEBUG] Failed to resolve nested action for ${edge.target} in group ${groupId}`);
     }
   }
 
@@ -171,7 +168,6 @@ export function resolveAction(
     ctx.visitedActs?.add(id);
 
     const { actions, mode } = collectActionsForGroup(id, ctx);
-    console.log(`[DEBUG] ActionGroup ${id} resolved with ${actions.length} actions`);
     if (actions.length === 0) return null;
     return { mode, actions };
   }
@@ -322,12 +318,12 @@ export function categorizeDoNodesByBranch(
       
       if (branchType === BranchType.ELSE) {
         if (!elseBranches.includes(edge.target)) {
-          console.log(`[DEBUG] Found ELSE branch ${edge.target} for condition ${condId}`);
+        //  console.log(`[DEBUG] Found ELSE branch ${edge.target} for condition ${condId}`);
           elseBranches.push(edge.target);
         }
       } else {
         if (!doBranches.includes(edge.target)) {
-          console.log(`[DEBUG] Found DO branch ${edge.target} for condition ${condId}`);
+        //  console.log(`[DEBUG] Found DO branch ${edge.target} for condition ${condId}`);
           doBranches.push(edge.target);
         }
       }
