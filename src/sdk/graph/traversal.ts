@@ -160,7 +160,7 @@ export function getConnectedEdges(
  * Common handle arrays for graph traversal
  */
 export const HandleFilters = {
-  /** All condition output handles */
+  /** All condition output handles (for chaining conditions) */
   CONDITION_OUTPUT: [HandleId.CONDITION_OUTPUT, HandleId.CONDITION_OUTPUT_LEGACY],
   
   /** All action output handles */
@@ -169,11 +169,14 @@ export const HandleFilters = {
   /** All DO output handles */
   DO_OUTPUT: [HandleId.DO_OUTPUT, ''],
   
-  /** Then/else outputs from conditions */
+  /** Then/else outputs from conditions (for terminal actions) */
   THEN_ELSE: [HandleId.THEN_OUTPUT, HandleId.ELSE_OUTPUT],
   
   /** DO condition output for inline conditionals */
   DO_CONDITION: [HandleId.DO_CONDITION_OUTPUT],
+  
+  /** All condition/thence outputs - includes then-output for condition→action_group */
+  CONDITION_CHAIN: [HandleId.CONDITION_OUTPUT, HandleId.CONDITION_OUTPUT_LEGACY, HandleId.THEN_OUTPUT, HandleId.ELSE_OUTPUT],
   
   /** Any output handle */
   ANY: [HandleId.CONDITION_OUTPUT, HandleId.CONDITION_OUTPUT_LEGACY, ''],

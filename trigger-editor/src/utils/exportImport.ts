@@ -257,23 +257,71 @@ export function sanitizeEdgesForImport(
     let sourceHandle = edge.sourceHandle;
     let targetHandle = edge.targetHandle;
 
-    // Fix source handle if needed
-    if (sourceHandles?.source && !sourceHandle) {
+    // Fix source handle if needed - always ensure sourceHandle is set for proper visualization
+    if (!sourceHandle && sourceHandles?.source) {
       sourceHandle = sourceHandles.source as string;
     }
 
-    // Fix target handle if needed
-    if (targetHandles?.target && !targetHandle) {
+    // Fix target handle if needed - always ensure targetHandle is set for proper visualization
+    if (!targetHandle && targetHandles?.target) {
       targetHandle = targetHandles.target as string;
+    }
+
+    // Special case: event to condition_group - ensure target handle is set
+    if (sourceType === NodeType.EVENT && targetType === NodeType.CONDITION_GROUP) {
+      if (!targetHandle) {
+        targetHandle = NodeHandle.CONDITION_GROUP_INPUT;
+      }
+    }
+
+    // Special case: event to condition - ensure target handle is set
+    if (sourceType === NodeType.EVENT && targetType === NodeType.CONDITION) {
+      if (!targetHandle) {
+        targetHandle = NodeHandle.CONDITION_INPUT;
+      }
+    }
+
+    // Special case: event to action_group - ensure target handle is set
+    if (sourceType === NodeType.EVENT && targetType === NodeType.ACTION_GROUP) {
+      if (!targetHandle) {
+        targetHandle = NodeHandle.ACTION_GROUP_INPUT;
+      }
     }
 
     // Handle special cases for condition group outputs to conditions
     if (sourceType === NodeType.CONDITION_GROUP && targetType === NodeType.CONDITION) {
       // Condition group outputs should use cond-* handles (cond-0, cond-1, cond-2, etc.)
-      if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT) {
+      // Check if sourceHandle is missing or is the generic 'cond-output' handle
+      if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT || sourceHandle?.startsWith('cond-')) {
         const indexMap = conditionIndexMap.get(edge.source);
         const condIndex = indexMap?.get(edge.target) ?? 0;
         sourceHandle = `cond-${condIndex}`;
+      }
+      // Ensure target handle is set for condition input
+      if (!targetHandle) {
+        targetHandle = NodeHandle.CONDITION_INPUT;
+      }
+    }
+
+    // Handle condition-to-condition chains (condition output to next condition)
+    if (sourceType === NodeType.CONDITION && targetType === NodeType.CONDITION) {
+      // Condition chains use 'output' handle - ensure it's always set
+      if (!sourceHandle) {
+        sourceHandle = NodeHandle.CONDITION_OUTPUT;
+      }
+      // Always set target handle for the condition input
+      targetHandle = targetHandle || NodeHandle.CONDITION_INPUT;
+    }
+
+    // Handle condition to action_group connection (then path)
+    if (sourceType === NodeType.CONDITION && targetType === NodeType.ACTION_GROUP) {
+      // Condition to action group uses then-output handle
+      if (!sourceHandle) {
+        sourceHandle = NodeHandle.THEN_OUTPUT;
+      }
+      // Ensure target handle is set for action group input
+      if (!targetHandle) {
+        targetHandle = NodeHandle.ACTION_GROUP_INPUT;
       }
     }
 
@@ -283,6 +331,10 @@ export function sanitizeEdgesForImport(
       if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT) {
         sourceHandle = NodeHandle.THEN_OUTPUT;
       }
+      // Ensure target handle is set for action group input
+      if (!targetHandle) {
+        targetHandle = NodeHandle.ACTION_GROUP_INPUT;
+      }
     }
 
     // Handle do node special outputs
@@ -290,9 +342,19 @@ export function sanitizeEdgesForImport(
       if (targetType === NodeType.CONDITION) {
         // DO node to condition uses do-condition-output
         sourceHandle = NodeHandle.DO_CONDITION_OUTPUT;
+        // Ensure target handle is set
+        if (!targetHandle) {
+          targetHandle = NodeHandle.CONDITION_INPUT;
+        }
       } else if (targetType === NodeType.ACTION) {
-        // DO node to action uses do-output
-        sourceHandle = sourceHandle || NodeHandle.DO_OUTPUT;
+        // DO node to action - preserve explicit else-output, default to do-output
+        if (sourceHandle !== NodeHandle.ELSE_OUTPUT) {
+          sourceHandle = sourceHandle || NodeHandle.DO_OUTPUT;
+        }
+        // Ensure target handle is set
+        if (!targetHandle) {
+          targetHandle = NodeHandle.ACTION_INPUT;
+        }
       }
     }
 
@@ -313,12 +375,27 @@ export function sanitizeEdgesForImport(
         // This is likely the then/do branch
         sourceHandle = sourceHandle || NodeHandle.DO_OUTPUT;
       }
+      // Ensure target handle is set for action input
+      if (!targetHandle) {
+        targetHandle = NodeHandle.ACTION_INPUT;
+      }
     }
 
-    // Handle action_group conditional outputs
-    if (sourceType === NodeType.ACTION_GROUP && (targetType === NodeType.ACTION || targetType === NodeType.DO)) {
-      // Default to then-output for action groups
-      sourceHandle = sourceHandle || NodeHandle.THEN_OUTPUT;
+    // Handle action_group outputs
+    if (sourceType === NodeType.ACTION_GROUP) {
+      if (targetType === NodeType.DO || targetType === NodeType.ACTION) {
+        // Always use action-output for action group outputs (then-output is for conditions)
+        // But preserve explicit else-output handles if present
+        if (sourceHandle !== NodeHandle.ELSE_OUTPUT) {
+          sourceHandle = NodeHandle.ACTION_GROUP_OUTPUT;
+        }
+        // Ensure target handle is set
+        if (targetType === NodeType.DO && !targetHandle) {
+          targetHandle = NodeHandle.DO_INPUT;
+        } else if (targetType === NodeType.ACTION && !targetHandle) {
+          targetHandle = NodeHandle.ACTION_INPUT;
+        }
+      }
     }
 
     return {

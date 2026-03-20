@@ -195,7 +195,8 @@ export function categorizeDoNodesByBranch(
     visited.add(condId);
     
     // Find DO nodes directly connected to this condition
-    const doEdges = findEdgesBySource(ctx, condId, HandleFilters.CONDITION_OUTPUT)
+    // Include THEN_OUTPUT for condition→do connections (inline conditionals)
+    const doEdges = findEdgesBySource(ctx, condId, [...HandleFilters.CONDITION_OUTPUT, HandleId.THEN_OUTPUT])
       .filter(e => {
         const target = ctx.nodes.find(n => n.id === e.target);
         return target && isDo(target);

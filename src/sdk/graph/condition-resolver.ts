@@ -91,8 +91,8 @@ export function collectConditionsForGroup(
     const condition = nodeToCondition(condNode);
     conditions.push(condition);
     
-    // Follow chaining edges
-    const chainEdges = findEdgesBySource(ctx, condId, HandleFilters.CONDITION_OUTPUT)
+    // Follow chaining edges - include THEN_OUTPUT for condition→do connections
+    const chainEdges = findEdgesBySource(ctx, condId, [...HandleFilters.CONDITION_OUTPUT, HandleId.THEN_OUTPUT])
       .filter(e => {
         const target = ctx.nodes.find(n => n.id === e.target);
         return target && isCond(target);
