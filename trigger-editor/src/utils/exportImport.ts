@@ -214,6 +214,39 @@ export function sanitizeEdgesForImport(
   const nodeTypeMap = new Map<string, string>();
   nodes.forEach(node => nodeTypeMap.set(node.id, node.type || ''));
 
+  // First pass: collect all condition_group edges to understand the structure
+  // Map of condition_group_id -> array of target node IDs in order
+  const conditionGroupConnections = new Map<string, { conditionTargets: string[]; actionTarget?: string }>();
+  
+  edges.forEach(edge => {
+    const sourceType = nodeTypeMap.get(edge.source) || '';
+    const targetType = nodeTypeMap.get(edge.target) || '';
+    
+    if (sourceType === NodeType.CONDITION_GROUP) {
+      if (!conditionGroupConnections.has(edge.source)) {
+        conditionGroupConnections.set(edge.source, { conditionTargets: [], actionTarget: undefined });
+      }
+      const conn = conditionGroupConnections.get(edge.source)!;
+      
+      if (targetType === NodeType.CONDITION) {
+        conn.conditionTargets.push(edge.target);
+      } else if (targetType === NodeType.ACTION_GROUP) {
+        conn.actionTarget = edge.target;
+      }
+    }
+  });
+
+  // Create a map of condition index per condition_group
+  // condition_group_id -> target_node_id -> cond-N index
+  const conditionIndexMap = new Map<string, Map<string, number>>();
+  conditionGroupConnections.forEach((conn, groupId) => {
+    const indexMap = new Map<string, number>();
+    conn.conditionTargets.forEach((targetId, idx) => {
+      indexMap.set(targetId, idx);
+    });
+    conditionIndexMap.set(groupId, indexMap);
+  });
+
   return edges.map(edge => {
     const sourceType = nodeTypeMap.get(edge.source) || '';
     const targetType = nodeTypeMap.get(edge.target) || '';
@@ -234,12 +267,21 @@ export function sanitizeEdgesForImport(
       targetHandle = targetHandles.target as string;
     }
 
-    // Handle special cases for condition group outputs
+    // Handle special cases for condition group outputs to conditions
     if (sourceType === NodeType.CONDITION_GROUP && targetType === NodeType.CONDITION) {
-      // Condition group outputs should use cond-* handles
+      // Condition group outputs should use cond-* handles (cond-0, cond-1, cond-2, etc.)
       if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT) {
-        // Use the existing handle or default to cond-0
-        sourceHandle = sourceHandle || 'cond-0';
+        const indexMap = conditionIndexMap.get(edge.source);
+        const condIndex = indexMap?.get(edge.target) ?? 0;
+        sourceHandle = `cond-${condIndex}`;
+      }
+    }
+
+    // Handle condition_group to action_group connection
+    if (sourceType === NodeType.CONDITION_GROUP && targetType === NodeType.ACTION_GROUP) {
+      // Use then-output for the action path from condition group
+      if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT) {
+        sourceHandle = NodeHandle.THEN_OUTPUT;
       }
     }
 

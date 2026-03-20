@@ -251,6 +251,17 @@ export function findTerminalActions(
         continue;
       }
       
+      // Handle ActionGroup nodes - collect actions from the group
+      if (targetNode.type === NodeType.ACTION_GROUP) {
+        const { actions } = collectActionsForGroup(edge.target, ctx);
+        if (actions.length > 0) {
+          // Use the action_group node's ID as the thenAction
+          // The builder will handle extracting the actual actions
+          thenActionId = edge.target;
+        }
+        continue;
+      }
+      
       // Regular action nodes
       if (!isAct(targetNode)) continue;
       
@@ -465,8 +476,10 @@ export function parseGraph(
     if (!thenActionId && !doActions.length) {
       for (const condId of rootConditions) {
         const actionGroupEdges = findEdgesBySource(ctx, condId, [
+          HandleId.THEN_OUTPUT,
           HandleId.CONDITION_OUTPUT, 
           'condition-output', 
+          'then-output',
           'output', 
           ''
         ]).filter(e => {
@@ -494,8 +507,10 @@ export function parseGraph(
   if (rootConditions.length > 0 && rootConditionGroups.length === 0) {
     for (const condId of rootConditions) {
       const actionGroupEdges = findEdgesBySource(ctx, condId, [
+        HandleId.THEN_OUTPUT,
         HandleId.CONDITION_OUTPUT, 
-        'condition-output', 
+        'condition-output',
+        'then-output', 
         'output', 
         ''
       ]).filter(e => {

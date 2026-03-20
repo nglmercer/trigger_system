@@ -113,7 +113,13 @@ export function collectActionsForGroup(
   }
 
   // Start from actions directly connected to the group
-  const directEdges = findEdgesBySource(ctx, groupId, [HandleId.ACTION_GROUP_OUTPUT])
+  // Note: Also search for DO_OUTPUT since some imports may use that handle
+  const directEdges = findEdgesBySource(ctx, groupId, [
+    HandleId.ACTION_GROUP_OUTPUT,
+    HandleId.DO_OUTPUT,
+    'do-output',
+    'action-output'
+  ])
     .filter(e => {
       const target = ctx.nodes.find(n => n.id === e.target);
       return target && isAct(target);
