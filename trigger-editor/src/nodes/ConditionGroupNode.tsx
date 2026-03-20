@@ -18,9 +18,12 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
   );
   
   // Count how many conditions are connected to this group
-  // SDK looks for edges where sourceHandle starts with 'cond'
+  // Support both 'cond-output' (editor standard) and 'cond-0', 'cond-1', etc. (from imports)
   const connectedConditions = edges.filter(e => 
-    e.source === id && e.sourceHandle?.startsWith(NodeHandle.CONDITION_GROUP_OUTPUT)
+    e.source === id && (
+      e.sourceHandle?.startsWith(NodeHandle.CONDITION_GROUP_OUTPUT) || 
+      e.sourceHandle?.startsWith('cond-')
+    )
   ).length;
 
   // Condition Group has LEFT input and RIGHT output - standard 2-point connection

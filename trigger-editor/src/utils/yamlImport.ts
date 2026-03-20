@@ -99,16 +99,25 @@ export function yamlToNodes(
   let nodeOffset = 0;
   
   for (const rule of parseResult.rules) {
+    // Use the rule.id as the startNodeId - the converter will add its own suffixes
     const conversionResult = triggerRuleToNodes(rule, {
-      startNodeId: `rule-${rule.id}-`,
+      startNodeId: `${rule.id}-`,
       startPosition: { x: 100, y: 100 + nodeOffset * 200 },
     });
     
-    // Remap node IDs to avoid collisions
+    // The SDK converter already prefixes node IDs with the startNodeId.
+    // We only need to add a prefix for non-event nodes to avoid collisions with other rules.
+    // The event node already has the rule.id as prefix, so we add rule.id again only for other nodes.
     const idMap = new Map<string, string>();
     for (const node of conversionResult.nodes) {
-      const newId = `${rule.id}-${node.id}`;
-      idMap.set(node.id, newId);
+      if (node.type === 'event') {
+        // Event node already has the rule.id prefix from startNodeId
+        idMap.set(node.id, node.id);
+      } else {
+        // Add prefix to other nodes
+        const newId = `${rule.id}-${node.id}`;
+        idMap.set(node.id, newId);
+      }
     }
     
     // Apply ID mapping to both nodes AND edges

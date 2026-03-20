@@ -524,7 +524,12 @@ function processActions(
     // Handle action group
     if (utilsIsActionGroup(action)) {
       const groupNodeId = getNodeId();
-      const groupNode = buildActionGroupNode(action.mode as ExecutionMode, groupNodeId, getPosition(2, idx, actions.length));
+      // Position action group based on source node position
+      const sourceNodePos = nodes.find(n => n.id === sourceId)?.position || { x: 100, y: 100 };
+      const groupNode = buildActionGroupNode(action.mode as ExecutionMode, groupNodeId, {
+        x: sourceNodePos.x + 300,
+        y: sourceNodePos.y + idx * 75
+      });
       nodes.push(groupNode);
       
       // Determine the correct source handle based on the source node type
@@ -564,8 +569,13 @@ function processActions(
     if (utilsHasConditionalExecution(action)) {
       const inlineAction = action as InlineConditionalAction;
       // Create a DO node to represent the conditional
+      // Position it slightly offset from the parent action group
       const doNodeId = getNodeId();
-      const doNode = buildDoNode(branchType, doNodeId, getPosition(2, idx, actions.length));
+      const parentPos = getPosition(2, idx, actions.length);
+      const doNode = buildDoNode(branchType, doNodeId, { 
+        x: parentPos.x, 
+        y: parentPos.y + (branchType === 'else' ? 75 : -75) // Offset from parent position
+      });
       nodes.push(doNode);
       
       // Determine the correct source handle based on the source node type
@@ -589,22 +599,31 @@ function processActions(
       const ifCond = Array.isArray(ifCondRaw) ? ifCondRaw[0] : ifCondRaw;
       if (ifCond && isSimpleCondition(ifCond)) {
         const condNodeId = getNodeId();
+        // Position condition node to the right of the DO node
+        const doNodePos = doNode.position;
         const condNode = buildConditionNode(
           getConditionField(ifCond),
           getConditionOperator(ifCond),
           getConditionValue(ifCond),
           condNodeId,
-          getPosition(3, idx * 2, actions.length * 2)
+          { x: doNodePos.x + 300, y: doNodePos.y } // Position to the right of DO node
         );
         nodes.push(condNode);
         
         // Connect DO to condition
         edges.push(buildEdge(doNodeId, condNodeId, HandleId.DO_CONDITION_OUTPUT, HandleId.CONDITION_INPUT, getEdgeId));
         
-        // Process then branch
+        // Process then branch - position above the condition node
         const thenAction = (action as InlineConditionalAction).then;
         if (thenAction) {
           const thenActions = Array.isArray(thenAction) ? thenAction : [thenAction];
+          // Position then actions above the condition (negative Y offset)
+          const thenGetPosition = (level: number, i: number, total: number) => {
+            return {
+              x: condNode.position.x + 300,
+              y: condNode.position.y - 150 - (i * 150)
+            };
+          };
           processActions(
             thenActions as (Action | ActionGroup | InlineConditionalAction)[],
             nodes,
@@ -612,15 +631,22 @@ function processActions(
             condNodeId,
             getNodeId,
             getEdgeId,
-            getPosition,
+            thenGetPosition,
             'do'
           );
         }
         
-        // Process else branch
+        // Process else branch - position below the condition node
         const elseAction = (action as InlineConditionalAction).else;
         if (elseAction) {
           const elseActions = Array.isArray(elseAction) ? elseAction : [elseAction];
+          // Position else actions below the condition (positive Y offset)
+          const elseGetPosition = (level: number, i: number, total: number) => {
+            return {
+              x: condNode.position.x + 300,
+              y: condNode.position.y + 150 + (i * 150)
+            };
+          };
           processActions(
             elseActions as (Action | ActionGroup | InlineConditionalAction)[],
             nodes,
@@ -628,7 +654,7 @@ function processActions(
             condNodeId,
             getNodeId,
             getEdgeId,
-            getPosition,
+            elseGetPosition,
             'else'
           );
         }
@@ -638,7 +664,13 @@ function processActions(
     
     // Regular action
     const actionNodeId = getNodeId();
-    const actionNode = buildActionNode(action as Action, actionNodeId, getPosition(2, idx, actions.length));
+    // Position action nodes to the right of the source node
+    // Get source node position and offset
+    const sourceNodePos = nodes.find(n => n.id === sourceId)?.position || { x: 700, y: 100 };
+    const actionNode = buildActionNode(action as Action, actionNodeId, {
+      x: sourceNodePos.x + 300, // Position to the right of source
+      y: sourceNodePos.y + idx * 150 // Spread vertically based on index
+    });
     nodes.push(actionNode);
     
     // Determine the correct source handle based on the source node type
