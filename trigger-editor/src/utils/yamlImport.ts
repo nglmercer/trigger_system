@@ -13,9 +13,21 @@
  * - Easy testing of individual components
  * - Clear separation of concerns
  * - Reusable parsing logic
+ * 
+ * Uses the modularized YAML parser from src/sdk/yaml/ which supports:
+ * - DO nodes
+ * - ELSE branches
+ * - Conditions in actions
+ * - Subconditions and sub-do/else
  */
 
-import { parseYamlRules, triggerRuleToNodes, yamlToNodes, type EditorNode, type EditorEdge } from '../../../src/sdk/yaml-parser';
+// Import from the new modularized YAML parser
+import { 
+  parseYamlRules, 
+  triggerRuleToNodes,
+  type EditorNode, 
+  type EditorEdge 
+} from '../../../src/sdk/yaml';
 import type { Edge } from '@xyflow/react';
 
 import { NodeType } from '../constants';
@@ -37,6 +49,93 @@ import {
   errorResponse,
 } from './importExportTypes';
 import { createYamlFilePicker } from './filePicker';
+
+// ============================================================================
+// YAML to Nodes Conversion
+// ============================================================================
+
+/**
+ * YAML to nodes result with proper typing
+ */
+interface YamlToNodesResult {
+  nodes: EditorNode[];
+  edges: EditorEdge[];
+  valid: boolean;
+  errors: string[];
+}
+
+/**
+ * Convert YAML content to nodes and edges
+ * This is a wrapper around the SDK functions for the editor
+ */
+export function yamlToNodes(
+  yamlContent: string,
+  options: {
+    throwOnError?: boolean;
+    multiDocument?: boolean;
+  } = {}
+): YamlToNodesResult {
+  const { throwOnError = false, multiDocument = true } = options;
+  
+  // Parse YAML to rules
+  const parseResult = parseYamlRules(yamlContent, {
+    throwOnError,
+    multiDocument,
+  });
+  
+  if (!parseResult.valid || parseResult.rules.length === 0) {
+    return {
+      nodes: [],
+      edges: [],
+      valid: false,
+      errors: parseResult.errors.map(e => e.message),
+    };
+  }
+  
+  // Convert each rule to nodes
+  const allNodes: EditorNode[] = [];
+  const allEdges: EditorEdge[] = [];
+  let nodeOffset = 0;
+  
+  for (const rule of parseResult.rules) {
+    const conversionResult = triggerRuleToNodes(rule, {
+      startNodeId: `rule-${rule.id}-`,
+      startPosition: { x: 100, y: 100 + nodeOffset * 200 },
+    });
+    
+    // Remap node IDs to avoid collisions
+    const idMap = new Map<string, string>();
+    for (const node of conversionResult.nodes) {
+      const newId = `${rule.id}-${node.id}`;
+      idMap.set(node.id, newId);
+    }
+    
+    // Apply ID mapping
+    for (const node of conversionResult.nodes) {
+      allNodes.push({
+        ...node,
+        id: idMap.get(node.id) || node.id,
+      });
+    }
+    
+    for (const edge of conversionResult.edges) {
+      allEdges.push({
+        ...edge,
+        source: idMap.get(edge.source) || edge.source,
+        target: idMap.get(edge.target) || edge.target,
+      });
+    }
+    
+    nodeOffset++;
+  }
+  
+  return {
+    nodes: allNodes,
+    edges: allEdges,
+    valid: true,
+    errors: [],
+  };
+}
 
 // ============================================================================
 // Main Parser

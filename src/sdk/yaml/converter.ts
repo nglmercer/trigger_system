@@ -1,0 +1,656 @@
+/**
+ * YAML to Editor Node/Edge Converter
+ * 
+ * This module converts TriggerRule objects to React Flow editor nodes and edges.
+ * It supports all node types including:
+ * - Event nodes
+ * - Condition nodes (including groups)
+ * - Action nodes (including inline conditionals)
+ * - Action groups
+ * - DO nodes (for graph-based representation)
+ */
+
+import type { 
+  TriggerRule, 
+  RuleCondition, 
+  Action, 
+  ActionGroup, 
+  ComparisonOperator, 
+  ExecutionMode,
+  InlineConditionalAction,
+  Condition
+} from '../../types';
+import { 
+  isConditionGroup as utilsIsConditionGroup, 
+  isActionGroup as utilsIsActionGroup, 
+  hasConditionalExecution as utilsHasConditionalExecution,
+  isSimpleCondition as utilsIsSimpleCondition
+} from './utils';
+import type { 
+  EditorNode, 
+  EditorEdge, 
+  EditorNodeType,
+  TriggerRuleToNodesResult 
+} from './types';
+import { 
+  getActionType, 
+  getActionParams,
+  getConditionField,
+  getConditionOperator,
+  getConditionValue,
+  createNodeIdGenerator,
+  createEdgeIdGenerator,
+  createPositionCalculator,
+  ensureArray,
+  isSimpleCondition
+} from './utils';
+
+// ============================================================================
+// Node Builders
+// ============================================================================
+
+/**
+ * Build an Event node from TriggerRule
+ */
+export function buildEventNode(
+  rule: TriggerRule,
+  nodeId: string,
+  position: { x: number; y: number }
+): EditorNode {
+  return {
+    id: nodeId,
+    type: 'event',
+    position,
+    data: {
+      id: rule.id || 'rule-1',
+      name: rule.name || 'Imported Rule',
+      description: rule.description || '',
+      event: rule.on || '',
+      priority: rule.priority || 0,
+      enabled: rule.enabled !== false,
+      cooldown: rule.cooldown,
+      tags: rule.tags,
+    },
+  };
+}
+
+/**
+ * Build a Condition Group node
+ */
+export function buildConditionGroupNode(
+  operator: 'AND' | 'OR',
+  nodeId: string,
+  position: { x: number; y: number }
+): EditorNode {
+  return {
+    id: nodeId,
+    type: 'condition_group',
+    position,
+    data: {
+      operator,
+    },
+  };
+}
+
+/**
+ * Build a single Condition node
+ */
+export function buildConditionNode(
+  field: string,
+  operator: string,
+  value: unknown,
+  nodeId: string,
+  position: { x: number; y: number }
+): EditorNode {
+  return {
+    id: nodeId,
+    type: 'condition',
+    position,
+    data: {
+      field: field || 'data',
+      operator: (operator as ComparisonOperator) || 'EQ',
+      value: value ?? '',
+    },
+  };
+}
+
+/**
+ * Build a DO node (for inline conditionals in graph)
+ */
+export function buildDoNode(
+  branchType: 'do' | 'else',
+  nodeId: string,
+  position: { x: number; y: number }
+): EditorNode {
+  return {
+    id: nodeId,
+    type: 'do',
+    position,
+    data: {
+      branchType,
+    },
+  };
+}
+
+/**
+ * Build an Action node
+ */
+export function buildActionNode(
+  action: Action | InlineConditionalAction,
+  nodeId: string,
+  position: { x: number; y: number }
+): EditorNode {
+  // Handle conditional action (action with if/then/else)
+  let conditionField: string | undefined;
+  let conditionOperator: string | undefined;
+  let conditionValue: string | undefined;
+  let thenType: string | undefined;
+  let thenParams: string | undefined;
+  let elseType: string | undefined;
+  let elseParams: string | undefined;
+  
+  // Check if this action has conditional execution
+  if (utilsHasConditionalExecution(action)) {
+    const cond = (action as InlineConditionalAction).if;
+    if (cond) {
+      const conditions = Array.isArray(cond) ? cond : [cond];
+      const firstCond = conditions[0];
+      if (firstCond && utilsIsSimpleCondition(firstCond)) {
+        conditionField = firstCond.field;
+        conditionOperator = firstCond.operator;
+        conditionValue = firstCond.value !== undefined 
+          ? (typeof firstCond.value === 'string' ? firstCond.value : JSON.stringify(firstCond.value))
+          : undefined;
+      }
+    }
+    
+    // Extract then branch
+    const thenAction = (action as InlineConditionalAction).then;
+    if (thenAction) {
+      const thenArr = Array.isArray(thenAction) ? thenAction : [thenAction];
+      if (thenArr[0]) {
+        thenType = getActionType(thenArr[0] as Action);
+        thenParams = getActionParams(thenArr[0] as Action);
+      }
+    }
+    
+    // Extract else branch
+    const elseAction = (action as InlineConditionalAction).else;
+    if (elseAction) {
+      const elseArr = Array.isArray(elseAction) ? elseAction : [elseAction];
+      if (elseArr[0]) {
+        elseType = getActionType(elseArr[0] as Action);
+        elseParams = getActionParams(elseArr[0] as Action);
+      }
+    }
+  }
+
+  const actionData: Record<string, unknown> = {
+    type: getActionType(action as Action),
+    params: getActionParams(action as Action),
+  };
+
+  // Add conditional fields if present
+  if (conditionField) actionData.conditionField = conditionField;
+  if (conditionOperator) actionData.conditionOperator = conditionOperator;
+  if (conditionValue !== undefined) actionData.conditionValue = conditionValue;
+  if (thenType) actionData.thenType = thenType;
+  if (thenParams) actionData.thenParams = thenParams;
+  if (elseType) actionData.elseType = elseType;
+  if (elseParams) actionData.elseParams = elseParams;
+
+  return {
+    id: nodeId,
+    type: 'action',
+    position,
+    data: actionData,
+  };
+}
+
+/**
+ * Build an Action Group node
+ */
+export function buildActionGroupNode(
+  mode: ExecutionMode,
+  nodeId: string,
+  position: { x: number; y: number }
+): EditorNode {
+  return {
+    id: nodeId,
+    type: 'action_group',
+    position,
+    data: {
+      mode: mode || 'SEQUENCE',
+    },
+  };
+}
+
+// ============================================================================
+// Edge Builder
+// ============================================================================
+
+/**
+ * Build an edge between two nodes
+ */
+export function buildEdge(
+  source: string,
+  target: string,
+  sourceHandle?: string | null,
+  targetHandle?: string | null,
+  edgeIdGenerator?: () => string
+): EditorEdge {
+  return {
+    id: edgeIdGenerator ? edgeIdGenerator() : `edge_${source}_${target}_${Date.now()}`,
+    source,
+    target,
+    sourceHandle: sourceHandle ?? null,
+    targetHandle: targetHandle ?? null,
+  };
+}
+
+// ============================================================================
+// Rule to Nodes Conversion
+// ============================================================================
+
+/**
+ * Convert a TriggerRule to editor nodes and edges
+ */
+export function triggerRuleToNodes(
+  rule: TriggerRule,
+  options: {
+    startNodeId?: string;
+    startPosition?: { x: number; y: number };
+  } = {}
+): TriggerRuleToNodesResult {
+  const nodes: EditorNode[] = [];
+  const edges: EditorEdge[] = [];
+  const errors: string[] = [];
+  
+  // Validate required fields
+  if (!rule.id) {
+    errors.push('Missing required field: id');
+  }
+  if (!rule.on) {
+    errors.push('Missing required field: on (event trigger)');
+  }
+  if (!rule.do && rule.do !== '') {
+    errors.push('Missing required field: do (actions)');
+  }
+  
+  // If there are validation errors, return early
+  if (errors.length > 0) {
+    return {
+      nodes: [],
+      edges: [],
+      valid: false,
+      errors
+    };
+  }
+  
+  const startNodeId = options.startNodeId || 'event-node';
+  const getNodeId = createNodeIdGenerator(0);
+  const getEdgeId = createEdgeIdGenerator();
+  const getPosition = createPositionCalculator();
+  
+  try {
+    // Build event node
+    const eventNode = buildEventNode(rule, startNodeId, options.startPosition || { x: 100, y: 300 });
+    nodes.push(eventNode);
+    
+    // Process conditions
+    const conditions = ensureArray(rule.if);
+    if (conditions.length > 0) {
+      const { conditionNodes, groupNodeId } = processConditions(
+        conditions,
+        nodes,
+        edges,
+        eventNode.id,
+        getNodeId,
+        getPosition
+      );
+      
+      // Process DO actions (then branch)
+      const doActions = ensureArray(rule.do);
+      if (doActions.length > 0) {
+        // For AND group, connect all condition nodes to actions
+        // For OR group, only connect the last condition (any branch leads to actions)
+        const isAndGroup = groupNodeId && conditions.length > 0 && 
+          (() => {
+            const groupCond = conditions.find(utilsIsConditionGroup);
+            return groupCond && utilsIsConditionGroup(groupCond) && groupCond.operator === 'AND';
+          })();
+        
+        if (isAndGroup && conditionNodes.length > 0) {
+          // Connect all conditions to the action_group
+          // The first condition will be the entry point, but we need edges from ALL conditions
+          const firstCondNode = conditionNodes[0]!.id;
+          
+          // Create a virtual connection from all other conditions to the action group
+          // by connecting from the condition group node (which all conditions connect to)
+          // Instead, we'll use the group node as the source for actions
+          processActions(
+            doActions,
+            nodes,
+            edges,
+            groupNodeId!, // Use group node as source for AND conditions
+            getNodeId,
+            getEdgeId,
+            getPosition,
+            'do'
+          );
+        } else {
+          const lastCondNode = conditionNodes.length > 0 
+            ? conditionNodes[conditionNodes.length - 1]!.id 
+            : groupNodeId || eventNode.id;
+          
+          processActions(
+            doActions,
+            nodes,
+            edges,
+            lastCondNode,
+            getNodeId,
+            getEdgeId,
+            getPosition,
+            'do'
+          );
+        }
+      }
+      
+      // Process ELSE actions
+      const elseActions = ensureArray(rule.else);
+      if (elseActions.length > 0) {
+        const isAndGroup = groupNodeId && conditions.length > 0 && 
+          (() => {
+            const groupCond = conditions.find(utilsIsConditionGroup);
+            return groupCond && utilsIsConditionGroup(groupCond) && groupCond.operator === 'AND';
+          })();
+        
+        if (isAndGroup && conditionNodes.length > 0) {
+          processActions(
+            elseActions,
+            nodes,
+            edges,
+            groupNodeId!,
+            getNodeId,
+            getEdgeId,
+            getPosition,
+            'else'
+          );
+        } else {
+          const lastCondNode = conditionNodes.length > 0 
+            ? conditionNodes[conditionNodes.length - 1]!.id 
+            : groupNodeId || eventNode.id;
+          
+          processActions(
+            elseActions,
+            nodes,
+            edges,
+            lastCondNode,
+            getNodeId,
+            getEdgeId,
+            getPosition,
+            'else'
+          );
+        }
+      }
+    } else {
+      // No conditions - process actions directly from event
+      const doActions = ensureArray(rule.do);
+      if (doActions.length > 0) {
+        processActions(
+          doActions,
+          nodes,
+          edges,
+          eventNode.id,
+          getNodeId,
+          getEdgeId,
+          getPosition,
+          'do'
+        );
+      }
+    }
+    
+    return {
+      nodes,
+      edges,
+      valid: true,
+      errors: []
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error during conversion';
+    errors.push(message);
+    
+    return {
+      nodes,
+      edges,
+      valid: false,
+      errors
+    };
+  }
+}
+
+// ============================================================================
+// Condition Processing
+// ============================================================================
+
+/**
+ * Process conditions from TriggerRule and create condition nodes
+ */
+function processConditions(
+  conditions: RuleCondition[],
+  nodes: EditorNode[],
+  edges: EditorEdge[],
+  eventNodeId: string,
+  getNodeId: () => string,
+  getPosition: (level: number, index: number, total: number) => { x: number; y: number }
+): { conditionNodes: EditorNode[]; groupNodeId?: string } {
+  const conditionNodes: EditorNode[] = [];
+  let groupNodeId: string | undefined;
+  
+  const hasMultipleConditions = conditions.length > 1;
+  const hasAnyGroup = conditions.some(utilsIsConditionGroup);
+  
+  if (hasMultipleConditions || hasAnyGroup) {
+    // Create a condition group node
+    groupNodeId = getNodeId();
+    
+    // Find the operator from condition groups or default to AND
+    let groupOperator: 'AND' | 'OR' = 'AND';
+    const groupCond = conditions.find(utilsIsConditionGroup);
+    if (groupCond && utilsIsConditionGroup(groupCond)) {
+      groupOperator = groupCond.operator;
+    }
+    
+    const groupNode = buildConditionGroupNode(groupOperator, groupNodeId, getPosition(1, 0, 1));
+    nodes.push(groupNode);
+    
+    // Connect event to condition group
+    edges.push(buildEdge(eventNodeId, groupNodeId, null, 'input', undefined));
+    
+    // Process each condition
+    conditions.forEach((cond, idx) => {
+      if (utilsIsConditionGroup(cond)) {
+        // Skip logical conditions as they define the group, process their nested conditions
+        if (cond.conditions) {
+          cond.conditions.forEach((nestedCond: RuleCondition, nestedIdx: number) => {
+            if (utilsIsConditionGroup(nestedCond)) return; // Skip nested groups for now
+            
+            const condNodeId = getNodeId();
+            const condNode = buildConditionNode(
+              getConditionField(nestedCond),
+              getConditionOperator(nestedCond),
+              getConditionValue(nestedCond),
+              condNodeId,
+              getPosition(2, idx * 2 + nestedIdx, conditions.length * 2)
+            );
+            nodes.push(condNode);
+            conditionNodes.push(condNode);
+            
+            // Connect group to condition
+            edges.push(buildEdge(groupNodeId!, condNodeId, `cond-${nestedIdx}`, 'condition-input', undefined));
+          });
+        }
+      } else {
+        const condNodeId = getNodeId();
+        const condNode = buildConditionNode(
+          getConditionField(cond),
+          getConditionOperator(cond),
+          getConditionValue(cond),
+          condNodeId,
+          getPosition(2, idx, conditions.length)
+        );
+        nodes.push(condNode);
+        conditionNodes.push(condNode);
+        
+        // Connect group to condition
+        edges.push(buildEdge(groupNodeId!, condNodeId, `cond-${idx}`, 'condition-input', undefined));
+      }
+    });
+  } else {
+    // Single condition - create directly
+    const condNodeId = getNodeId();
+    const condNode = buildConditionNode(
+      getConditionField(conditions[0]!),
+      getConditionOperator(conditions[0]!),
+      getConditionValue(conditions[0]!),
+      condNodeId,
+      getPosition(1, 0, 1)
+    );
+    nodes.push(condNode);
+    conditionNodes.push(condNode);
+    
+    // Connect event to condition
+    edges.push(buildEdge(eventNodeId, condNodeId, null, 'condition-input', undefined));
+  }
+  
+  return { conditionNodes, groupNodeId };
+}
+
+// ============================================================================
+// Action Processing
+// ============================================================================
+
+/**
+ * Process actions from TriggerRule and create action nodes
+ */
+function processActions(
+  actions: (Action | ActionGroup | InlineConditionalAction)[],
+  nodes: EditorNode[],
+  edges: EditorEdge[],
+  sourceId: string,
+  getNodeId: () => string,
+  getEdgeId: () => string,
+  getPosition: (level: number, index: number, total: number) => { x: number; y: number },
+  branchType: 'do' | 'else'
+): void {
+  actions.forEach((action, idx) => {
+    // Handle action group
+    if (utilsIsActionGroup(action)) {
+      const groupNodeId = getNodeId();
+      const groupNode = buildActionGroupNode(action.mode as ExecutionMode, groupNodeId, getPosition(2, idx, actions.length));
+      nodes.push(groupNode);
+      
+      // Connect source to group
+      edges.push(buildEdge(sourceId, groupNodeId, branchType === 'else' ? 'else-output' : 'then-output', 'input', getEdgeId));
+      
+      // Process nested actions
+      processActions(
+        action.actions as (Action | ActionGroup | InlineConditionalAction)[],
+        nodes,
+        edges,
+        groupNodeId,
+        getNodeId,
+        getEdgeId,
+        getPosition,
+        branchType
+      );
+      return;
+    }
+    
+    // Handle inline conditional action
+    if (utilsHasConditionalExecution(action)) {
+      const inlineAction = action as InlineConditionalAction;
+      // Create a DO node to represent the conditional
+      const doNodeId = getNodeId();
+      const doNode = buildDoNode(branchType, doNodeId, getPosition(2, idx, actions.length));
+      nodes.push(doNode);
+      
+      // Connect source to DO node
+      edges.push(buildEdge(sourceId, doNodeId, branchType === 'else' ? 'else-output' : 'then-output', 'do-input', getEdgeId));
+      
+      // Create condition node
+      const ifCondRaw = inlineAction.if;
+      const ifCond = Array.isArray(ifCondRaw) ? ifCondRaw[0] : ifCondRaw;
+      if (ifCond && isSimpleCondition(ifCond)) {
+        const condNodeId = getNodeId();
+        const condNode = buildConditionNode(
+          getConditionField(ifCond),
+          getConditionOperator(ifCond),
+          getConditionValue(ifCond),
+          condNodeId,
+          getPosition(3, idx * 2, actions.length * 2)
+        );
+        nodes.push(condNode);
+        
+        // Connect DO to condition
+        edges.push(buildEdge(doNodeId, condNodeId, 'do-condition-output', 'condition-input', getEdgeId));
+        
+        // Process then branch
+        const thenAction = (action as InlineConditionalAction).then;
+        if (thenAction) {
+          const thenActions = Array.isArray(thenAction) ? thenAction : [thenAction];
+          processActions(
+            thenActions as (Action | ActionGroup | InlineConditionalAction)[],
+            nodes,
+            edges,
+            condNodeId,
+            getNodeId,
+            getEdgeId,
+            getPosition,
+            'do'
+          );
+        }
+        
+        // Process else branch
+        const elseAction = (action as InlineConditionalAction).else;
+        if (elseAction) {
+          const elseActions = Array.isArray(elseAction) ? elseAction : [elseAction];
+          processActions(
+            elseActions as (Action | ActionGroup | InlineConditionalAction)[],
+            nodes,
+            edges,
+            condNodeId,
+            getNodeId,
+            getEdgeId,
+            getPosition,
+            'else'
+          );
+        }
+      }
+      return;
+    }
+    
+    // Regular action
+    const actionNodeId = getNodeId();
+    const actionNode = buildActionNode(action as Action, actionNodeId, getPosition(2, idx, actions.length));
+    nodes.push(actionNode);
+    
+    // Connect source to action
+    edges.push(buildEdge(sourceId, actionNodeId, branchType === 'else' ? 'else-output' : 'do-output', 'action-input', getEdgeId));
+  });
+}
+
+// ============================================================================
+// Default Export
+// ============================================================================
+
+export default {
+  triggerRuleToNodes,
+  buildEventNode,
+  buildConditionGroupNode,
+  buildConditionNode,
+  buildDoNode,
+  buildActionNode,
+  buildActionGroupNode,
+  buildEdge,
+};

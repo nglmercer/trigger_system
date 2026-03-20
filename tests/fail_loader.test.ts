@@ -18,7 +18,8 @@ describe("TriggerLoader Error Handling", () => {
     test("loadRulesFromDir should skip invalid files but load valid ones (if any)", async () => {
         // This directory only contains bad files
         const rules = await TriggerLoader.loadRulesFromDir(incorrectDir);
-        expect(rules).toHaveLength(1);
+        console.log("rules",rules)
+        expect(rules).toHaveLength(0);
     });
 });
 

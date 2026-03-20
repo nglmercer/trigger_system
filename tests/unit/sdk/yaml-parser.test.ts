@@ -4,12 +4,11 @@ import {
   parseYamlRule, 
   parseYamlRuleStrict,
   triggerRuleToNodes,
-  yamlToNodes,
   type YamlParserOptions,
   type YamlParserResult,
   type TriggerRuleToNodesResult
 } from '../../../src/sdk/yaml-parser';
-
+import { yamlToNodes } from '../../../trigger-editor/src/utils/yamlImport';
 describe('yaml-parser', () => {
   describe('parseYamlRules', () => {
     test('should parse a basic rule', () => {
@@ -516,8 +515,8 @@ describe('yaml-parser', () => {
 `;
       const result = yamlToNodes(yaml);
 
-      expect(result.parserErrors).toBeDefined();
-      expect(result.parserErrors.length).toBeGreaterThan(0);
+      expect(result.errors).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
     });
   });
 

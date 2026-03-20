@@ -1,0 +1,444 @@
+# ============================================================================
+# Complex YAML Rules Test Fixtures
+# ============================================================================
+# This file contains comprehensive test cases for the YAML parser
+# covering all node types and complex structures:
+# - Simple rules
+# - Rules with conditions
+# - Rules with else branches
+# - Nested conditions
+# - Action groups with different modes
+# - Inline conditionals in actions
+# - Sub-conditions and sub-do/else
+# - DO nodes representation
+# ============================================================================
+
+# --- Simple Rule ---
+- id: simple-rule
+  name: Simple Rule
+  on: event.simple
+  do:
+    - type: log
+      params:
+        message: "Hello World"
+
+# --- Rule with Single Condition ---
+- id: single-condition-rule
+  name: Single Condition Rule
+  on: event.condition
+  if:
+    field: data.value
+    operator: EQ
+    value: 10
+  do:
+    - type: log
+      params:
+        message: "Value is 10"
+
+# --- Rule with Condition Group (AND) ---
+- id: condition-group-and
+  name: Condition Group AND
+  on: event.condition_group
+  if:
+    operator: AND
+    conditions:
+      - field: data.a
+        operator: EQ
+        value: 1
+      - field: data.b
+        operator: EQ
+        value: 2
+  do:
+    - type: log
+      params:
+        message: "Both conditions met"
+
+# --- Rule with Condition Group (OR) ---
+- id: condition-group-or
+  name: Condition Group OR
+  on: event.condition_group_or
+  if:
+    operator: OR
+    conditions:
+      - field: data.a
+        operator: EQ
+        value: 1
+      - field: data.b
+        operator: EQ
+        value: 2
+  do:
+    - type: log
+      params:
+        message: "Either condition met"
+
+# --- Rule with Top-Level Else ---
+- id: rule-with-else
+  name: Rule With Else
+  on: event.else_test
+  if:
+    field: data.value
+    operator: EQ
+    value: 5
+  do:
+    - type: log
+      params:
+        message: "Value is 5"
+  else:
+    - type: log
+      params:
+        message: "Value is not 5"
+
+# --- Rule with Multiple Conditions and Else ---
+- id: multiple-conditions-else
+  name: Multiple Conditions With Else
+  on: event.multi_else
+  if:
+    operator: AND
+    conditions:
+      - field: data.value1
+        operator: EQ
+        value: 5
+      - field: data.value2
+        operator: GT
+        value: 10
+  do:
+    - type: log
+      params:
+        message: "Both conditions met"
+  else:
+    - type: log
+      params:
+        message: "Conditions not met"
+
+# --- Rule with Action Group (ALL mode) ---
+- id: action-group-all
+  name: Action Group ALL
+  on: event.action_group_all
+  do:
+    mode: ALL
+    actions:
+      - type: log
+        params:
+          message: "Action 1"
+      - type: log
+        params:
+          message: "Action 2"
+
+# --- Rule with Action Group (SEQUENCE mode) ---
+- id: action-group-sequence
+  name: Action Group SEQUENCE
+  on: event.action_group_seq
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: state_set
+        params:
+          key: step1
+          value: true
+      - type: state_set
+        params:
+          key: step2
+          value: true
+
+# --- Rule with Nested Action Groups ---
+- id: nested-action-groups
+  name: Nested Action Groups
+  on: event.nested_groups
+  do:
+    mode: ALL
+    actions:
+      - type: log
+        params:
+          message: "Top Level"
+      - mode: EITHER
+        actions:
+          - type: log
+            params:
+              message: "Option 1"
+          - type: log
+            params:
+              message: "Option 2"
+      - mode: SEQUENCE
+        actions:
+          - type: log
+            params:
+              message: "Seq 1"
+          - type: log
+            params:
+              message: "Seq 2"
+
+# --- Rule with Inline Conditional in Action (if/then) ---
+- id: inline-conditional-then
+  name: Inline Conditional Then
+  on: event.inline_cond
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: state_set
+        params:
+          key: score
+          value: 85
+      - if:
+          field: data.score
+          operator: GTE
+          value: 80
+        then:
+          type: log
+          params:
+            message: "Great score!"
+
+# --- Rule with Inline Conditional in Action (if/then/else) ---
+- id: inline-conditional-then-else
+  name: Inline Conditional Then Else
+  on: event.inline_cond_else
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: state_set
+        params:
+          key: level
+          value: basic
+      - if:
+          field: data.level
+          operator: EQ
+          value: premium
+        then:
+          type: log
+          params:
+            message: "Welcome Premium!"
+        else:
+          type: log
+          params:
+            message: "Upgrade to Premium!"
+
+# --- Rule with Complex Inline Conditional (AND condition) ---
+- id: inline-conditional-complex
+  name: Inline Conditional Complex
+  on: event.inline_complex
+  do:
+    mode: ALL
+    actions:
+      - type: state_set
+        params:
+          key: balance
+          value: 100
+      - if:
+          operator: AND
+          conditions:
+            - field: env.balance
+              operator: GTE
+              value: 50
+            - field: env.balance
+              operator: LT
+              value: 200
+        then:
+          type: log
+          params:
+            message: "Balance is healthy!"
+        else:
+          type: log
+          params:
+            message: "Balance check failed"
+
+# --- Rule with Nested Conditions in Then ---
+- id: nested-condition-in-then
+  name: Nested Condition in Then
+  on: event.nested_then
+  do:
+    - if:
+        field: data.status
+        operator: EQ
+        value: pending
+      then:
+        if:
+          field: data.retryCount
+          operator: LT
+          value: 3
+        then:
+          type: log
+          params:
+            message: "Will retry"
+        else:
+          type: log
+          params:
+            message: "Max retries exceeded"
+
+# --- Rule with Sub-Do in Action ---
+- id: sub-do-in-action
+  name: Sub-Do in Action
+  on: event.sub_do
+  do:
+    - if:
+        field: data.value
+        operator: EQ
+        value: test
+      do:
+        - type: log
+          params:
+            message: "Value is test"
+        - if:
+            field: data.subValue
+            operator: EQ
+            value: sub
+          do:
+            type: log
+            params:
+              message: "Sub value is sub"
+          else:
+            type: log
+            params:
+              message: "Sub value is not sub"
+
+# --- Rule with ActionGroup in Then ---
+- id: action-group-in-then
+  name: Action Group in Then
+  on: event.group_in_then
+  do:
+    - if:
+        field: data.score
+        operator: GTE
+        value: 90
+      then:
+        mode: SEQUENCE
+        actions:
+          - type: log
+            params:
+              message: "Excellent score!"
+          - type: log
+            params:
+              message: "Awarding honors..."
+
+# --- Rule with ActionGroup in Else ---
+- id: action-group-in-else
+  name: Action Group in Else
+  on: event.group_in_else
+  do:
+    - if:
+        field: data.status
+        operator: EQ
+        value: active
+      then:
+        - type: log
+          params:
+            message: "Status is active"
+      else:
+        mode: SEQUENCE
+        actions:
+          - type: log
+            params:
+              message: "Status is not active"
+          - type: log
+            params:
+              message: "Taking default action"
+
+# --- Rule with Break in Action ---
+- id: action-break
+  name: Action Break
+  on: event.break_test
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: log
+        params:
+          message: "Step 1"
+      - if:
+          field: data.stop
+          operator: EQ
+          value: true
+        then:
+          type: BREAK
+      - type: log
+        params:
+          message: "Step 2 - skipped if stop"
+
+# --- Rule with Continue in Action ---
+- id: action-continue
+  name: Action Continue
+  on: event.continue_test
+  do:
+    mode: ALL
+    actions:
+      - type: state_set
+        params:
+          key: priority
+          value: 1
+      - if:
+          field: data.priority
+          operator: LT
+          value: 3
+        then:
+          type: CONTINUE
+      - type: log
+        params:
+          message: "Premium action - skipped"
+
+# --- Rule with Delay and Probability ---
+- id: action-delay-probability
+  name: Action Delay and Probability
+  on: event.delay_prob
+  do:
+    - type: log
+      delay: 500
+      params:
+        message: "Delayed message"
+    - type: log
+      probability: 0.5
+      params:
+        message: "Maybe this runs"
+
+# --- Rule with Full Metadata ---
+- id: rule-full-metadata
+  name: Full Metadata Rule
+  description: A rule with all metadata fields
+  on: event.full_meta
+  priority: 100
+  enabled: true
+  cooldown: 1000
+  tags:
+    - production
+    - important
+  do:
+    - type: log
+      params:
+        message: "Full metadata rule executed"
+
+# --- Rule with Alias (actions -> do) ---
+- id: rule-with-actions-alias
+  name: Rule With Actions Alias
+  on: event.actions_alias
+  actions:
+    - type: log
+      params:
+        message: "Using actions alias"
+
+# --- Rule with Multiple Actions (array form) ---
+- id: rule-multiple-actions
+  name: Multiple Actions Array
+  on: event.multi_actions
+  do:
+    - type: log
+      params:
+        message: "Action 1"
+    - type: log
+      params:
+        message: "Action 2"
+    - type: log
+      params:
+        message: "Action 3"
+
+# --- Rule with DO Node Representation ---
+- id: rule-do-node
+  name: Rule With DO Node
+  on: event.do_node
+  if:
+    field: data.value
+    operator: EQ
+    value: test
+  do:
+    - type: log
+      params:
+        message: "Do branch"
+  else:
+    - type: log
+      params:
+        message: "Else branch"
