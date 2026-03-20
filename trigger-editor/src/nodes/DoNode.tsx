@@ -34,7 +34,9 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
     e.target === id &&
     (
       (getNode(e.source)?.type === NodeType.CONDITION && e.sourceHandle === NodeHandle.CONDITION_OUTPUT) ||
-      (getNode(e.source)?.type === NodeType.CONDITION_GROUP)
+      (getNode(e.source)?.type === NodeType.CONDITION_GROUP) ||
+      (getNode(e.source)?.type === NodeType.ACTION_GROUP) ||
+      (getNode(e.source)?.type === NodeType.EVENT)
     )
   );
   

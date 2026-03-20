@@ -534,14 +534,16 @@ function processActions(
       
       // Determine the correct source handle based on the source node type
       const sourceNode = nodes.find(n => n.id === sourceId);
-      // Use CONDITION_OUTPUT for condition nodes (the condition node only has 'output' handle)
-      // Use THEN_OUTPUT for DO nodes (they have then/else path handles)
-      // Use EVENT_OUTPUT for event nodes
       let sourceHandle: string;
+      
       if (sourceNode?.type === NodeType.EVENT) {
         sourceHandle = HandleId.EVENT_OUTPUT;
       } else if (sourceNode?.type === NodeType.CONDITION) {
-        sourceHandle = HandleId.CONDITION_OUTPUT; // Use 'output' handle for condition nodes
+        sourceHandle = HandleId.CONDITION_OUTPUT;
+      } else if (sourceNode?.type === NodeType.CONDITION_GROUP) {
+        sourceHandle = HandleId.CONDITION_GROUP_OUTPUT;
+      } else if (sourceNode?.type === NodeType.ACTION_GROUP) {
+        sourceHandle = HandleId.ACTION_GROUP_OUTPUT;
       } else if (sourceNode?.type === NodeType.DO) {
         sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
       } else {
@@ -568,90 +570,98 @@ function processActions(
     // Handle inline conditional action
     if (utilsHasConditionalExecution(action)) {
       const inlineAction = action as InlineConditionalAction;
-      // Create a DO node to represent the conditional
-      // Position it slightly offset from the parent action group
-      const doNodeId = getNodeId();
-      const parentPos = getPosition(2, idx, actions.length);
-      const doNode = buildDoNode(branchType, doNodeId, { 
-        x: parentPos.x, 
-        y: parentPos.y + (branchType === 'else' ? 75 : -75) // Offset from parent position
-      });
-      nodes.push(doNode);
-      
-      // Determine the correct source handle based on the source node type
-      const sourceNodeForDo = nodes.find(n => n.id === sourceId);
-      let sourceHandleForDo: string;
-      if (sourceNodeForDo?.type === NodeType.EVENT) {
-        sourceHandleForDo = HandleId.EVENT_OUTPUT;
-      } else if (sourceNodeForDo?.type === NodeType.ACTION_GROUP) {
-        sourceHandleForDo = HandleId.ACTION_GROUP_OUTPUT;
-      } else if (sourceNodeForDo?.type === NodeType.CONDITION) {
-        sourceHandleForDo = HandleId.CONDITION_OUTPUT;
-      } else {
-        sourceHandleForDo = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
-      }
-      
-      // Connect source to DO node
-      edges.push(buildEdge(sourceId, doNodeId, sourceHandleForDo, HandleId.DO_INPUT, getEdgeId));
-      
-      // Create condition node
       const ifCondRaw = inlineAction.if;
       const ifCond = Array.isArray(ifCondRaw) ? ifCondRaw[0] : ifCondRaw;
+      
       if (ifCond && isSimpleCondition(ifCond)) {
+        // 1. Create the condition node first
         const condNodeId = getNodeId();
-        // Position condition node to the right of the DO node
-        const doNodePos = doNode.position;
+        const parentPos = getPosition(2, idx, actions.length);
         const condNode = buildConditionNode(
           getConditionField(ifCond),
           getConditionOperator(ifCond),
           getConditionValue(ifCond),
           condNodeId,
-          { x: doNodePos.x + 300, y: doNodePos.y } // Position to the right of DO node
+          { x: parentPos.x + 300, y: parentPos.y }
         );
         nodes.push(condNode);
+
+        // 2. Connect source directly to condition
+        const sourceNodeForCond = nodes.find(n => n.id === sourceId);
+        let sourceHandleForCond: string;
+        if (sourceNodeForCond?.type === NodeType.EVENT) {
+          sourceHandleForCond = HandleId.EVENT_OUTPUT;
+        } else if (sourceNodeForCond?.type === NodeType.ACTION_GROUP) {
+          sourceHandleForCond = HandleId.ACTION_GROUP_CONDITION_OUTPUT;
+        } else if (sourceNodeForCond?.type === NodeType.CONDITION) {
+          sourceHandleForCond = HandleId.CONDITION_OUTPUT;
+        } else if (sourceNodeForCond?.type === NodeType.DO) {
+          sourceHandleForCond = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
+        } else {
+          sourceHandleForCond = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
+        }
         
-        // Connect DO to condition
-        edges.push(buildEdge(doNodeId, condNodeId, HandleId.DO_CONDITION_OUTPUT, HandleId.CONDITION_INPUT, getEdgeId));
-        
-        // Process then branch - position above the condition node
+        edges.push(buildEdge(sourceId, condNodeId, sourceHandleForCond, HandleId.CONDITION_INPUT, getEdgeId));
+
+        // 3. Process Then branch via a DO node
         const thenAction = (action as InlineConditionalAction).then;
         if (thenAction) {
+          const thenDoNodeId = getNodeId();
+          const thenDoNode = buildDoNode('do', thenDoNodeId, { 
+            x: condNode.position.x + 300, 
+            y: condNode.position.y - 100 
+          });
+          nodes.push(thenDoNode);
+          
+          // Connect Condition -> then-DO
+          edges.push(buildEdge(condNodeId, thenDoNodeId, HandleId.CONDITION_OUTPUT, HandleId.DO_INPUT, getEdgeId));
+          
           const thenActions = Array.isArray(thenAction) ? thenAction : [thenAction];
-          // Position then actions above the condition (negative Y offset)
           const thenGetPosition = (level: number, i: number, total: number) => {
             return {
-              x: condNode.position.x + 300,
-              y: condNode.position.y - 150 - (i * 150)
+              x: thenDoNode.position.x + 300,
+              y: thenDoNode.position.y - (i * 150)
             };
           };
+          
           processActions(
             thenActions as (Action | ActionGroup | InlineConditionalAction)[],
             nodes,
             edges,
-            condNodeId,
+            thenDoNodeId,
             getNodeId,
             getEdgeId,
             thenGetPosition,
             'do'
           );
         }
-        
-        // Process else branch - position below the condition node
+
+        // 4. Process Else branch via a DO node
         const elseAction = (action as InlineConditionalAction).else;
         if (elseAction) {
+          const elseDoNodeId = getNodeId();
+          const elseDoNode = buildDoNode('else', elseDoNodeId, { 
+            x: condNode.position.x + 300, 
+            y: condNode.position.y + 100 
+          });
+          nodes.push(elseDoNode);
+          
+          // Connect Condition -> else-DO
+          edges.push(buildEdge(condNodeId, elseDoNodeId, HandleId.CONDITION_OUTPUT, HandleId.DO_INPUT, getEdgeId));
+          
           const elseActions = Array.isArray(elseAction) ? elseAction : [elseAction];
-          // Position else actions below the condition (positive Y offset)
           const elseGetPosition = (level: number, i: number, total: number) => {
             return {
-              x: condNode.position.x + 300,
-              y: condNode.position.y + 150 + (i * 150)
+              x: elseDoNode.position.x + 300,
+              y: elseDoNode.position.y + (i * 150)
             };
           };
+          
           processActions(
             elseActions as (Action | ActionGroup | InlineConditionalAction)[],
             nodes,
             edges,
-            condNodeId,
+            elseDoNodeId,
             getNodeId,
             getEdgeId,
             elseGetPosition,
@@ -674,19 +684,21 @@ function processActions(
     nodes.push(actionNode);
     
     // Determine the correct source handle based on the source node type
-    // If source is an event node, use 'event-output'
-    // If source is an action_group, use 'action-output'
-    // Otherwise use 'do-output' or 'else-output'
     const sourceNode = nodes.find(n => n.id === sourceId);
     let sourceHandle: string;
+    
     if (sourceNode?.type === NodeType.EVENT) {
       sourceHandle = HandleId.EVENT_OUTPUT;
-    } else if (sourceNode?.type === NodeType.ACTION_GROUP) {
-      sourceHandle = HandleId.ACTION_GROUP_OUTPUT;
     } else if (sourceNode?.type === NodeType.CONDITION) {
       sourceHandle = HandleId.CONDITION_OUTPUT;
-    } else {
+    } else if (sourceNode?.type === NodeType.CONDITION_GROUP) {
+      sourceHandle = HandleId.CONDITION_GROUP_OUTPUT;
+    } else if (sourceNode?.type === NodeType.ACTION_GROUP) {
+      sourceHandle = HandleId.ACTION_GROUP_OUTPUT;
+    } else if (sourceNode?.type === NodeType.DO) {
       sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT;
+    } else {
+      sourceHandle = branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT;
     }
     
     // Connect source to action

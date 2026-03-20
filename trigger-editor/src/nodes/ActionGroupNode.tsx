@@ -28,7 +28,13 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
   const hasConditionInput = edges.some(e => 
     e.target === id && 
     (e.targetHandle === NodeHandle.CONDITION_INPUT || e.targetHandle === NodeHandle.ACTION_GROUP_INPUT) &&
-    getNode(e.source)?.type === NodeType.CONDITION
+    (getNode(e.source)?.type === NodeType.CONDITION || getNode(e.source)?.type === NodeType.CONDITION_GROUP)
+  );
+  
+  // Check if this ActionGroup has incoming connection from another ActionGroup (chained)
+  const hasActionGroupInput = edges.some(e => 
+    e.target === id && 
+    getNode(e.source)?.type === NodeType.ACTION_GROUP
   );
   
   // Check if this ActionGroup has incoming connection from DO node (explicit DO path)
@@ -52,7 +58,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
   );
   
   // Show output handles when there's any input connection
-  const showOutputHandles = hasEventInput || hasConditionInput || hasActionOutput || hasConditionOutput || hasDoInput;
+  const showOutputHandles = hasEventInput || hasConditionInput || hasActionOutput || hasConditionOutput || hasDoInput || hasActionGroupInput;
 
   return (
     <div className="drawflow-node action-group">
@@ -128,7 +134,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
           {showOutputHandles 
             ? 'Actions configured. Connect more or add conditions.' 
-            : 'Connect from Event to start adding actions.'}
+            : 'Connect from an input source to start adding actions.'}
         </div>
       </div>
     </div>

@@ -129,6 +129,31 @@ export function collectActionsForGroup(
     collectFromAction(edge.target);
   }
 
+  // Also collect conditions for inline if/then/else within the group
+  const conditionEdges = findEdgesBySource(ctx, groupId, [
+    HandleId.ACTION_GROUP_CONDITION_OUTPUT,
+    'condition-output'
+  ]);
+
+  for (const edge of conditionEdges) {
+    if (ctx.options.resolveCondition) {
+      const condition = ctx.options.resolveCondition(edge.target, ctx);
+      if (condition) {
+        // Find terminal nodes for this condition to build the inline conditional
+        // We'll need a way to find terminal actions from here
+        // For now, if we have a resolveAction function, we can try to find terminal actions
+        // (This part might need more SDK infrastructure but let's try to handle basic case)
+        
+        // Use a simplified version of findTerminalActions or assume resolveAction handles it
+        const terminalAction = ctx.options.resolveAction ? ctx.options.resolveAction(edge.target, ctx) : null;
+        
+        if (terminalAction) {
+          actions.push(terminalAction);
+        }
+      }
+    }
+  }
+
   return { actions, mode };
 }
 
@@ -143,18 +168,62 @@ export function resolveAction(
     return ctx.options.resolveAction(id, ctx);
   }
 
-  if (ctx.visitedActs!.has(id)) return null;
-  ctx.visitedActs!.add(id);
+  if (ctx.visitedActs?.has(id)) return null;
+  ctx.visitedActs?.add(id);
 
   const node = ctx.nodes.find(n => n.id === id);
-  const isAct = ctx.options.isActNode || defaultIsActNode;
-  if (!node || !isAct(node)) return null;
+  if (!node) return null;
 
+  // Handle Action Groups
   if (node.type === NodeType.ACTION_GROUP) {
     const { actions, mode } = collectActionsForGroup(id, ctx);
     if (actions.length === 0) return null;
     return { mode, actions };
   }
+
+  // Handle Condition nodes (Inline Conditional Actions)
+  if (node.type === NodeType.CONDITION) {
+    // We need to resolve the condition and its branches
+    if (ctx.options.resolveCondition) {
+      const condition = ctx.options.resolveCondition(id, ctx);
+      if (condition) {
+        // Find DO nodes connected to this condition
+        const { doBranches, elseBranches } = categorizeDoNodesByBranch(id, ctx);
+        
+        let thenAct: Action | ActionGroup | null = null;
+        let elseAct: Action | ActionGroup | null = null;
+        
+        // Resolve then branch
+        if (doBranches.length > 0) {
+          const firstDoId = doBranches[0]!;
+          const actions = collectActionsFromDoNode(firstDoId, ctx);
+          if (actions.length > 0) {
+            thenAct = actions.length === 1 ? actions[0]! : { mode: 'ALL' as ExecutionMode, actions: actions as Action[] };
+          }
+        }
+        
+        // Resolve else branch
+        if (elseBranches.length > 0) {
+          const firstElseId = elseBranches[0]!;
+          const actions = collectActionsFromDoNode(firstElseId, ctx);
+          if (actions.length > 0) {
+            elseAct = actions.length === 1 ? actions[0]! : { mode: 'ALL' as ExecutionMode, actions: actions as Action[] };
+          }
+        }
+        
+        if (thenAct || elseAct) {
+          return {
+            if: condition,
+            then: thenAct ?? undefined,
+            else: elseAct ?? undefined
+          } as any;
+        }
+      }
+    }
+  }
+
+  const isAct = ctx.options.isActNode || defaultIsActNode;
+  if (!isAct(node)) return null;
 
   const action = nodeToAction(node);
 
@@ -165,6 +234,38 @@ export function resolveAction(
   }
 
   return action;
+}
+
+/**
+ * Helper to collect all actions from a DO node
+ */
+export function collectActionsFromDoNode(
+  doNodeId: string,
+  ctx: ActionResolverContext
+): (Action | ActionGroup)[] {
+  const isAct = ctx.options.isActNode || defaultIsActNode;
+  const actions: (Action | ActionGroup)[] = [];
+  
+  // Find actions directly connected to the DO node
+  const directEdges = findEdgesBySource(ctx, doNodeId, [
+    HandleId.DO_OUTPUT,
+    'do-output',
+    'action-output',
+    ''
+  ])
+    .filter(e => {
+      const target = ctx.nodes.find(n => n.id === e.target);
+      return target && isAct(target);
+    });
+  
+  for (const edge of directEdges) {
+    const action = resolveAction(edge.target, ctx);
+    if (action) {
+      actions.push(action);
+    }
+  }
+  
+  return actions;
 }
 
 /**
