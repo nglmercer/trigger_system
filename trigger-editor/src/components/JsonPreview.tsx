@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronIcon, CopyIcon, LinkIcon, PlusIcon, TrashIcon, CodeIcon, ListIcon } from './Icons.tsx';
+import { AutocompletePopup, HoverTooltip } from './AutocompletePopup.tsx';
+import { findVariableAtOffset, findFirstVariable, getHoverInfo } from '../lsp/engine.ts';
 
 /**
  * Enhanced JSON Utility Component
@@ -29,8 +31,33 @@ const COLORS = {
 const INDENT_SIZE = 16;
 
 const Token = ({ value, type, onClick, editable }: { value: any; type: keyof typeof COLORS; onClick?: () => void; editable?: boolean }) => {
+  const [hoveredVar, setHoveredVar] = useState<string | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLSpanElement>(null);
+
   const isUrl = type === 'string' && typeof value === 'string' && value.startsWith('"http');
+  const hasVariable = type === 'string' && typeof value === 'string' && value.includes('${');
+  const hoverTimer = useRef<any>(null);
   
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (hasVariable) {
+      setMousePos({ x: e.clientX, y: e.clientY });
+      
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+      hoverTimer.current = setTimeout(() => {
+        const found = findFirstVariable(String(value));
+        setHoveredVar(found || null);
+      }, 500); // 500ms delay for "better popup"
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setHoveredVar(null);
+  };
+
+  const info = hoveredVar ? getHoverInfo(hoveredVar) : null;
+
   if (isUrl && !editable) {
     const cleanUrl = value.replace(/"/g, '');
     return (
@@ -55,16 +82,27 @@ const Token = ({ value, type, onClick, editable }: { value: any; type: keyof typ
   
   return (
     <span 
+      ref={containerRef}
       onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       style={{ 
         color: COLORS[type as keyof typeof COLORS], 
         cursor: editable ? 'text' : 'inherit',
         borderBottom: editable ? '1px dashed transparent' : 'none',
-        transition: 'border-color 0.2s'
+        transition: 'border-color 0.2s',
+        position: 'relative'
       }}
       onMouseEnter={(e) => editable && (e.currentTarget.style.borderBottomColor = COLORS[type as keyof typeof COLORS])}
-      onMouseLeave={(e) => editable && (e.currentTarget.style.borderBottomColor = 'transparent')}
     >
+      {info && (
+        <HoverTooltip 
+            info={info} 
+            anchorRect={containerRef.current?.getBoundingClientRect() ?? null} 
+            followMouse={true}
+            mousePos={mousePos}
+        />
+      )}
       {type === 'string' && !isUrl ? `"${value}"` : String(value)}
     </span>
   );
@@ -95,6 +133,7 @@ const JsonNode = ({
   const [isHovered, setIsHovered] = useState(false);
   const [editingField, setEditingField] = useState<'key' | 'value' | null>(null);
   const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   
   const type = typeof value;
   const isObject = value !== null && type === 'object';
@@ -136,23 +175,32 @@ const JsonNode = ({
   const renderValue = () => {
     if (editingField === 'value') {
       return (
-        <input 
-          autoFocus
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={handleKeyDown}
-          style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--primary)',
-            color: 'white',
-            fontSize: '11px',
-            padding: '0 4px',
-            borderRadius: '2px',
-            width: '100px',
-            fontFamily: 'inherit'
-          }}
-        />
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+            <AutocompletePopup
+                value={editValue}
+                onSelect={(v) => { setEditValue(v); }}
+                anchorRef={inputRef}
+                isFocused={true}
+            />
+            <input 
+              ref={inputRef}
+              autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--primary)',
+                color: 'white',
+                fontSize: '11px',
+                padding: '0 4px',
+                borderRadius: '2px',
+                width: '120px',
+                fontFamily: 'inherit'
+              }}
+            />
+        </div>
       );
     }
 
@@ -342,52 +390,147 @@ const JsonNode = ({
 const RawEditor = ({ 
   value, 
   onChange, 
-  maxHeight 
 }: { 
   value: string; 
   onChange: (val: string) => void; 
-  maxHeight: string;
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [hoverInfo, setHoverInfo] = useState<ReturnType<typeof getHoverInfo>>(undefined);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [cursorVar, setCursorVar] = useState<string | undefined>(undefined);
+  const hoverTimer = useRef<any>(null);
+
   const highlightJson = (code: string) => {
-    return code
+    if (!code) return '';
+    const highlighted = code
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/(".*?"(?=:))|(".*?")|(-?\d+(?:\.\d+)?)|(true|false|null)|([{}[\],:])/g, (match, key, str, num, bool, symbol) => {
-        if (key) return `<span style="color: ${COLORS.key}">${key}</span>`;
-        if (str) return `<span style="color: ${COLORS.string}">${str}</span>`;
+      .replace(/(".*?")(\s*:)|(".*?")|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|(true|false|null)|([{}[\],:])/g, 
+        (match, key, colon, str, num, bool, symbol) => {
+        if (key) return `<span style="color: ${COLORS.key}">${key}</span>${colon || ''}`;
+        if (str) {
+            const inner = str.replace(/\$\{.*?\}/g, (v: string) => `<span style="color: #58a6ff; font-weight: bold">${v}</span>`);
+            return `<span style="color: ${COLORS.string}">${inner}</span>`;
+        }
         if (num) return `<span style="color: ${COLORS.number}">${match}</span>`;
         if (bool) return `<span style="color: ${COLORS.boolean}">${match}</span>`;
         if (symbol) return `<span style="color: ${COLORS.symbol}">${match}</span>`;
         return match;
       });
+    return highlighted + (code.endsWith('\n') ? ' ' : '');
   };
 
+  const syncScroll = () => {
+    if (textareaRef.current && preRef.current) {
+      preRef.current.scrollTop = textareaRef.current.scrollTop;
+      preRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    }
+  };
+
+  const updateCursorVar = () => {
+    const pos = textareaRef.current?.selectionStart ?? 0;
+    const found = findVariableAtOffset(String(value), pos);
+    setCursorVar(found);
+  };
+
+  const handleTextareaMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+    
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => {
+        const found = findFirstVariable(String(value));
+        setHoverInfo(found ? getHoverInfo(found) : undefined);
+    }, 500);
+  };
+
+  const handleMouseLeaveRaw = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setHoverInfo(undefined);
+  };
+
+  const activeInfo = isFocused
+    ? (cursorVar ? getHoverInfo(cursorVar) : undefined)
+    : hoverInfo;
+
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '100px', maxHeight }}>
-      <div 
+    <div 
+      ref={containerRef}
+      style={{ 
+        position: 'relative', 
+        width: '100%', 
+        minHeight: '200px',
+        fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+        fontSize: '12px',
+        lineHeight: '1.6',
+      }}
+    >
+      {activeInfo && (
+        <HoverTooltip
+          info={activeInfo}
+          anchorRect={containerRef.current?.getBoundingClientRect() ?? null}
+          followMouse={!isFocused}
+          mousePos={!isFocused ? mousePos : undefined}
+        />
+      )}
+      <AutocompletePopup
+        value={value}
+        onSelect={onChange}
+        anchorRef={containerRef}
+        isFocused={isFocused}
+      />
+      <pre
+        ref={preRef}
+        aria-hidden="true"
+        className="raw-editor__highlight"
         style={{
           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-          pointerEvents: 'none', color: 'transparent',
-          padding: '12px', boxSizing: 'border-box',
+          margin: 0,
+          padding: '12px',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+          pointerEvents: 'none',
+          color: '#e6edf3',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          backgroundColor: 'transparent',
           fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit',
-          backgroundColor: 'transparent', overflow: 'hidden'
         }}
         dangerouslySetInnerHTML={{ __html: highlightJson(value) }}
       />
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onScroll={syncScroll}
         spellCheck={false}
+        className="raw-editor__textarea"
         style={{
-          width: '100%', height: '100%', minHeight: '100px',
-          background: 'transparent', color: 'white',
-          border: 'none', outline: 'none', resize: 'none',
-          padding: '12px', boxSizing: 'border-box',
+          width: '100%',
+          height: '100%',
+          minHeight: '250px',
+          background: 'transparent',
+          color: 'transparent',
+          caretColor: 'white',
+          border: 'none', outline: 'none', resize: 'vertical',
+          margin: 0,
+          padding: '12px',
+          boxSizing: 'border-box',
           fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit',
-          whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
           position: 'relative', zIndex: 1,
-          caretColor: 'white'
+          display: 'block',
+          overflowY: 'auto'
         }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150)}
+        onKeyUp={updateCursorVar}
+        onClick={updateCursorVar}
+        onSelect={updateCursorVar}
+        onMouseMove={handleTextareaMouseMove}
+        onMouseLeave={handleMouseLeaveRaw}
       />
     </div>
   );
@@ -544,20 +687,27 @@ export function JsonPreview({ data, maxHeight = '400px', editable = false, onCha
       </div>
 
       {/* Main Content */}
-      <div style={{ padding: '16px', overflowY: 'auto', flexGrow: 1 }}>
+      <div style={{ 
+        flexGrow: 1, 
+        overflowY: 'auto',
+        minHeight: '250px', // Min size for stability
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         {viewMode === 'tree' ? (
-          <JsonNode 
-            value={localData || {}} 
-            isRoot={true} 
-            editable={editable}
-            onUpdate={handleUpdate}
-            onRemove={handleRemove}
-          />
+          <div style={{ padding: '16px' }}>
+            <JsonNode 
+              value={localData || {}} 
+              isRoot={true} 
+              editable={editable}
+              onUpdate={handleUpdate}
+              onRemove={handleRemove}
+            />
+          </div>
         ) : (
           <RawEditor 
             value={localRaw} 
             onChange={handleRawChange} 
-            maxHeight={maxHeight} 
           />
         )}
       </div>

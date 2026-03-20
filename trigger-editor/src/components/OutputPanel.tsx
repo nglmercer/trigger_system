@@ -89,55 +89,160 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
     }
   };
 
-  // Render YAML with ${...} variables highlighted and hoverable
+  // Render YAML with comprehensive syntax highlighting and ${...} variables
   const renderYamlWithHighlights = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
-    const regex = /(\$\{[a-zA-Z0-9_.]+\})/g;
-    let lastIdx = 0;
-    let match;
     let key = 0;
-    while ((match = regex.exec(text)) !== null) {
-      // Plain text before the token
-      if (match.index > lastIdx) {
-        parts.push(text.slice(lastIdx, match.index));
-      }
-      // The ${...} token — parse the var name
-      const full = match[1]; // e.g. "${data.comment}"
-      const varName = full!.slice(2, -1); // "data.comment"
-      const hasValue = getHoverInfo(varName) !== undefined;
-      parts.push(
-        <span
-          key={key++}
-          onMouseEnter={(e) => {
-            if (hasValue) {
-              setHoveredVar(varName);
-              setTooltipPos({ x: e.clientX, y: e.clientY });
+    
+    // Token types and their colors
+    const tokenStyles: Record<string, React.CSSProperties> = {
+      key: { color: '#79c0ff', fontWeight: 500 },
+      string: { color: '#a5d6ff' },
+      number: { color: '#79c0ff' },
+      boolean: { color: '#ff7b72', fontWeight: 500 },
+      null: { color: '#ff7b72', fontStyle: 'italic' },
+      comment: { color: '#8b949e', fontStyle: 'italic' },
+      punctuation: { color: '#8b949e' },
+      variable: { color: '#58a6ff', background: 'rgba(88,166,255,0.12)', borderRadius: '3px', padding: '0 2px', cursor: 'help', borderBottom: '1px dashed rgba(88,166,255,0.5)' },
+      variableUnknown: { color: '#e6edf3' },
+    };
+
+    // Tokenize the YAML text
+    const tokenize = (input: string): Array<{ type: string; value: string; varName?: string }> => {
+      const tokens: Array<{ type: string; value: string; varName?: string }> = [];
+      let i = 0;
+      
+      while (i < input.length) {
+        // Comments
+        if (input[i] === '#') {
+          const start = i;
+          while (i < input.length && input[i] !== '\n') i++;
+          tokens.push({ type: 'comment', value: input.slice(start, i) });
+          continue;
+        }
+        
+        // ${...} variables
+        if (input[i] === '$' && input[i + 1] === '{') {
+          const start = i;
+          i += 2;
+          while (i < input.length && input[i] !== '}') i++;
+          if (i < input.length) i++; // skip }
+          const full = input.slice(start, i);
+          const varName = full.slice(2, -1);
+          tokens.push({ type: 'variable', value: full, varName });
+          continue;
+        }
+        
+        // Quoted strings (single or double)
+        if (input[i] === '"' || input[i] === "'") {
+          const quote = input[i];
+          const start = i;
+          i++;
+          while (i < input.length && input[i] !== quote) {
+            if (input[i] === '\\') i++; // skip escaped char
+            i++;
+          }
+          if (i < input.length) i++; // skip closing quote
+          tokens.push({ type: 'string', value: input.slice(start, i) });
+          continue;
+        }
+        
+        // Numbers
+        const currentChar = input[i];
+        const nextChar = input[i + 1];
+        if (currentChar && (/[0-9]/.test(currentChar) || (currentChar === '-' && nextChar && /[0-9]/.test(nextChar)))) {
+          const start = i;
+          if (currentChar === '-') i++;
+          while (i < input.length) {
+            const ch = input[i];
+            if (!ch || !/[0-9.]/.test(ch)) break;
+            i++;
+          }
+          tokens.push({ type: 'number', value: input.slice(start, i) });
+          continue;
+        }
+        
+        // Booleans and null
+        if (currentChar && /[a-zA-Z]/.test(currentChar)) {
+          const start = i;
+          while (i < input.length) {
+            const ch = input[i];
+            if (!ch || !/[a-zA-Z0-9_-]/.test(ch)) break;
+            i++;
+          }
+          const word = input.slice(start, i);
+          if (word === 'true' || word === 'false') {
+            tokens.push({ type: 'boolean', value: word });
+          } else if (word === 'null' || word === '~') {
+            tokens.push({ type: 'null', value: word });
+          } else {
+            // Check if it's a key (followed by :)
+            let j = i;
+            while (j < input.length && input[j] === ' ') j++;
+            if (j < input.length && input[j] === ':') {
+              tokens.push({ type: 'key', value: word });
+            } else {
+              tokens.push({ type: 'string', value: word });
             }
-          }}
-          onMouseLeave={() => setHoveredVar(null)}
-          onMouseMove={(e) => {
-            if (hasValue) setTooltipPos({ x: e.clientX, y: e.clientY });
-          }}
-          style={{
-            color: hasValue ? '#58a6ff' : '#e6edf3',
-            background: hasValue ? 'rgba(88,166,255,0.12)' : 'transparent',
-            borderRadius: '3px',
-            padding: '0 2px',
-            cursor: hasValue ? 'help' : 'default',
-            borderBottom: hasValue ? '1px dashed rgba(88,166,255,0.5)' : 'none',
-            textDecoration: 'none',
-          }}
-        >
-          {full}
-        </span>
-      );
-      lastIdx = match.index + full!.length;
-      key++;
-    }
-    // Remaining plain text
-    if (lastIdx < text.length) {
-      parts.push(text.slice(lastIdx));
-    }
+          }
+          continue;
+        }
+        
+        // Punctuation and whitespace
+        if (currentChar && (/[{}\[\]:,\-|>]/.test(currentChar) || /\s/.test(currentChar))) {
+          const start = i;
+          while (i < input.length) {
+            const ch = input[i];
+            if (!ch || !(/[{}\[\]:,\-|>]/.test(ch) || /\s/.test(ch))) break;
+            i++;
+          }
+          tokens.push({ type: 'punctuation', value: input.slice(start, i) });
+          continue;
+        }
+        
+        // Any other character
+        if (currentChar) {
+          tokens.push({ type: 'string', value: currentChar });
+        }
+        i++;
+      }
+      
+      return tokens;
+    };
+
+    const tokens = tokenize(text);
+    
+    tokens.forEach((token) => {
+      if (token.type === 'variable') {
+        const hasValue = token.varName ? getHoverInfo(token.varName) !== undefined : false;
+        parts.push(
+          <span
+            key={key++}
+            onMouseEnter={(e) => {
+              if (hasValue && token.varName) {
+                setHoveredVar(token.varName);
+                setTooltipPos({ x: e.clientX, y: e.clientY });
+              }
+            }}
+            onMouseLeave={() => setHoveredVar(null)}
+            onMouseMove={(e) => {
+              if (hasValue) setTooltipPos({ x: e.clientX, y: e.clientY });
+            }}
+            style={hasValue ? tokenStyles.variable : tokenStyles.variableUnknown}
+          >
+            {token.value}
+          </span>
+        );
+      } else {
+        const style = tokenStyles[token.type] || {};
+        parts.push(
+          <span key={key++} style={style}>
+            {token.value}
+          </span>
+        );
+      }
+    });
+
     return parts;
   };
 
