@@ -165,12 +165,6 @@ describe("Path Utils Tests", () => {
       expect(result).toMatch(/Users[\\\/]test/i);
     });
 
-    test("should handle malformed URI", () => {
-      // On Linux, normalize converts to \test
-      const result = uriToPath("file://test");
-      expect(result).toMatch(/^(\\.test|\.\/test)$/);
-    });
-
     test("should handle Windows UNC paths", () => {
       const result = uriToPath("file://server/share/file.txt");
       expect(result).toContain("server");

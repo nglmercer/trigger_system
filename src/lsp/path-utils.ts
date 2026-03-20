@@ -10,7 +10,7 @@ export function uriToPath(uri: string): string {
     
     // Handle Windows UNC paths (e.g., file://server/share)
     if (decoded.startsWith('file://') && !decoded.startsWith('file:///')) {
-        return normalize(decoded.replace('file://', '\\\\'));
+        return normalize(decoded.replace('file://', '//')).replace(/\\/g, '/');
     }
 
     // Standard file URI conversion
@@ -18,10 +18,10 @@ export function uriToPath(uri: string): string {
         let path = decoded.substring(8);
         // On Windows, file:///C:/path -> C:/path
         if (path.match(/^[A-Za-z]:/)) {
-            return normalize(path);
+            return normalize(path).replace(/\\/g, '/');
         }
         // On Unix, file:///etc/passwd -> /etc/passwd
-        return normalize('/' + path);
+        return normalize('/' + path).replace(/\\/g, '/');
     }
 
     // Handle malformed URI like "file://test" (missing third slash)
@@ -29,12 +29,12 @@ export function uriToPath(uri: string): string {
         const path = decoded.substring(7);
         // If it looks like a path without drive letter, treat as relative path
         if (!path.match(/^[A-Za-z]:/)) {
-            return normalize('./' + path);
+            return normalize('./' + path).replace(/\\/g, '/');
         }
-        return normalize(path);
+        return normalize(path).replace(/\\/g, '/');
     }
 
-    return normalize(decoded);
+    return normalize(decoded).replace(/\\/g, '/');
 }
 
 /**
@@ -42,15 +42,17 @@ export function uriToPath(uri: string): string {
  */
 export function pathToUri(path: string): string {
     let uriPath = path.replace(/\\/g, '/');
+    
+    // Ensure absolute paths start with / for URI
+    // But keep drive letters as /C:/...
+    if (uriPath.match(/^[A-Za-z]:/)) {
+        return `file:///${uriPath}`;
+    }
+    
     if (!uriPath.startsWith('/')) {
         uriPath = '/' + uriPath;
     }
-    // Handle Windows drive letters
-    if (uriPath.match(/^\/[A-Za-z]:/)) {
-        // file:///C:/path
-        return `file://${uriPath}`;
-    }
-    // Unix
+    
     return `file://${uriPath}`;
 }
 
@@ -70,14 +72,14 @@ export function resolveImportPath(
 
     // 1. Absolute Path: Clean it and return
     if (isAbsolute(importPath)) {
-        return safeRealPath(normalize(importPath));
+        return safeRealPath(normalize(importPath).replace(/\\/g, '/'));
     }
 
     // 2. Relative Path (starts with ./ or ../)
     if (importPath.startsWith('.')) {
         const fullPath = join(documentDir, importPath);
         if (existsSync(fullPath)) {
-            return safeRealPath(fullPath);
+            return safeRealPath(fullPath.replace(/\\/g, '/'));
         }
     }
 
@@ -87,7 +89,7 @@ export function resolveImportPath(
         const wsBase = uriToPath(folder);
         const candidate = join(wsBase, importPath);
         if (existsSync(candidate)) {
-            return safeRealPath(candidate);
+            return safeRealPath(candidate.replace(/\\/g, '/'));
         }
     }
 
@@ -99,7 +101,7 @@ export function resolveImportPath(
     }
 
     // Fallback to the most likely candidate
-    return join(documentDir, importPath);
+    return join(documentDir, importPath).replace(/\\/g, '/');
 }
 
 /**
@@ -107,9 +109,9 @@ export function resolveImportPath(
  */
 function safeRealPath(path: string): string {
     try {
-        return existsSync(path) ? realpathSync(path) : path;
+        return existsSync(path) ? realpathSync(path).replace(/\\/g, '/') : path.replace(/\\/g, '/');
     } catch {
-        return path;
+        return path.replace(/\\/g, '/');
     }
 }
 

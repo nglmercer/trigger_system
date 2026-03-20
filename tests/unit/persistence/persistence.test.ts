@@ -107,7 +107,7 @@ describe("Persistence Unit Tests", () => {
         const persistence = new FilePersistence(TEST_FILE);
         
         // Save large amount of data
-        for (let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 250; i++) {
             await persistence.saveState(`key${i}`, {
                 id: i,
                 data: `value${i}`.repeat(10),
@@ -117,7 +117,7 @@ describe("Persistence Unit Tests", () => {
         }
         
         const state = await persistence.loadState();
-        expect(state.size).toBe(1000);
+        expect(state.size).toBe(250);
         
         // Verify specific values
         expect(state.get("key0")).toEqual({

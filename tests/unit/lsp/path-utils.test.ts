@@ -18,13 +18,13 @@ describe("URI/Path Conversion", () => {
         });
 
         test("Should handle Windows UNC paths", () => {
-            expect(uriToPath("file://server/share/file.txt")).toBe("\\\\server/share/file.txt");
-            expect(uriToPath("file://server/share/folder/file.txt")).toBe("\\\\server/share/folder/file.txt");
+            expect(uriToPath("file://server/share/file.txt")).toBe("//server/share/file.txt");
+            expect(uriToPath("file://server/share/folder/file.txt")).toBe("//server/share/folder/file.txt");
         });
 
         test("Should handle malformed URIs", () => {
-            expect(uriToPath("file://test")).toBe("\\\\test");
-            expect(uriToPath("file://C:/test")).toBe("\\\\C:/test");
+            expect(uriToPath("file://test")).toBe("/test");
+            expect(uriToPath("file://C:/test")).toBe("//C:/test/");
         });
 
         test("Should handle regular paths", () => {
