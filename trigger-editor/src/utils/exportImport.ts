@@ -288,6 +288,17 @@ export function sanitizeEdgesForImport(
       }
     }
 
+    // Special case: event to action - ensure proper handles
+    if (sourceType === NodeType.EVENT && targetType === NodeType.ACTION) {
+      // Event to action should use event-output as source handle
+      if (!sourceHandle || sourceHandle === 'do-output') {
+        sourceHandle = NodeHandle.EVENT_OUTPUT;
+      }
+      if (!targetHandle) {
+        targetHandle = NodeHandle.ACTION_INPUT;
+      }
+    }
+
     // Handle special cases for condition group outputs to conditions
     if (sourceType === NodeType.CONDITION_GROUP && targetType === NodeType.CONDITION) {
       // Condition group outputs should use cond-* handles (cond-0, cond-1, cond-2, etc.)

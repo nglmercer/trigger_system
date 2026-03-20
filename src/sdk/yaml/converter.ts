@@ -20,6 +20,7 @@ import type {
   InlineConditionalAction,
   Condition
 } from '../../types';
+import { NodeType, HandleId, BranchType } from '../constants';
 import { 
   isConditionGroup as utilsIsConditionGroup, 
   isActionGroup as utilsIsActionGroup, 
@@ -59,7 +60,7 @@ export function buildEventNode(
 ): EditorNode {
   return {
     id: nodeId,
-    type: 'event',
+    type: NodeType.EVENT,
     position,
     data: {
       id: rule.id || 'rule-1',
@@ -84,7 +85,7 @@ export function buildConditionGroupNode(
 ): EditorNode {
   return {
     id: nodeId,
-    type: 'condition_group',
+    type: NodeType.CONDITION_GROUP,
     position,
     data: {
       operator,
@@ -104,7 +105,7 @@ export function buildConditionNode(
 ): EditorNode {
   return {
     id: nodeId,
-    type: 'condition',
+    type: NodeType.CONDITION,
     position,
     data: {
       field: field || 'data',
@@ -124,7 +125,7 @@ export function buildDoNode(
 ): EditorNode {
   return {
     id: nodeId,
-    type: 'do',
+    type: NodeType.DO,
     position,
     data: {
       branchType,
@@ -201,7 +202,7 @@ export function buildActionNode(
 
   return {
     id: nodeId,
-    type: 'action',
+    type: NodeType.ACTION,
     position,
     data: actionData,
   };
@@ -217,7 +218,7 @@ export function buildActionGroupNode(
 ): EditorNode {
   return {
     id: nodeId,
-    type: 'action_group',
+    type: NodeType.ACTION_GROUP,
     position,
     data: {
       mode: mode || 'SEQUENCE',
@@ -421,7 +422,7 @@ function processConditions(
     nodes.push(groupNode);
     
     // Connect event to condition group
-    edges.push(buildEdge(eventNodeId, groupNodeId, null, 'input', undefined));
+    edges.push(buildEdge(eventNodeId, groupNodeId, null, HandleId.CONDITION_GROUP_INPUT, undefined));
     
     // Process each condition
     // Track the previous condition node to chain them sequentially
@@ -450,10 +451,10 @@ function processConditions(
             
             // Chain conditions sequentially: previous condition -> current condition
             if (previousCondNodeId) {
-              edges.push(buildEdge(previousCondNodeId, currentCondNodeId, 'output', 'condition-input', undefined));
+              edges.push(buildEdge(previousCondNodeId, currentCondNodeId, HandleId.CONDITION_OUTPUT, HandleId.CONDITION_INPUT, undefined));
             } else {
               // First condition - connect from condition group
-              edges.push(buildEdge(groupNodeId!, currentCondNodeId, 'cond-output', 'condition-input', undefined));
+              edges.push(buildEdge(groupNodeId!, currentCondNodeId, HandleId.CONDITION_GROUP_OUTPUT, HandleId.CONDITION_INPUT, undefined));
             }
             
             previousCondNodeId = currentCondNodeId;
@@ -473,10 +474,10 @@ function processConditions(
         
         // Chain conditions sequentially: previous condition -> current condition
         if (previousCondNodeId) {
-          edges.push(buildEdge(previousCondNodeId, currentCondNodeId, 'output', 'condition-input', undefined));
+          edges.push(buildEdge(previousCondNodeId, currentCondNodeId, HandleId.CONDITION_OUTPUT, HandleId.CONDITION_INPUT, undefined));
         } else {
           // First condition - connect from condition group
-          edges.push(buildEdge(groupNodeId!, currentCondNodeId, 'cond-output', 'condition-input', undefined));
+          edges.push(buildEdge(groupNodeId!, currentCondNodeId, HandleId.CONDITION_GROUP_OUTPUT, HandleId.CONDITION_INPUT, undefined));
         }
         
         previousCondNodeId = currentCondNodeId;
@@ -496,7 +497,7 @@ function processConditions(
     conditionNodes.push(condNode);
     
     // Connect event to condition
-    edges.push(buildEdge(eventNodeId, condNodeId, null, 'condition-input', undefined));
+    edges.push(buildEdge(eventNodeId, condNodeId, null, HandleId.CONDITION_INPUT, undefined));
   }
   
   return { conditionNodes, groupNodeId };
@@ -526,8 +527,14 @@ function processActions(
       const groupNode = buildActionGroupNode(action.mode as ExecutionMode, groupNodeId, getPosition(2, idx, actions.length));
       nodes.push(groupNode);
       
+      // Determine the correct source handle based on the source node type
+      const sourceNode = nodes.find(n => n.id === sourceId);
+      const sourceHandle = sourceNode?.type === NodeType.EVENT 
+        ? HandleId.EVENT_OUTPUT 
+        : (branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT);
+      
       // Connect source to group
-      edges.push(buildEdge(sourceId, groupNodeId, branchType === 'else' ? 'else-output' : 'then-output', 'input', getEdgeId));
+      edges.push(buildEdge(sourceId, groupNodeId, sourceHandle, HandleId.ACTION_GROUP_INPUT, getEdgeId));
       
       // Process nested actions
       processActions(
@@ -551,8 +558,14 @@ function processActions(
       const doNode = buildDoNode(branchType, doNodeId, getPosition(2, idx, actions.length));
       nodes.push(doNode);
       
+      // Determine the correct source handle based on the source node type
+      const sourceNodeForDo = nodes.find(n => n.id === sourceId);
+      const sourceHandleForDo = sourceNodeForDo?.type === NodeType.EVENT 
+        ? HandleId.EVENT_OUTPUT 
+        : (branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.THEN_OUTPUT);
+      
       // Connect source to DO node
-      edges.push(buildEdge(sourceId, doNodeId, branchType === 'else' ? 'else-output' : 'then-output', 'do-input', getEdgeId));
+      edges.push(buildEdge(sourceId, doNodeId, sourceHandleForDo, HandleId.DO_INPUT, getEdgeId));
       
       // Create condition node
       const ifCondRaw = inlineAction.if;
@@ -569,7 +582,7 @@ function processActions(
         nodes.push(condNode);
         
         // Connect DO to condition
-        edges.push(buildEdge(doNodeId, condNodeId, 'do-condition-output', 'condition-input', getEdgeId));
+        edges.push(buildEdge(doNodeId, condNodeId, HandleId.DO_CONDITION_OUTPUT, HandleId.CONDITION_INPUT, getEdgeId));
         
         // Process then branch
         const thenAction = (action as InlineConditionalAction).then;
@@ -611,8 +624,15 @@ function processActions(
     const actionNode = buildActionNode(action as Action, actionNodeId, getPosition(2, idx, actions.length));
     nodes.push(actionNode);
     
+    // Determine the correct source handle based on the source node type
+    // If source is an event node, use 'event-output', otherwise use 'do-output' or 'else-output'
+    const sourceNode = nodes.find(n => n.id === sourceId);
+    const sourceHandle = sourceNode?.type === NodeType.EVENT 
+      ? HandleId.EVENT_OUTPUT 
+      : (branchType === BranchType.ELSE ? HandleId.ELSE_OUTPUT : HandleId.DO_OUTPUT);
+    
     // Connect source to action
-    edges.push(buildEdge(sourceId, actionNodeId, branchType === 'else' ? 'else-output' : 'do-output', 'action-input', getEdgeId));
+    edges.push(buildEdge(sourceId, actionNodeId, sourceHandle, HandleId.ACTION_INPUT, getEdgeId));
   });
 }
 
