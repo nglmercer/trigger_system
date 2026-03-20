@@ -104,11 +104,16 @@ export function collectConditionsForGroup(
   }
 
   // Start from conditions directly connected to the group
-  const directEdges = findEdgesBySource(ctx, groupId, [HandleId.CONDITION_GROUP_OUTPUT])
-    .filter(e => {
-      const target = ctx.nodes.find(n => n.id === e.target);
-      return target && isCond(target);
-    });
+  // Support both 'cond-output' and dynamic 'cond-0', 'cond-1', etc.
+  const directEdges = ctx.edges.filter(e => 
+    e.source === groupId && (
+      e.sourceHandle === HandleId.CONDITION_GROUP_OUTPUT || 
+      e.sourceHandle?.startsWith('cond-')
+    )
+  ).filter(e => {
+    const target = ctx.nodes.find(n => n.id === e.target);
+    return target && isCond(target);
+  });
   
   for (const edge of directEdges) {
     collectFromCondition(edge.target);

@@ -300,16 +300,10 @@ export function sanitizeEdgesForImport(
     }
 
     // Handle special cases for condition group outputs to conditions
-    // Note: We keep 'cond-N' handles as-is for compatibility with imported graphs
-    // The ConditionGroupNode is updated to recognize both 'cond-output' and 'cond-N' handles
+    // Map all outgoing condition edges to the standard cond-output handle
     if (sourceType === NodeType.CONDITION_GROUP && targetType === NodeType.CONDITION) {
-      // If sourceHandle is missing or is the generic 'cond-output', convert to 'cond-N'
-      // But preserve existing 'cond-N' handles from imports
-      if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT) {
-        const indexMap = conditionIndexMap.get(edge.source);
-        const condIndex = indexMap?.get(edge.target) ?? 0;
-        sourceHandle = `cond-${condIndex}`;
-      }
+      sourceHandle = NodeHandle.CONDITION_GROUP_OUTPUT;
+      
       // Ensure target handle is set for condition input
       if (!targetHandle) {
         targetHandle = NodeHandle.CONDITION_INPUT;

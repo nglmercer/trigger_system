@@ -370,6 +370,11 @@ export function parseGraph(
       let elseAct: Action | ActionGroup | InlineConditionalAction | null = null;
       
       for (const condId of conditionIdsInGroup) {
+        // Find terminal actions via traditional connections
+        const terminal = findTerminalActions(condId, ctx);
+        let currThenAct = terminal.thenActionId ? resolveActionInternal(terminal.thenActionId, ctx) : null;
+        let currElseAct = terminal.elseActionId ? resolveActionInternal(terminal.elseActionId, ctx) : null;
+
         // Categorize DO nodes by branch type
         const { doBranches, elseBranches } = categorizeDoNodesByBranch(condId, ctx);
         
@@ -381,7 +386,7 @@ export function parseGraph(
         }
         
         if (doActions.length > 0) {
-          thenAct = doActions.length === 1 
+          currThenAct = doActions.length === 1 
             ? doActions[0] as Action | ActionGroup | InlineConditionalAction
             : { mode: 'ALL' as ExecutionMode, actions: doActions as Action[] };
         }
@@ -394,10 +399,13 @@ export function parseGraph(
         }
         
         if (elseActions.length > 0) {
-          elseAct = elseActions.length === 1 
+          currElseAct = elseActions.length === 1 
             ? elseActions[0] as Action | ActionGroup | InlineConditionalAction
             : { mode: 'ALL' as ExecutionMode, actions: elseActions as Action[] };
         }
+
+        if (currThenAct) thenAct = currThenAct;
+        if (currElseAct) elseAct = currElseAct;
       }
       
       if (thenAct) {

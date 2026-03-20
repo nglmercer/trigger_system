@@ -97,6 +97,7 @@ export function yamlToNodes(
   const allNodes: EditorNode[] = [];
   const allEdges: EditorEdge[] = [];
   let nodeOffset = 0;
+  let edgeIndex = 0;
   
   for (const rule of parseResult.rules) {
     // Use the rule.id as the startNodeId - the converter will add its own suffixes
@@ -129,13 +130,18 @@ export function yamlToNodes(
     }
     
     for (const edge of conversionResult.edges) {
-      // Generate a unique edge ID by prefixing with the rule ID
-      const newEdgeId = `${rule.id}-${edge.id}`;
+      // Get the mapped source and target IDs first
+      const mappedSource = idMap.get(edge.source) || edge.source;
+      const mappedTarget = idMap.get(edge.target) || edge.target;
+      
+      // Generate a unique edge ID with the rule prefix and index
+      const newEdgeId = `${rule.id}-edge-${edgeIndex++}`;
+      
       allEdges.push({
         ...edge,
         id: newEdgeId,
-        source: idMap.get(edge.source) || edge.source,
-        target: idMap.get(edge.target) || edge.target,
+        source: mappedSource,
+        target: mappedTarget,
       });
     }
     
