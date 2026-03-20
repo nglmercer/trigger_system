@@ -1,10 +1,25 @@
 import * as React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAlert } from './Alert.tsx';
-import { DatabaseIcon, PlusIcon, TrashIcon, ChevronIcon, CodeIcon, CheckCircleIcon, XCircleIcon, CopyIcon } from './Icons.tsx';
-import { loadFromFile } from './ContextConfig.ts';
+import { 
+  DatabaseIcon, 
+  PlusIcon, 
+  TrashIcon, 
+  ChevronIcon, 
+  CodeIcon, 
+  CheckCircleIcon, 
+  CopyIcon, 
+  LinkIcon, 
+  RefreshIcon,
+  UploadIcon,
+  XCircleIcon
+} from './Icons.tsx';
+import { loadFromFile } from '../utils.ts';
 import { loadImports } from '../lsp/engine.ts';
 import type { ImportConfig, ImportMode, LSPContext } from '../lsp/types.ts';
+import { JsonPreview } from './JsonPreview.tsx';
+import { FetchModal } from './FetchModal.tsx';
+import { getDataSummary, fetchData } from '../utils/getData.ts';
 
 /** A single import entry */
 export interface ImportEntry {
@@ -13,6 +28,9 @@ export interface ImportEntry {
   mode: ImportMode;
   data: LSPContext;
   filename: string;
+  url?: string;
+  headers?: Record<string, string>;
+  lastUpdated?: number;
 }
 
 interface ImportListProps {
@@ -20,42 +38,17 @@ interface ImportListProps {
   onImportsChange?: (imports: ImportEntry[]) => void;
 }
 
-/** Get type summary from data */
-function getDataSummary(data: LSPContext): { keys: number; types: string[] } {
-  if (!data || typeof data !== 'object') {
-    return { keys: 0, types: ['unknown'] };
-  }
-  
-  const keys = Object.keys(data).length;
-  const typeSet = new Set<string>();
-  
-  const inspect = (obj: unknown, depth = 0) => {
-    if (depth > 3) return; // Limit recursion
-    if (obj === null) { typeSet.add('null'); return; }
-    if (Array.isArray(obj)) { typeSet.add('array'); return; }
-    if (typeof obj === 'object') {
-      typeSet.add('object');
-      Object.values(obj).forEach(v => inspect(v, depth + 1));
-      return;
-    }
-    typeSet.add(typeof obj);
-  };
-  
-  inspect(data);
-  return { keys, types: Array.from(typeSet) };
-}
-
 /**
  * ImportList - Enhanced component for managing unlimited imports
- * Features: drag-drop, data preview, validation, stats
+ * Features: drag-drop, data preview, URL fetch, validation, stats
  */
 export function ImportList({ onImportsChange }: ImportListProps) {
   const [imports, setImports] = useState<ImportEntry[]>([]);
   const [expandedPreviews, setExpandedPreviews] = useState<Set<string>>(new Set());
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
   const { success, error } = useAlert();
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement>>({});
-  const dropZoneRefs = React.useRef<Record<string, HTMLDivElement>>({});
   
   // Load saved imports on mount
   useEffect(() => {
@@ -64,16 +57,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
       try {
         const parsed = JSON.parse(saved) as ImportEntry[];
         setImports(parsed);
-        // Load into LSP engine
-        const configs: ImportConfig[] = parsed.map(p => ({
-          id: p.id,
-          alias: p.alias,
-          data: p.data,
-          mode: p.mode
-        }));
-        if (configs.length > 0) {
-          loadImports(configs);
-        }
+        updateLSP(parsed);
         onImportsChange?.(parsed);
       } catch (e) {
         console.warn('Failed to load imports:', e);
@@ -126,11 +110,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
       data: i.data,
       mode: i.mode
     }));
-    if (configs.length > 0) {
-      loadImports(configs);
-    } else {
-      loadImports([]);
-    }
+    loadImports(configs);
   };
   
   // Toggle preview expansion
@@ -150,15 +130,68 @@ export function ImportList({ onImportsChange }: ImportListProps) {
   const handleFileLoad = async (id: string, file: File) => {
     try {
       const json = await loadFromFile(file);
-      // Validate JSON structure
       if (!json || typeof json !== 'object') {
         error('Invalid JSON: must be an object');
         return;
       }
-      updateImport(id, { data: json, filename: file.name });
+      updateImport(id, { 
+        data: json, 
+        filename: file.name, 
+        url: undefined, 
+        lastUpdated: Date.now() 
+      });
       success(`Loaded ${file.name} (${Object.keys(json).length} keys)`);
     } catch (e) {
       error('Failed to load file: invalid JSON');
+    }
+  };
+
+  // Handle URL fetch
+  const handleFetchData = async (url: string, headers?: Record<string, string>) => {
+    const loadingId = `imp-${Date.now()}`;
+    // Create temporary entry or use last one if empty
+    const lastEmpty = imports.find(i => !i.filename && !i.url && Object.keys(i.data).length === 0);
+    const targetId = lastEmpty?.id || loadingId;
+
+    try {
+      const json = await fetchData(url, headers, {
+        onSuccess: (data, sourceName) => {
+          const entry: Partial<ImportEntry> = {
+            id: targetId,
+            alias: lastEmpty?.alias || `api_${imports.length + 1}`,
+            url,
+            headers,
+            data,
+            filename: sourceName,
+            lastUpdated: Date.now()
+          };
+
+          if (lastEmpty) {
+            updateImport(targetId, entry);
+          } else {
+            const newImports = [...imports, entry as ImportEntry];
+            setImports(newImports);
+            saveImports(newImports);
+            updateLSP(newImports);
+          }
+          success(`Fetched data from ${new URL(url).hostname}`);
+        },
+        onError: (e) => {
+          error(`Fetch failed: ${e.message}`);
+        }
+      });
+    } catch (e) {
+      // Errors are handled in the onError callback, but we catch it 
+      // here to prevent unhandled promise rejection if needed
+    }
+  };
+
+  const handleRefresh = async (imp: ImportEntry) => {
+    if (!imp.url) return;
+    try {
+      await handleFetchData(imp.url, imp.headers);
+    } catch (e) {
+      // Error handled in handleFetchData
     }
   };
   
@@ -190,82 +223,81 @@ export function ImportList({ onImportsChange }: ImportListProps) {
   
   // Copy alias to clipboard
   const copyAlias = (alias: string) => {
-    navigator.clipboard.writeText(`\${${alias}}`);
-    success(`Copied: \${${alias}}`);
+    const text = `\${${alias}}`;
+    navigator.clipboard.writeText(text);
+    success(`Copied: ${text}`);
   };
   
   // Render data preview
-  const renderPreview = (imp: ImportEntry) => {
+  const renderDataPreviewArea = (imp: ImportEntry) => {
     const isExpanded = expandedPreviews.has(imp.id);
     const summary = getDataSummary(imp.data);
     
     return (
       <div style={{
-        marginTop: '10px',
+        marginTop: '12px',
         background: 'var(--bg-secondary)',
-        borderRadius: '6px',
+        borderRadius: '8px',
         border: '1px solid var(--border)',
         overflow: 'hidden'
       }}>
         {/* Header with stats */}
         <div 
           style={{
-            padding: '8px 12px',
+            padding: '10px 14px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             cursor: 'pointer',
-            userSelect: 'none'
+            userSelect: 'none',
+            background: isExpanded ? 'rgba(255,255,255,0.03)' : 'transparent'
           }}
           onClick={() => togglePreview(imp.id)}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ChevronIcon direction={isExpanded ? 'left' : 'right'} />
-            <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ 
+              transition: 'transform 0.2s', 
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              display: 'flex',
+              alignItems: 'center',
+              color: 'var(--text-secondary)'
+            }}>
+              <ChevronIcon direction="right" size={16} />
+            </div>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
               Data Preview
             </span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <span style={{ 
+                fontSize: '10px', 
+                padding: '2px 8px', 
+                borderRadius: '12px',
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)'
+              }}>
+                {summary.keys} keys
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <span style={{ 
-              fontSize: '10px', 
-              padding: '2px 6px', 
-              borderRadius: '4px',
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)'
-            }}>
-              {summary.keys} keys
-            </span>
-            <span style={{ 
-              fontSize: '10px', 
-              padding: '2px 6px', 
-              borderRadius: '4px',
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)'
-            }}>
-              {summary.types.join(', ')}
-            </span>
+          
+          <div style={{ 
+            fontSize: '10px', 
+            color: 'var(--text-secondary)',
+            opacity: 0.7,
+            fontFamily: 'monospace'
+          }}>
+            {summary.types.slice(0, 3).join(', ')}{summary.types.length > 3 ? '...' : ''}
           </div>
         </div>
         
         {/* Expanded content */}
         {isExpanded && (
           <div style={{ 
-            padding: '10px 12px', 
+            padding: '4px', 
             borderTop: '1px solid var(--border)',
-            maxHeight: '200px',
-            overflow: 'auto'
           }}>
-            <pre style={{ 
-              margin: 0, 
-              fontSize: '11px', 
-              fontFamily: 'monospace',
-              color: 'var(--text-secondary)',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all'
-            }}>
-              {JSON.stringify(imp.data, null, 2).slice(0, 1000)}
-              {JSON.stringify(imp.data).length > 1000 && '...'}
-            </pre>
+            <JsonPreview data={imp.data} maxHeight="200px" />
           </div>
         )}
       </div>
@@ -273,117 +305,192 @@ export function ImportList({ onImportsChange }: ImportListProps) {
   };
   
   return (
-    <div style={{ padding: '0' }}>
+    <div style={{ padding: '0', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <DatabaseIcon size={18} />
-          <span style={{ 
-            fontSize: '14px', 
-            fontWeight: 600, 
-            color: 'var(--text-primary)'
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ 
+            width: '32px', 
+            height: '32px', 
+            borderRadius: '8px', 
+            background: 'rgba(59, 130, 246, 0.1)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            color: 'var(--action-color)'
           }}>
-            Data Imports
-          </span>
-          <span style={{
-            fontSize: '11px',
-            padding: '2px 8px',
-            borderRadius: '10px',
-            background: 'var(--bg-tertiary)',
-            color: 'var(--text-secondary)'
-          }}>
-            {imports.length}
-          </span>
+            <DatabaseIcon size={18} />
+          </div>
+          <div>
+            <div style={{ 
+              fontSize: '15px', 
+              fontWeight: 600, 
+              color: 'var(--text-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              Data Imports
+              <span style={{
+                fontSize: '11px',
+                padding: '1px 8px',
+                borderRadius: '10px',
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                fontWeight: 500,
+                border: '1px solid var(--border)'
+              }}>
+                {imports.length}
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              Manage external data sources for autocompletion
+            </div>
+          </div>
         </div>
         
-        <button
-          onClick={addImport}
-          style={{
-            background: 'var(--action-color)',
-            border: 'none',
-            color: 'white',
-            cursor: 'pointer',
-            padding: '8px 14px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <PlusIcon size={14} /> Add Import
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setIsFetchModalOpen(true)}
+            style={{
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <LinkIcon size={14} /> Fetch URL
+          </button>
+          <button
+            onClick={addImport}
+            style={{
+              background: 'var(--action-color)',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            <PlusIcon size={14} /> New Import
+          </button>
+        </div>
       </div>
 
       {/* Import list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {imports.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px 20px',
-            color: 'var(--text-secondary)',
-            background: 'var(--bg-tertiary)',
-            borderRadius: '8px',
-            border: '2px dashed var(--border)'
-          }}>
-            <DatabaseIcon size={32} />
-            <p style={{ margin: '12px 0 0 0', fontSize: '14px' }}>
-              No imports yet. Click "Add Import" to load JSON data.
+          <div 
+            onClick={addImport}
+            style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              color: 'var(--text-secondary)',
+              background: 'rgba(255,255,255,0.02)',
+              borderRadius: '12px',
+              border: '2px dashed var(--border)',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--text-secondary)'}
+            onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+          >
+            <DatabaseIcon size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
+            <p style={{ margin: 0, fontSize: '15px', fontWeight: 500, color: 'var(--text-primary)' }}>
+              No Data Sources
             </p>
-            <p style={{ margin: '8px 0 0 0', fontSize: '12px', opacity: 0.7 }}>
-              You can also drag and drop JSON files
+            <p style={{ margin: '8px 0 0 0', fontSize: '13px', opacity: 0.7 }}>
+              Upload a JSON file or fetch from an API to start.
             </p>
           </div>
         ) : (
           imports.map((imp) => {
-            const isLoaded = imp.filename && Object.keys(imp.data).length > 0;
+            const isLoaded = Object.keys(imp.data).length > 0;
             const isDragOver = dragOverId === imp.id;
             
             return (
               <div
                 key={imp.id}
-                ref={(el) => { if (el) dropZoneRefs.current[imp.id] = el; }}
                 style={{
                   background: 'var(--bg-tertiary)',
-                  borderRadius: '8px',
-                  padding: '14px',
-                  border: `2px solid ${isDragOver ? 'var(--action-color)' : 'var(--border)'}`,
-                  transition: 'border-color 0.2s'
+                  borderRadius: '12px',
+                  padding: '16px',
+                  border: `1px solid ${isDragOver ? 'var(--action-color)' : 'var(--border)'}`,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  transition: 'all 0.2s',
+                  position: 'relative'
                 }}
                 onDragOver={(e) => handleDragOver(e, imp.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, imp.id)}
               >
+                {/* Status indicator line */}
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: '20%',
+                  bottom: '20%',
+                  width: '3px',
+                  background: isLoaded ? '#238636' : 'var(--border)',
+                  borderRadius: '0 3px 3px 0'
+                }} />
+
                 {/* Top row: alias + mode + status + delete */}
                 <div style={{
                   display: 'flex',
-                  gap: '8px',
+                  gap: '12px',
                   alignItems: 'center',
-                  marginBottom: '10px'
+                  marginBottom: '14px'
                 }}>
-                  <input
-                    type="text"
-                    value={imp.alias}
-                    onChange={(e) => updateImport(imp.id, { alias: e.target.value })}
-                    placeholder="alias (e.g., data)"
-                    style={{
-                      flex: 1,
-                      minWidth: '80px',
-                      padding: '8px 12px',
-                      background: 'var(--bg-secondary)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '6px',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px',
-                      fontWeight: 500
-                    }}
-                  />
+                  <div style={{ position: 'relative', flex: 1, minWidth: '120px' }}>
+                    <input
+                      type="text"
+                      value={imp.alias}
+                      onChange={(e) => updateImport(imp.id, { alias: e.target.value })}
+                      placeholder="Alias..."
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: 'var(--text-primary)',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <div style={{ 
+                      position: 'absolute', 
+                      right: '10px', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)',
+                      fontSize: '10px',
+                      color: 'var(--text-secondary)',
+                      pointerEvents: 'none',
+                      opacity: 0.5
+                    }}>
+                      ALIAS
+                    </div>
+                  </div>
                   
                   {/* Copy button */}
                   {isLoaded && (
@@ -391,15 +498,18 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                       onClick={() => copyAlias(imp.alias)}
                       title={`Copy \${${imp.alias}}`}
                       style={{
-                        padding: '8px',
+                        padding: '10px',
                         background: 'var(--bg-secondary)',
                         border: '1px solid var(--border)',
-                        borderRadius: '6px',
+                        borderRadius: '8px',
                         color: 'var(--text-secondary)',
                         cursor: 'pointer',
                         display: 'flex',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        transition: 'all 0.2s'
                       }}
+                      onMouseOver={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                      onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                     >
                       <CopyIcon />
                     </button>
@@ -409,72 +519,123 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                     value={imp.mode}
                     onChange={(e) => updateImport(imp.id, { mode: e.target.value as ImportMode })}
                     style={{
-                      padding: '8px 10px',
+                      padding: '10px 12px',
                       background: 'var(--bg-secondary)',
                       border: '1px solid var(--border)',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
                       color: 'var(--text-primary)',
                       fontSize: '13px',
-                      minWidth: '90px'
+                      minWidth: '100px',
+                      fontWeight: 500,
+                      cursor: 'pointer'
                     }}
-                    title="Path: ${alias.prop} | Value: raw value"
                   >
-                    <option value="path">Path</option>
-                    <option value="value">Value</option>
+                    <option value="path">Path Mode</option>
+                    <option value="value">Value Mode</option>
                   </select>
                   
                   <button
                     onClick={() => removeImport(imp.id)}
                     style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-secondary)',
+                      background: 'rgba(248, 81, 73, 0.1)',
+                      border: '1px solid rgba(248, 81, 73, 0.2)',
+                      color: '#f85149',
                       cursor: 'pointer',
-                      padding: '8px',
-                      borderRadius: '6px',
+                      padding: '10px',
+                      borderRadius: '8px',
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      transition: 'all 0.2s'
                     }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(248, 81, 73, 0.2)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(248, 81, 73, 0.1)'}
                     title="Remove import"
                   >
                     <TrashIcon size={18} />
                   </button>
                 </div>
 
-                {/* Bottom row: file input */}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button
-                    onClick={() => fileInputRefs.current[imp.id]?.click()}
-                    style={{
-                      flex: 1,
-                      padding: '10px 16px',
-                      background: isDragOver ? 'var(--action-color)' : 'var(--bg-secondary)',
-                      border: `1px solid ${isDragOver ? 'var(--action-color)' : 'var(--border)'}`,
-                      borderRadius: '6px',
-                      color: isDragOver ? 'white' : (imp.filename ? 'var(--text-primary)' : 'var(--text-secondary)'),
-                      fontSize: '13px',
-                      cursor: 'pointer',
+                {/* Source row */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'stretch' }}>
+                  <div style={{ 
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 14px',
+                    background: isDragOver ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-secondary)',
+                    border: `1px solid ${isDragOver ? 'var(--action-color)' : 'var(--border)'}`,
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    transition: 'all 0.2s',
+                    minWidth: 0
+                  }}>
+                    {imp.url ? <LinkIcon size={14} /> : <CodeIcon size={14} />}
+                    <div style={{ 
+                      flex: 1, 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis', 
+                      whiteSpace: 'nowrap',
+                      color: isLoaded ? 'var(--text-primary)' : 'var(--text-secondary)',
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {isLoaded ? (
-                      <>
-                        <CheckCircleIcon size={14} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {imp.filename}
+                      flexDirection: 'column'
+                    }}>
+                      <span style={{ fontWeight: 500 }}>
+                        {imp.filename || (imp.url ? new URL(imp.url).hostname : 'No file loaded')}
+                      </span>
+                      {imp.url && (
+                        <span style={{ fontSize: '10px', opacity: 0.6, textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {imp.url}
                         </span>
-                      </>
-                    ) : (
-                      <>
-                        <CodeIcon />
-                        Load JSON or drag & drop
-                      </>
+                      )}
+                    </div>
+                    {isLoaded && imp.lastUpdated && (
+                      <span style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.5 }}>
+                        {new Date(imp.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     )}
-                  </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {imp.url && (
+                      <button
+                        onClick={() => handleRefresh(imp)}
+                        title="Refresh from URL"
+                        style={{
+                          padding: '0 12px',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <RefreshIcon size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => fileInputRefs.current[imp.id]?.click()}
+                      title="Load local JSON file"
+                      style={{
+                        padding: '0 14px',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '12px',
+                        fontWeight: 500
+                      }}
+                    >
+                      <UploadIcon size={14} /> 
+                    </button>
+                  </div>
+
                   <input
                     ref={(el) => { if (el) fileInputRefs.current[imp.id] = el; }}
                     type="file"
@@ -488,34 +649,53 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                   />
                 </div>
                 
-                {/* Data preview */}
-                {isLoaded && renderPreview(imp)}
+                {/* Data preview area */}
+                {isLoaded && renderDataPreviewArea(imp)}
               </div>
             );
           })
         )}
       </div>
 
-      {/* Help */}
+      {/* Help Card */}
       {imports.length > 0 && (
         <div style={{
-          marginTop: '16px',
-          padding: '12px 16px',
-          background: 'var(--bg-tertiary)',
-          borderRadius: '6px',
-          fontSize: '12px',
+          padding: '16px',
+          background: 'rgba(59, 130, 246, 0.05)',
+          borderRadius: '12px',
+          border: '1px solid rgba(59, 130, 246, 0.1)',
+          fontSize: '13px',
           color: 'var(--text-secondary)',
-          lineHeight: '1.5'
         }}>
-          <strong>How to use:</strong>
-          <ul style={{ margin: '8px 0 0 0', paddingLeft: '18px' }}>
-            <li><strong>Path mode:</strong> Use <code style={{ background: 'var(--bg-secondary)', padding: '1px 4px', borderRadius: '3px' }}>{'${alias.property}'}</code> in your rules</li>
-            <li><strong>Value mode:</strong> Inserts raw value (1, "text", true) directly</li>
-            <li><strong>Drag & drop:</strong> Drop JSON files directly onto import cards</li>
-            <li><strong>Copy:</strong> Click the copy button to quickly copy the alias reference</li>
-          </ul>
+          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '4px', height: '14px', background: 'var(--action-color)', borderRadius: '2px' }} />
+            Usage Guide
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <strong>Path Mode</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--action-color)' }}>
+                  {`\${alias.prop}`}
+                </code>
+                <span>Reference nested keys</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <strong>Value Mode</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ opacity: 0.8 }}>Inserts raw values directly (1, true, "foo")</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
+
+      <FetchModal 
+        isOpen={isFetchModalOpen} 
+        onClose={() => setIsFetchModalOpen(false)} 
+        onFetch={handleFetchData} 
+      />
     </div>
   );
 }

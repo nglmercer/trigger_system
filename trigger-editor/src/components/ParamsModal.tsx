@@ -1,92 +1,9 @@
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { TextInput, TextAreaInput } from './FormFields.tsx';
-
-// Type for param values - using any for flexibility in the editor
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-
-// Single param entry
-export interface ParamEntry {
-  key: string;
-  value: JsonValue;
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'null';
-  id: string;
-}
-
-export const generateId = () => Math.random().toString(36).substring(2, 9);
-
-export function parseParams(jsonStr: string): ParamEntry[] {
-  try {
-    const parsed = JSON.parse(jsonStr || '{}');
-    if (typeof parsed !== 'object' || parsed === null) {
-      return [];
-    }
-    
-    const entries: ParamEntry[] = [];
-    
-    function flatten(obj: { [key: string]: JsonValue }, prefix = ''): void {
-      for (const [key, val] of Object.entries(obj)) {
-        const fullKey = prefix ? `${prefix}.${key}` : key;
-        const type = getValueType(val);
-        
-        entries.push({
-          key: fullKey,
-          value: val,
-          type,
-          id: generateId()
-        });
-        
-        if (type === 'object' && val !== null && typeof val === 'object') {
-          flatten(val as { [key: string]: JsonValue }, fullKey);
-        }
-      }
-    }
-    
-    flatten(parsed as { [key: string]: JsonValue });
-    return entries;
-  } catch {
-    return [];
-  }
-}
-
-export function getValueType(val: JsonValue): ParamEntry['type'] {
-  if (val === null) return 'null';
-  if (Array.isArray(val)) return 'array';
-  if (typeof val === 'object') return 'object';
-  if (typeof val === 'number') return 'number';
-  if (typeof val === 'boolean') return 'boolean';
-  return 'string';
-}
-
-export function valueToString(val: JsonValue): string {
-  if (val === null) return '';
-  if (typeof val === 'object') return JSON.stringify(val);
-  return String(val);
-}
-
-export function stringToValue(str: string, type: ParamEntry['type']): JsonValue {
-  switch (type) {
-    case 'number':
-      return str === '' ? 0 : parseFloat(str) || 0;
-    case 'boolean':
-      return str === 'true' || str === '1';
-    case 'array':
-      try {
-        return JSON.parse(str);
-      } catch {
-        return [];
-      }
-    case 'object':
-      try {
-        return JSON.parse(str);
-      } catch {
-        return {};
-      }
-    default:
-      return str;
-  }
-}
-
+import { TextInput, TextAreaInput } from './inputs/FormFields.tsx';
+import { JsonPreview } from './JsonPreview.tsx';
+import type { ParamEntry, JsonValue } from '../utils/getData.ts';
+import { getValueType, stringToValue, valueToString, generateId, parseParams } from '../utils/getData.ts';
 export const openParamsModal = (value: string, onChange: (val: string) => void) => {
   window.dispatchEvent(new CustomEvent('open-params-modal', { detail: { value, onChange } }));
 };
@@ -166,6 +83,13 @@ export function ParamsModal() {
 
   const removeEntry = (id: string) => {
     handleChange(entries.filter(e => e.id !== id));
+  };
+
+  const handleJsonUpdate = (newData: any) => {
+    const jsonStr = JSON.stringify(newData, null, 2);
+    setLocalJson(jsonStr);
+    setJsonError(null);
+    setEntries(parseParams(jsonStr));
   };
 
   const handleJsonChange = (jsonStr: string) => {
@@ -278,14 +202,14 @@ export function ParamsModal() {
             </div>
           ) : (
             <div className="params-builder__json">
-              <TextAreaInput 
-                value={localJson} 
-                onChange={handleJsonChange} 
-                placeholder="{}" 
-                rows={6} 
-                style={{ fontFamily: 'monospace', fontSize: '12px', borderColor: jsonError ? 'var(--error)' : undefined }} 
-              />
-              {jsonError && <div className="node-hint" style={{ color: 'var(--error)', marginTop: '4px' }}>{jsonError}</div>}
+                <JsonPreview 
+                  data={(() => {
+                    try { return JSON.parse(localJson); } catch { return {}; }
+                  })()} 
+                  editable={true}
+                  onChange={handleJsonUpdate}
+                  maxHeight="450px"
+                />
             </div>
           )}
         </div>

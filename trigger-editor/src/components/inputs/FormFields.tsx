@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useRef } from 'react';
-import { AutocompletePopup, HoverTooltip } from './AutocompletePopup.tsx';
-import { findVariableAtOffset, findFirstVariable, getHoverInfo } from '../lsp/engine.ts';
+import { AutocompletePopup, HoverTooltip } from '../AutocompletePopup.tsx';
+import { findVariableAtOffset, findFirstVariable, getHoverInfo } from '../../lsp/engine.ts';
 
 // Re-export HoverTooltip for use in OutputPanel
 export { HoverTooltip };

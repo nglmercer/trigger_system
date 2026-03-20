@@ -8,7 +8,7 @@ const BRANCH_OPTIONS = [
   { value: BranchType.ELSE, label: 'ELSE' },
 ];
 import { ClearIcon, DoIcon, ElseIcon } from '../components/Icons';
-import { SelectInput, FormField } from '../components/FormFields';
+import { SelectInput, FormField } from '../components/inputs/FormFields';
 
 
 

@@ -3,7 +3,7 @@ import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
 import { ClearIcon, ActionIcon } from '../components/Icons';
-import { TextInput, FormField } from '../components/FormFields';
+import { TextInput, FormField } from '../components/inputs/FormFields';
 import { ParamsBuilder } from '../components/ParamsBuilder';
 
 export default function ActionNode({ id, data }: { id: string, data: ActionNodeData }) {

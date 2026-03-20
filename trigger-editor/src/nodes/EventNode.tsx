@@ -4,7 +4,7 @@ import type { EventNodeData } from '../types.ts';
 import { NodeField, NodeHandle } from '../constants';
 import { getFieldTooltip } from '../shared-constants';
 import { ClearIcon, SettingsIcon, StarIcon } from '../components/Icons';
-import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from '../components/FormFields';
+import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from '../components/inputs/FormFields.tsx';
 
 export default function EventNode({ id, data }: { id: string, data: EventNodeData }) {
   const { deleteElements } = useReactFlow();

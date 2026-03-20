@@ -5,6 +5,8 @@ import { INITIAL_HINT } from '../constants.ts';
 import { CopyIcon, CodeIcon, ChevronIcon } from './Icons.tsx';
 import { getHoverInfo } from '../lsp/engine.ts';
 import { HoverTooltip } from './AutocompletePopup.tsx';
+import { JsonPreview } from './JsonPreview.tsx';
+import { parse } from 'yaml';
 
 interface OutputPanelProps {
   yaml: string;
@@ -13,6 +15,7 @@ interface OutputPanelProps {
 
 export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const [viewMode, setViewMode] = useState<'yaml' | 'json'>('yaml');
   const preRef = useRef<HTMLPreElement>(null);
   const [hoveredVar, setHoveredVar] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -173,8 +176,25 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           {isVisible && (
             <>
               <div className="output-header-left">
-                <span className="output-title">YAML Output</span>
-                <span className="output-badge">Live</span>
+                <span className="output-title">Output</span>
+                <div style={{ display: 'flex', gap: '4px', marginLeft: '12px' }}>
+                  <button 
+                    onClick={() => setViewMode('yaml')}
+                    style={{ 
+                      background: viewMode === 'yaml' ? 'var(--primary)' : 'var(--bg-secondary)', 
+                      border: '1px solid var(--border)',
+                      fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', color: 'white'
+                    }}
+                  >YAML</button>
+                  <button 
+                    onClick={() => setViewMode('json')}
+                    style={{ 
+                      background: viewMode === 'json' ? 'var(--primary)' : 'var(--bg-secondary)', 
+                      border: '1px solid var(--border)',
+                      fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', color: 'white'
+                    }}
+                  >JSON</button>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button id="btn-copy" className="btn btn-icon" onClick={onCopy} title="Copy YAML" disabled={!yaml}>
@@ -199,14 +219,25 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
               </div>
             )}
             {renderTooltip()}
-            <pre 
-              ref={preRef}
-              className={`output-content ${!yaml ? 'output-content--hint' : ''}`} 
-              style={{ margin: 0 }}
-              onMouseLeave={() => setHoveredVar(null)}
-            >
-              {yaml ? renderYamlWithHighlights(yaml) : INITIAL_HINT}
-            </pre>
+            {viewMode === 'yaml' ? (
+              <pre 
+                ref={preRef}
+                className={`output-content ${!yaml ? 'output-content--hint' : ''}`} 
+                style={{ margin: 0 }}
+                onMouseLeave={() => setHoveredVar(null)}
+              >
+                {yaml ? renderYamlWithHighlights(yaml) : INITIAL_HINT}
+              </pre>
+            ) : (
+              <div style={{ padding: '10px' }}>
+                <JsonPreview 
+                  data={(() => {
+                    try { return parse(yaml); } catch { return { error: 'Failed to parse YAML' }; }
+                  })()} 
+                  maxHeight="calc(100vh - 120px)"
+                />
+              </div>
+            )}
           </div>
         )}
       </aside>

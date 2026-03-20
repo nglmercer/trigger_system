@@ -4,7 +4,7 @@ import type { ConditionGroupNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
 import { CONDITION_GROUP_OPTIONS } from '../shared-constants';
 import { ClearIcon, ConditionGroupIcon } from '../components/Icons';
-import { SelectInput, FormField } from '../components/FormFields';
+import { SelectInput, FormField } from '../components/inputs/FormFields';
 
 export default function ConditionGroupNode({ id, data }: { id: string, data: ConditionGroupNodeData }) {
   const { deleteElements, getNode } = useReactFlow();

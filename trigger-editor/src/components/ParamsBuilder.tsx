@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { openParamsModal, parseParams } from './ParamsModal.tsx';
+import { openParamsModal } from './ParamsModal.tsx';
+import { parseParams } from '../utils/getData.ts';
 
 interface ParamsBuilderProps {
   value: string; // JSON string

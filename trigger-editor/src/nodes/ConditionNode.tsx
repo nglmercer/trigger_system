@@ -3,7 +3,7 @@ import type { ConditionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle, BranchType } from '../constants';
 import { getOperatorOptions, getOperatorDescription, getFieldTooltip } from '../shared-constants';
 import { ClearIcon, IfIcon } from '../components/Icons';
-import { TextInput, SelectInput, FormField } from '../components/FormFields';
+import { TextInput, SelectInput, FormField } from '../components/inputs/FormFields';
 import type { ComparisonOperator } from '../../../src/types';
 
 const OPERATOR_OPTIONS = getOperatorOptions();

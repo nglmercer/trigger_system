@@ -3,7 +3,7 @@ import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionGroupNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
 import { ClearIcon, ActionGroupIcon } from '../components/Icons';
-import { SelectInput, FormField } from '../components/FormFields';
+import { SelectInput, FormField } from '../components/inputs/FormFields';
 import type { ExecutionMode } from '../../../src/types';
 
 const MODE_OPTIONS = [
