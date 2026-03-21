@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'bun:test';
 import { ActionRegistry } from '../../src/core/action-registry';
-import { TriggerEngine } from '../../src/core/engine';
+import { TriggerEngine } from "../../src";
 import { ExpressionEngine } from '../../src/core/expression-engine';
 import { StateManager } from '../../src/core/state-manager';
 import type { TriggerContext, ComparisonOperator } from '../../src/types';

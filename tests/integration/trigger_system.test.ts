@@ -1,6 +1,6 @@
 
 import { describe, expect, test, beforeAll } from "bun:test";
-import { TriggerEngine } from "../../src/core/engine";
+import { TriggerEngine } from "../../src";
 import { ActionRegistry } from "../../src/core/action-registry";
 import { TriggerLoader } from "../../src/io/loader.node";
 import * as path from "path";
@@ -121,7 +121,7 @@ describe("Trigger System Integration", () => {
 
     test("System should handle dynamic values in rules (mocked by manual rule injection)", async () => {
           // Create raw rule engine for specific scenario
-          const { RuleEngine } = await import("../../src/core/rule-engine");
+          const { RuleEngine } = await import("../../src");
           const ruleEngine = new RuleEngine({
               rules: [{
                   id: "dyn", 

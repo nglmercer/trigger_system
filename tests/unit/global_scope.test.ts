@@ -1,6 +1,6 @@
 
 import { describe, expect, test } from "bun:test";
-import { TriggerEngine } from "../../src/core/engine";
+import { TriggerEngine } from "../../src";
 import { ContextAdapter } from "../../src/core/context-adapter";
 import { StateManager } from "../../src/core/state-manager";
 import type { TriggerRule } from "../../src/types";

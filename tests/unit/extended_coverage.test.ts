@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'bun:test';
 import { StateManager } from '../../src/core/state-manager';
 import { TriggerEngine } from '../../src/core/trigger-engine';
-import { RuleEngine as LegacyRuleEngine } from '../../src/core/rule-engine';
-import { RuleEngine as NewRuleEngine } from '../../src/core/rule-engine-new';
+import { RuleEngine as LegacyRuleEngine } from '../../src';
+import { RuleEngine as NewRuleEngine } from '../../src';
 import type { PersistenceAdapter } from '../../src/core/persistence';
 import { triggerEmitter, EngineEvent, ruleEvents } from '../../src/utils/emitter';
 import { ErrorMessages } from '../../src/core/constants';

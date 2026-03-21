@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { RuleEngine } from '../../src/core/rule-engine-new';
+import { RuleEngine } from '../../src/core/rule-engine';
 import { ActionRegistry } from '../../src/core/action-registry';
 
 describe('Conditional action bug', () => {
