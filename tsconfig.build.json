@@ -14,6 +14,7 @@
   "exclude": [
     "tests/**/*",
     "vscode-extension/**/*",
+    "trigger-editor/**/*",
     "examples/**/*",
     "docs/**/*",
     "src/lsp/server.ts",
