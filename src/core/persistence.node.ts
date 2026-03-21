@@ -9,7 +9,7 @@ import { dirname } from "path";
  * 
  * Optimizations:
  * - Lazy loading: only reads file when first needed
- * - Debounced writes: batches multiple rapid changes into single write
+ * - Optional debounced writes: batches multiple rapid changes (disabled by default)
  * - Manual flush: explicit persist() call for immediate write
  */
 export class FilePersistence implements PersistenceAdapter {
@@ -22,7 +22,7 @@ export class FilePersistence implements PersistenceAdapter {
 
   constructor(filePath: string, options?: { writeDelay?: number }) {
     this.filePath = filePath;
-    this.writeDelay = options?.writeDelay ?? 100; // Default 100ms debounce
+    this.writeDelay = options?.writeDelay ?? 0; // Default: immediate write (0 = disabled)
   }
 
   /**
@@ -65,6 +65,12 @@ export class FilePersistence implements PersistenceAdapter {
   }
 
   private schedulePersist() {
+    // If writeDelay is 0, write immediately
+    if (this.writeDelay <= 0) {
+      this.persist();
+      return;
+    }
+    
     if (this.pendingWrite) {
       clearTimeout(this.pendingWrite);
     }

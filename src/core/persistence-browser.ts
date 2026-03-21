@@ -8,7 +8,7 @@ import { type PersistenceAdapter } from "./persistence";
  * 
  * Optimizations:
  * - Lazy loading: only reads from localStorage when first needed
- * - Debounced writes: batches multiple rapid changes into single write
+ * - Optional debounced writes: batches multiple rapid changes (disabled by default)
  * - Manual flush: explicit persist() call for immediate write
  */
 export class BrowserPersistence implements PersistenceAdapter {
@@ -21,7 +21,7 @@ export class BrowserPersistence implements PersistenceAdapter {
 
   constructor(prefix: string = "trigger_system:", options?: { writeDelay?: number }) {
     this.keyPrefix = prefix;
-    this.writeDelay = options?.writeDelay ?? 100; // Default 100ms debounce
+    this.writeDelay = options?.writeDelay ?? 0; // Default: immediate write (0 = disabled)
   }
 
   /**
@@ -69,6 +69,12 @@ export class BrowserPersistence implements PersistenceAdapter {
   }
 
   private schedulePersist() {
+    // If writeDelay is 0, write immediately
+    if (this.writeDelay <= 0) {
+      this.persist();
+      return;
+    }
+    
     if (this.pendingWrite) {
       clearTimeout(this.pendingWrite);
     }
