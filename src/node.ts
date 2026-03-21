@@ -6,4 +6,4 @@ export * from "./index"; // Export Platform Agnostic Core
 
 // Export Node-specific implementations
 export * from "./core/persistence.node";
-export * from "./io/loader.node";
+export * from "./io/index";
