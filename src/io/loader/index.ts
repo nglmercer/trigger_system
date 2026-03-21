@@ -32,7 +32,7 @@ export { RuleRegistry } from "./registry";
 export { RulePersistence } from "./persistence";
 export { RuleQuery } from "./query";
 export { RuleWatcher } from "./watch";
-export type { RegistryEntry, LoaderOptions, RuleFileInfo } from "./types";
+export type { RegistryEntry, FileEntry, LoaderOptions, RuleFileInfo } from "./types";
 
 // ============================================================================
 // TriggerLoader Class - Basic file loading utilities
@@ -103,13 +103,14 @@ export class TriggerLoader {
 
   /**
    * Loads rules from a YAML file (supports multi-document)
+   * Assigns ruleIndex for multi-rule files
    */
   static async loadRule(filePath: string, debug = (_err: YamlParserError | unknown) => {}): Promise<TriggerRule[]> {
     try {
       const content = await fs.promises.readFile(filePath, 'utf-8');
-      const result = parseYamlRules(content, { 
+      const result = parseYamlRules(content, {
         filename: filePath,
-        throwOnError: false 
+        throwOnError: false
       });
       
       if (result.errors.length > 0) {
@@ -122,6 +123,8 @@ export class TriggerLoader {
           const base = path.basename(filePath, path.extname(filePath));
           rule.id = result.rules.length > 1 ? `${base}-${index}` : base;
         }
+        // Store the index for multi-rule files
+        //rule.__ruleIndex = index;
         return rule;
       });
 

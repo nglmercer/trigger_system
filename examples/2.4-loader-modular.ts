@@ -1,19 +1,21 @@
 /**
  * Example 2.4: Modular Loader Usage
- * 
- * Demonstrates how to use the modular classes (RuleRegistry, RulePersistence, 
+ *
+ * Demonstrates how to use the modular classes (RuleRegistry, RulePersistence,
  * RuleQuery, RuleWatcher) for full CRUD operations on rules.
- * 
+ *
  * This example shows:
  * - Using default paths
  * - Adding, updating, deleting rules in memory
  * - Saving changes to files
  * - Querying rules by various criteria
  * - Watching for file changes
+ * - **NEW: Managing multiple rules per file**
  */
 
 import { RuleRegistry, RulePersistence, RuleQuery, RuleWatcher } from "../src/io/loader";
 import type { TriggerRule } from "../src/types";
+import * as path from "path";
 
 async function main() {
     console.log("🎬 Starting Modular Loader Example...\n");
@@ -23,70 +25,90 @@ async function main() {
     const defaultDir = registry.getDefaultDir();
     console.log(`📂 Default rules directory: ${defaultDir}\n`);
 
-    // 2. Add rules directly (in-memory)
-    console.log("✏️  CRUD Operations:");
+    // ============================================================================
+    // PART 1: Load and manage rules from a multi-rule file
+    // ============================================================================
+    console.log("📄 PART 1: Loading rules from multi-rule file...\n");
 
-    // ADD - Create new rules
-    console.log("\n   [ADD] Creating new rules...");
+    const multiRuleFile = path.join(defaultDir, "multi-rules-example.yaml");
     
-    const rule1: TriggerRule = {
-        id: "user-login",
-        name: "User Login Rule",
-        on: "user.login",
-        enabled: true,
-        tags: ["auth", "security"],
-        do: [{ type: "log", params: { message: "User logged in" } }]
-    };
-    registry.add(rule1);
-
-    const rule2: TriggerRule = {
-        id: "user-logout", 
-        name: "User Logout Rule",
-        on: "user.logout",
-        enabled: true,
-        tags: ["auth"],
-        do: [{ type: "log", params: { message: "User logged out" } }]
-    };
-    registry.add(rule2);
-
-    const rule3: TriggerRule = {
-        id: "admin-action",
-        name: "Admin Action Rule",
-        on: "admin.action",
-        enabled: false,
-        tags: ["admin", "security"],
-        do: [{ type: "log", params: { message: "Admin action" } }]
-    };
-    registry.add(rule3);
-
-    console.log(`   Added 3 rules (total: ${registry.size()})`);
-    console.log(`   Default dir: ${registry.getDefaultDir()}`);
-
-    // UPDATE - Modify existing rule
-    console.log("\n   [UPDATE] Modifying rule...");
-    const updated = registry.update("user-login", { 
-        name: "User Login Rule (Updated)",
-        enabled: false 
-    });
-    console.log(`   Updated rule: ${updated.id}, enabled: ${updated.enabled}, name: ${updated.name}`);
-
-    // SAVE - Save rule to file
-    console.log("\n   [SAVE] Saving rule to file...");
-    const entry = registry.getEntry("user-login");
-    if (entry) {
-        const filePath = entry.filePath || `${registry.getDefaultDir()}/user-login.yaml`;
-        await RulePersistence.saveRule(updated, filePath);
-        console.log(`   Saved to: ${filePath}`);
-        registry.markAsSaved("user-login", filePath);
+    // Load all rules from the multi-rule file
+    console.log(`   Loading rules from: ${multiRuleFile}`);
+    const loadedRules = await RulePersistence.loadFile(multiRuleFile);
+    console.log(`   Loaded ${loadedRules.length} rules from file`);
+    
+    // Register all rules - pass the actual source file path so they're grouped correctly
+    registry.registerAll(loadedRules, multiRuleFile);
+    
+    // Show file grouping
+    console.log("\n   📁 File grouping:");
+    const fileEntry = registry.getFileEntry(multiRuleFile);
+    if (fileEntry) {
+        console.log(`   File: ${fileEntry.filePath}`);
+        console.log(`   Rules in file: ${fileEntry.rules.length}`);
+        console.log(`   Rule IDs: ${fileEntry.rules.map(r => r.id).join(", ")}`);
+        console.log(`   Is multi-rule file: ${registry.isMultiRuleFile(multiRuleFile)}`);
     }
 
-    // DELETE - Remove a rule
-    console.log("\n   [DELETE] Removing rule...");
+    // ============================================================================
+    // PART 2: CRUD Operations with multi-rule file awareness
+    // ============================================================================
+    console.log("\n✏️  PART 2: CRUD Operations (file-aware):\n");
+
+    // UPDATE - Modify a rule in the multi-rule file
+    console.log("   [UPDATE] Modifying rule in multi-rule file...");
+    const updated = registry.update("user-login", {
+        name: "User Login Rule (Updated)",
+        enabled: false
+    });
+    console.log(`   Updated rule: ${updated.id}`);
+    console.log(`   New name: ${updated.name}`);
+    console.log(`   Enabled: ${updated.enabled}`);
+
+    // Check if file is modified
+    const modifiedFile = registry.getFileEntry(multiRuleFile);
+    console.log(`   File modified: ${modifiedFile?.modified}`);
+
+    // SAVE - Save ALL rules from the file (not just the modified one)
+    console.log("\n   [SAVE] Saving all rules from multi-rule file...");
+    const rulesToSave = registry.getRulesByFile(multiRuleFile);
+    console.log(`   Saving ${rulesToSave.length} rules to file`);
+    await RulePersistence.saveRulesToFile(rulesToSave, multiRuleFile);
+    registry.markFileAsSaved(multiRuleFile);
+    console.log(`   Saved to: ${multiRuleFile}`);
+
+    // ADD - Add a new rule to the registry (separate file)
+    console.log("\n   [ADD] Creating new rule (separate file)...");
+    const newRule: TriggerRule = {
+        id: "new-notification",
+        name: "New Notification Rule",
+        on: "notification.new",
+        enabled: true,
+        tags: ["notification"],
+        do: [{ type: "log", params: { message: "New notification" } }]
+    };
+    registry.add(newRule);
+    console.log(`   Added rule: ${newRule.id}`);
+    console.log(`   Total rules: ${registry.size()}`);
+    console.log(`   Total files: ${registry.fileCount()}`);
+
+    // DELETE - Remove a rule from multi-rule file
+    console.log("\n   [DELETE] Removing rule from multi-rule file...");
     const removed = registry.remove("admin-action");
     console.log(`   Removed rule: admin-action (success: ${removed})`);
+    
+    // Save updated file after deletion
+    const remainingRules = registry.getRulesByFile(multiRuleFile);
+    if (remainingRules.length > 0) {
+        await RulePersistence.saveRulesToFile(remainingRules, multiRuleFile);
+        registry.markFileAsSaved(multiRuleFile);
+        console.log(`   Updated file with ${remainingRules.length} rules`);
+    }
 
-    // 3. Query examples using RuleQuery
-    console.log("\n🔍 Query Examples:");
+    // ============================================================================
+    // PART 3: Query examples using RuleQuery
+    // ============================================================================
+    console.log("\n🔍 PART 3: Query Examples:\n");
     
     // Find by tag
     const authRules = RuleQuery.findByTag(registry.values(), "auth");
@@ -106,22 +128,53 @@ async function main() {
 
     // Group by event
     const byEvent = RuleQuery.groupByEvent(registry.values());
-    console.log(`   Rules grouped by event: ${Array.from(byEvent.keys()).join(", ")}\n`);
+    console.log(`   Rules grouped by event: ${Array.from(byEvent.keys()).join(", ")}`);
 
-    // 4. Final state
-    console.log("📊 Final Registry State:");
-    console.log(`   Total rules: ${registry.size()}`);
-    console.log(`   Default dir: ${registry.getDefaultDir()}`);
-    console.log(`   Modified: ${registry.hasModified()}`);
-    
-    for (const rule of registry.getAll()) {
-        const entry = registry.getEntry(rule.id!);
-        console.log(`   - ${rule.id}: ${rule.name}`);
-        console.log(`     enabled: ${rule.enabled}, filePath: ${entry?.filePath || "N/A"}`);
+    // ============================================================================
+    // PART 4: File-aware operations
+    // ============================================================================
+    console.log("\n📁 PART 4: File-aware Operations:\n");
+
+    // Show all file entries
+    console.log("   All file entries:");
+    for (const fileEntry of registry.fileEntries()) {
+        console.log(`   - ${fileEntry.filePath}`);
+        console.log(`     Rules: ${fileEntry.rules.length}`);
+        console.log(`     Modified: ${fileEntry.modified}`);
+        console.log(`     Rule IDs: ${fileEntry.rules.map(r => r.id).join(", ")}`);
     }
 
-    // 5. Watch for changes using RuleWatcher
-    console.log("\n👀 Starting file watcher...");
+    // Show rules by file
+    console.log("\n   Rules by file:");
+    for (const fileEntry of registry.fileEntries()) {
+        const rules = registry.getRulesByFile(fileEntry.filePath);
+        console.log(`   ${fileEntry.filePath}: ${rules.map(r => r.id).join(", ")}`);
+    }
+
+    // ============================================================================
+    // PART 5: Final state
+    // ============================================================================
+    console.log("\n📊 PART 5: Final Registry State:\n");
+    console.log(`   Total rules: ${registry.size()}`);
+    console.log(`   Total files: ${registry.fileCount()}`);
+    console.log(`   Default dir: ${registry.getDefaultDir()}`);
+    console.log(`   Has modified: ${registry.hasModified()}`);
+    
+    console.log("\n   Rules:");
+    for (const rule of registry.getAll()) {
+        const entry = registry.getEntry(rule.id!);
+        const filePath = entry?.filePath || "N/A";
+        const isMulti = filePath !== "N/A" && registry.isMultiRuleFile(filePath);
+        console.log(`   - ${rule.id}: ${rule.name}`);
+        console.log(`     enabled: ${rule.enabled}`);
+        console.log(`     file: ${filePath}`);
+        console.log(`     multi-rule file: ${isMulti}`);
+    }
+
+    // ============================================================================
+    // PART 6: Watch for changes using RuleWatcher
+    // ============================================================================
+    console.log("\n👀 PART 6: Starting file watcher...");
     const watcher = new RuleWatcher();
     
     watcher.start(
@@ -138,11 +191,13 @@ async function main() {
     // Wait a bit then stop
     await new Promise(r => setTimeout(r, 2000));
 
-    // 6. Cleanup
-    console.log("\n🧹 Cleanup...");
+    // ============================================================================
+    // PART 7: Cleanup
+    // ============================================================================
+    console.log("\n🧹 PART 7: Cleanup...");
     watcher.stop();
     console.log(`   Is watching after stop: ${watcher.isWatching()}`);
-    console.log("✨ Done.");
+    console.log("\n✨ Done.");
 }
 
 main().catch(console.error);

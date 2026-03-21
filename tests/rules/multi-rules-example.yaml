@@ -1,0 +1,32 @@
+# Multi-Rules Example File
+# This file contains multiple rules that should be managed together
+
+- id: user-login
+  name: User Login Rule
+  on: user.login
+  enabled: true
+  tags: [auth, security]
+  do:
+    - type: log
+      params:
+        message: "User logged in"
+
+- id: user-logout
+  name: User Logout Rule
+  on: user.logout
+  enabled: true
+  tags: [auth]
+  do:
+    - type: log
+      params:
+        message: "User logged out"
+
+- id: admin-action
+  name: Admin Action Rule
+  on: admin.action
+  enabled: false
+  tags: [admin, security]
+  do:
+    - type: log
+      params:
+        message: "Admin action performed"

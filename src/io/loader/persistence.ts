@@ -1,7 +1,8 @@
 /**
  * TriggerLoader Persistence
- * 
+ *
  * File system operations for loading and saving rules.
+ * Supports multiple rules per file.
  */
 
 import * as path from "path";
@@ -12,6 +13,7 @@ import { RuleExporter } from "../../sdk/exporter";
 
 /**
  * Persistence operations for rules
+ * Supports grouping rules by file
  */
 export class RulePersistence {
   /**
@@ -81,7 +83,7 @@ export class RulePersistence {
   }
 
   /**
-   * Save a rule to file
+   * Save a single rule to file (overwrites existing file)
    */
   static async saveRule(rule: TriggerRule, filePath: string): Promise<void> {
     const dir = path.dirname(filePath);
@@ -94,10 +96,28 @@ export class RulePersistence {
   }
 
   /**
-   * Save multiple rules
+   * Save multiple rules to a single file
+   */
+  static async saveRulesToFile(rules: TriggerRule[], filePath: string): Promise<void> {
+    if (rules.length === 0) {
+      return;
+    }
+    
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    const yamlContent = RuleExporter.toCleanYaml(rules);
+    await fs.promises.writeFile(filePath, yamlContent, 'utf-8');
+  }
+
+  /**
+   * Save multiple rules, grouping by file path
+   * Rules with the same filePath are saved together in one file
    */
   static async saveAll(
-    rules: TriggerRule[], 
+    rules: TriggerRule[],
     baseDir: string,
     getFilePath: (ruleId: string) => string = (id) => `${baseDir}/${id}.yaml`
   ): Promise<string[]> {
@@ -105,15 +125,32 @@ export class RulePersistence {
       fs.mkdirSync(baseDir, { recursive: true });
     }
     
-    const savedPaths: string[] = [];
+    // Group rules by file path
+    const rulesByFile = new Map<string, TriggerRule[]>();
     
     for (const rule of rules) {
       const filePath = getFilePath(rule.id!);
-      await this.saveRule(rule, filePath);
+      const existing = rulesByFile.get(filePath) || [];
+      existing.push(rule);
+      rulesByFile.set(filePath, existing);
+    }
+    
+    // Save each file with all its rules
+    const savedPaths: string[] = [];
+    
+    for (const [filePath, fileRules] of rulesByFile) {
+      await this.saveRulesToFile(fileRules, filePath);
       savedPaths.push(filePath);
     }
     
     return savedPaths;
+  }
+
+  /**
+   * Save all rules from a file entry
+   */
+  static async saveFile(rules: TriggerRule[], filePath: string): Promise<void> {
+    await this.saveRulesToFile(rules, filePath);
   }
 
   /**
