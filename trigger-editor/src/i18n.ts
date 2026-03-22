@@ -165,6 +165,17 @@ const resources = {
         actionType: "Action Type",
         actionTypePlaceholder: "log_event",
         params: "Params"
+      },
+      shortcuts: {
+        title: "Keyboard Shortcuts",
+        delete: "Remove Selected",
+        deleteKeys: "Del / Backspace",
+        multiSelect: "Multi-select",
+        multiSelectKeys: "Shift + Drag",
+        pan: "Pan Canvas",
+        panKeys: "Space + Whell",
+        zoom: "Zoom",
+        zoomKeys: "Wheel / Cmd+Wheel",
       }
     }
   },
@@ -393,6 +404,17 @@ const resources = {
             RANGE: "Dentro del rango especificado"
           }
         }
+      },
+      shortcuts: {
+        title: "Atajos de Teclado",
+        delete: "Eliminar Seleccionado",
+        deleteKeys: "Del / Retroceso",
+        multiSelect: "Selección Múltiple",
+        multiSelectKeys: "Shift + Arrastrar",
+        pan: "Desplazar Lienzo",
+        panKeys: "Espacio + rueda",
+        zoom: "Zoom",
+        zoomKeys: "Rueda / Cmd+Rueda",
       }
     }
   }

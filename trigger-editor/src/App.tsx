@@ -13,7 +13,10 @@ import '@xyflow/react/dist/style.css';
 import Sidebar from './components/Sidebar.tsx';
 import OutputPanel from './components/OutputPanel.tsx';
 import { ParamsModal } from './components/ParamsModal.tsx';
+import { ShortcutsModal } from './components/ShortcutsModal.tsx';
 import { AlertProvider, useAlert } from './components/Alert.tsx';
+import { KeyboardIcon } from './components/Icons.tsx';
+import { useTranslation } from 'react-i18next';
 
 import { nodeTypes } from './nodes';
 
@@ -45,6 +48,8 @@ function NodeEditor() {
     clearAll,
     setGraph
   } = useNodeEdgeState();
+  const [isShortcutsOpen, setIsShortcutsOpen] = React.useState(false);
+  const { t } = useTranslation();
 
   const { success } = useAlert();
 
@@ -221,11 +226,39 @@ function NodeEditor() {
           <Background color="#30363d" gap={20} />
           <Controls />
         </ReactFlow>
+        
+        {/* Floating Help Shortcut Icon */}
+        <button
+          onClick={() => setIsShortcutsOpen(true)}
+          style={{
+            position: 'absolute',
+            left: '0.9rem',
+            bottom: '8rem', // Above the Controls
+            zIndex: 10,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-secondary)',
+            padding: '8px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            transition: 'all 0.2s',
+          }}
+          title={t('shortcuts.title')}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+        >
+          <KeyboardIcon size={12} />
+        </button>
       </main>
 
       <OutputPanel yaml={yaml} errors={errors} />
       
       <ParamsModal />
+      <ShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
     </div>
   );
 }
