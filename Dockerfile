@@ -12,6 +12,10 @@ ENV PATH="/root/.bun/bin:${PATH}"
 # Copy all source files (node_modules excluded via .dockerignore)
 COPY . .
 
+# Install root package dependencies (yaml, arktype, etc.)
+# Required because trigger-editor imports directly from ../src/
+RUN bun install
+
 # Install trigger-editor dependencies
 WORKDIR /app/trigger-editor
 RUN bun install
