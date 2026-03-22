@@ -19,7 +19,8 @@ const resources = {
           actionGroup: "Action Group",
           groupActions: "Group of actions",
           action: "Action",
-          executeHandler: "Execute a handler"
+          executeHandler: "Execute a handler",
+          configureParams: "Configure Parameters"
         },
         dataContext: "Data Context",
         config: "Config",
@@ -184,7 +185,8 @@ const resources = {
           actionGroup: "Grupo de Acciones",
           groupActions: "Grupo de acciones",
           action: "Acción",
-          executeHandler: "Ejecutar un controlador"
+          executeHandler: "Ejecutar un controlador",
+          configureParams: "Configurar Parámetros"
         },
         dataContext: "Contexto de Datos",
         config: "Configuración",
@@ -400,7 +402,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: "en", 
+    lng: localStorage?.getItem('lang') || "en", 
     fallbackLng: "en",
     interpolation: {
       escapeValue: false 

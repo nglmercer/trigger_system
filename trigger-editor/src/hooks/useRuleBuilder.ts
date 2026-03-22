@@ -33,7 +33,7 @@ export function useRuleBuilder(nodes: Node[], edges: Edge[], options?: GraphPars
       
       // Use fromGraphMultiple to support multiple Event nodes (rules)
       const { rules, errors } = RuleBuilder.fromGraphMultiple(sdkNodes, sdkEdges, options, transformers);
-      console.log(rules,sdkEdges,sdkNodes)
+      //debug nodes, edges and import console.log(rules,sdkEdges,sdkNodes)
       if (errors.length > 0) {
         return { rules: [], errors, yaml: '' };
       }

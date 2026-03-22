@@ -18,6 +18,7 @@ interface SelectInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export function SelectInput({ 
@@ -26,26 +27,49 @@ export function SelectInput({
   onChange, 
   placeholder = 'Select...', 
   disabled = false,
-  className = 'node-input'
+  className = 'node-input',
+  style
 }: SelectInputProps) {
   return (
-    <select
-      className={className}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-    >
-      {placeholder && (
-        <option value="" disabled>
-          {placeholder}
-        </option>
-      )}
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+    <div style={{ position: 'relative', width: style?.width || '100%' }}>
+      <select
+        className={className}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        style={{ 
+          ...style, 
+          appearance: 'none', 
+          WebkitAppearance: 'none',
+          paddingRight: '30px' 
+        }}
+      >
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value} style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <div style={{
+        position: 'absolute',
+        right: '10px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        color: 'var(--text-muted)',
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+    </div>
   );
 }
 

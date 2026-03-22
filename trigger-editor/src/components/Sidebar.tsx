@@ -7,6 +7,12 @@ import { Modal } from './Modal.tsx';
 import { ImportList } from './ImportList.tsx';
 import { ExchangeModals } from './ExchangeModals.tsx';
 import { useTranslation } from 'react-i18next';
+import { SelectInput } from './inputs/FormFields.tsx';
+
+const LANG_OPTIONS = [
+  { value: 'en', label: 'EN' },
+  { value: 'es', label: 'ES' }
+];
 
 interface SidebarProps {
   onClear: () => void;
@@ -75,11 +81,13 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
             <h1 className="sidebar-title">{t('sidebar.components')}</h1>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <select 
-                value={localStorage?.getItem('lang') || i18n.language} 
-                onChange={(e) => {
-                  i18n.changeLanguage(e.target.value)
-                  localStorage?.setItem('lang', e.target.value);
+              <SelectInput 
+                value={i18n.language} 
+                options={LANG_OPTIONS}
+                placeholder=""
+                onChange={(val) => {
+                  i18n.changeLanguage(val);
+                  localStorage?.setItem('lang', val);
                 }}
                 style={{
                   background: 'var(--bg-secondary)',
@@ -88,12 +96,10 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                   borderRadius: '4px',
                   padding: '2px 4px',
                   fontSize: '11px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  width: 'auto'
                 }}
-              >
-                <option value="en">EN</option>
-                <option value="es">ES</option>
-              </select>
+              />
               <button 
                 onClick={() => setIsOpen(false)}
                 style={{

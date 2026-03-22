@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { TextInput, TextAreaInput } from './inputs/FormFields.tsx';
+import { TextInput, TextAreaInput, SelectInput } from './inputs/FormFields.tsx';
 import { JsonPreview } from './JsonPreview.tsx';
 import type { ParamEntry, JsonValue } from '../utils/getData.ts';
 import { getValueType, stringToValue, valueToString, generateId, parseParams } from '../utils/getData.ts';
-import { TrashIcon } from './Icons.tsx';
+import { TrashIcon, ClearIcon, PlusIcon } from './Icons.tsx';
 import { useTranslation } from 'react-i18next';
 export const openParamsModal = (value: string, onChange: (val: string) => void) => {
   window.dispatchEvent(new CustomEvent('open-params-modal', { detail: { value, onChange } }));
@@ -134,7 +134,7 @@ export function ParamsModal() {
         className="params-modal-content nodrag nopan"
         style={{
           backgroundColor: 'var(--bg-color)', 
-          border: '1px solid var(--border-color)',
+          border: '1px solid var(--border)',
           borderRadius: '12px', 
           padding: '24px', 
           width: '850px', // Larger size
@@ -160,7 +160,7 @@ export function ParamsModal() {
             }
             .params-builder__entry {
               display: grid;
-              grid-template-columns: 1.2fr 110px 1.8fr auto;
+              grid-template-columns: 1.2fr 110px 1.8fr 32px;
               gap: 16px;
               align-items: center;
               padding: 12px;
@@ -176,17 +176,42 @@ export function ParamsModal() {
             .params-modal-input {
               font-size: 13px !important;
               padding: 10px 14px !important;
-              background: rgba(0, 0, 0, 0.3) !important;
+              background: rgba(13, 17, 23, 0.5) !important;
+              border-radius: 8px !important;
+              border: 1px solid rgba(255, 255, 255, 0.1) !important;
+              transition: all 0.2s !important;
+            }
+            .params-modal-input:hover {
+              border-color: rgba(255, 255, 255, 0.2) !important;
+              background: rgba(13, 17, 23, 0.7) !important;
+            }
+            .params-modal-input:focus {
+              background: rgba(13, 17, 23, 0.8) !important;
+              border-color: var(--accent) !important;
+              box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15) !important;
             }
           `}
         </style>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-color)', fontWeight: 600 }}>{t('paramsModal.editParams')}</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)', fontWeight: 700, letterSpacing: '-0.01em' }}>{t('paramsModal.editParams')}</h3>
           <button 
             onClick={handleClose} 
-            className="node-btn"
-            style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >×</button>
+            className="node-btn node-btn--secondary"
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.05)', 
+              border: '1px solid var(--border)', 
+              padding: '6px', 
+              borderRadius: '8px',
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: 'var(--text-secondary)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <ClearIcon size={18} />
+          </button>
         </div>
         
         <div className="params-builder">
@@ -218,7 +243,7 @@ export function ParamsModal() {
 
           {viewMode === 'builder' ? (
             <div className="params-builder__list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 110px 1.8fr 36px', gap: '16px', padding: '0 12px', color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 110px 1.8fr 32px', gap: '16px', padding: '0 12px', color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
                 <span>{t('paramsModal.paramName')}</span>
                 <span>{t('paramsModal.type')}</span>
                 <span>{t('paramsModal.valueVariable')}</span>
@@ -234,24 +259,33 @@ export function ParamsModal() {
                       placeholder="e.g. user.id" 
                     />
                   </div>
-                  <select className="node-input params-modal-input" value={entry.type} onChange={(e) => {
-                    const newType = e.target.value as ParamEntry['type'];
-                    const defaultVal = newType === 'string' ? '' : newType === 'number' ? 0 : newType === 'boolean' ? false : newType === 'array' ? [] : newType === 'object' ? {} : null;
-                    updateEntry(entry.id, { type: newType, value: defaultVal });
-                  }}>
-                    <option value="string">{t('paramsModal.types.string')}</option>
-                    <option value="number">{t('paramsModal.types.number')}</option>
-                    <option value="boolean">{t('paramsModal.types.boolean')}</option>
-                    <option value="array">{t('paramsModal.types.array')}</option>
-                    <option value="object">{t('paramsModal.types.object')}</option>
-                  </select>
+                  <SelectInput 
+                    className="params-modal-input" 
+                    value={entry.type} 
+                    options={[
+                      { value: 'string', label: t('paramsModal.types.string') },
+                      { value: 'number', label: t('paramsModal.types.number') },
+                      { value: 'boolean', label: t('paramsModal.types.boolean') },
+                      { value: 'array', label: t('paramsModal.types.array') },
+                      { value: 'object', label: t('paramsModal.types.object') },
+                    ]}
+                    onChange={(newType) => {
+                      const defaultVal = newType === 'string' ? '' : newType === 'number' ? 0 : newType === 'boolean' ? false : newType === 'array' ? [] : newType === 'object' ? {} : null;
+                      updateEntry(entry.id, { type: newType as ParamEntry['type'], value: defaultVal });
+                    }} 
+                  />
                   
                   <div style={{ minWidth: 0 }}>
                     {entry.type === 'boolean' ? (
-                      <select className="node-input params-modal-input" value={String(entry.value)} onChange={(e) => updateEntry(entry.id, { value: e.target.value === 'true' })}>
-                        <option value="true">true</option>
-                        <option value="false">false</option>
-                      </select>
+                      <SelectInput 
+                        className="params-modal-input" 
+                        value={String(entry.value)} 
+                        options={[
+                          { value: 'true', label: 'true' },
+                          { value: 'false', label: 'false' },
+                        ]}
+                        onChange={(val) => updateEntry(entry.id, { value: val === 'true' })} 
+                      />
                     ) : entry.type === 'array' || entry.type === 'object' ? (
                       <TextInput 
                         className="params-modal-input"
@@ -278,9 +312,20 @@ export function ParamsModal() {
                 type="button" 
                 onClick={addEntry} 
                 className="node-btn node-btn--secondary" 
-                style={{ width: '100%', marginTop: '12px', padding: '10px', fontSize: '13px', borderStyle: 'dashed' }}
+                style={{ 
+                  width: '100%', 
+                  marginTop: '16px', 
+                  padding: '12px', 
+                  fontSize: '13px', 
+                  borderStyle: 'dashed',
+                  background: 'rgba(88, 166, 255, 0.05)',
+                  borderColor: 'rgba(88, 166, 255, 0.3)',
+                  color: 'var(--accent)',
+                  display: 'flex',
+                  gap: '8px'
+                }}
               >
-                {t('paramsModal.addParam')}
+                <PlusIcon size={16} /> {t('paramsModal.addParam')}
               </button>
             </div>
           ) : (
