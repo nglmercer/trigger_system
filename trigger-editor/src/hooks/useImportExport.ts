@@ -12,7 +12,7 @@ import {
   getSharedDataFromUrl,
   clearShareDataFromUrl,
 } from '../utils/exportImport';
-import { createYamlImportPicker } from '../utils/yamlImport';
+import { createYamlImportPicker, parseYamlContent } from '../utils/yamlImport';
 
 /**
  * Hook for import/export and sharing functionality
@@ -110,6 +110,49 @@ export function useImportExport(
     clearShareDataFromUrl();
   }, []);
 
+  // Import directly from YAML data (for host integration)
+  const importYamlData = useCallback((yamlContent: string) => {
+    const response = parseYamlContent(yamlContent);
+    if (!response.success) {
+      console.error('YAML host import error:', response.error.message);
+      return;
+    }
+
+    const { nodes: yamlNodes, edges: yamlEdges } = response.data;
+    const sanitizedNodes = sanitizeNodesForImport(yamlNodes, onNodeDataChange);
+    const sanitizedEdges = sanitizeEdgesForImport(yamlEdges || [], sanitizedNodes);
+    
+    setGraph(sanitizedNodes, sanitizedEdges);
+    success('YAML imported from host successfully!', { title: 'Import Complete' });
+  }, [onNodeDataChange, setGraph, success]);
+
+  // Import directly from JSON data (for host integration)
+  const importJsonData = useCallback((jsonData: any) => {
+    if (!jsonData || !jsonData.nodes) return;
+    const sanitizedNodes = sanitizeNodesForImport(jsonData.nodes, onNodeDataChange);
+    const sanitizedEdges = sanitizeEdgesForImport(jsonData.edges || [], sanitizedNodes);
+    
+    setGraph(sanitizedNodes, sanitizedEdges);
+    success('Project imported from host successfully!', { title: 'Import Complete' });
+  }, [onNodeDataChange, setGraph, success]);
+
+  // Export to host
+  const handleHostExport = useCallback(() => {
+    const yamlValue = getYaml();
+    const jsonValue = exportToJson(nodes, edges, yamlValue);
+    
+    window.parent.postMessage({ 
+      type: 'TRIGGER_EDITOR_EXPORT', 
+      payload: {
+        yaml: yamlValue,
+        json: jsonValue,
+        timestamp: new Date().toISOString()
+      }
+    }, '*');
+    
+    success('Data sent to host application!', { title: 'Export Complete' });
+  }, [nodes, edges, getYaml, success]);
+
   return {
     handleExportJson,
     handleExportYaml,
@@ -118,5 +161,8 @@ export function useImportExport(
     handleShare,
     loadSharedData,
     clearSharedData,
+    importYamlData,
+    importJsonData,
+    handleHostExport
   };
 }

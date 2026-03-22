@@ -79,6 +79,7 @@
     "validate": "bun run src/cli/validate.ts",
     "lsp": "bun run src/lsp/server.ts --stdio",
     "package": "bun run build:all && cd vscode-extension && vsce package --no-dependencies",
+    "editor": "cd trigger-editor && bun run dev",
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {

@@ -63,6 +63,26 @@ export function ExchangeModals({
               <div style={cardDescStyle}>Convert an existing .yaml rule file back into a graph.</div>
             </div>
           </div>
+
+          {(window as any).triggerEditorConfig?.hostIntegration && (
+            <div 
+              onClick={() => { 
+                window.parent.postMessage({ type: 'TRIGGER_EDITOR_REQUEST_IMPORT' }, '*');
+                onCloseImport(); 
+              }}
+              style={{ ...cardStyle, gridColumn: 'span 2' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#e1e4e8'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+            >
+              <div style={{ ...iconBoxStyle, background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)' }}>
+                <ShareIcon size={24} />
+              </div>
+              <div>
+                <div style={cardTitleStyle}>Host Application</div>
+                <div style={cardDescStyle}>Request rule data from the parent application environment.</div>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -96,6 +116,28 @@ export function ExchangeModals({
               <div style={buttonDescStyle}>Full graph state for re-importing later.</div>
             </div>
           </button>
+
+          {(window as any).triggerEditorConfig?.hostIntegration && (
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => { 
+                // We'll need the current YAML content, but since we don't have it here directly, 
+                // we might need a prop or just rely on the parent listener to respond to a request.
+                // However, the note said "implement window methods to enable custom export".
+                // Let's assume the parent handles the actual "GET_DATA" request if needed, 
+                // or we can pass a callback.
+                window.parent.postMessage({ type: 'TRIGGER_EDITOR_EXPORT_CLICKED' }, '*');
+                onCloseExport(); 
+              }}
+              style={actionButtonStyle}
+            >
+              <ShareIcon size={20} style={{ color: 'var(--text-primary)' }} />
+              <div style={{ textAlign: 'left' }}>
+                <div style={buttonTitleStyle}>Send to Host</div>
+                <div style={buttonDescStyle}>Sync current rule directly back to the parent application.</div>
+              </div>
+            </button>
+          )}
 
           <button 
             className="btn btn-secondary" 

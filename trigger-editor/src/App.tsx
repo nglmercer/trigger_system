@@ -56,7 +56,10 @@ function NodeEditor() {
     handleImportYaml,
     handleShare,
     loadSharedData,
-    clearSharedData
+    clearSharedData,
+    importYamlData,
+    importJsonData,
+    handleHostExport
   } = useImportExport(
     nodes, 
     edges, 
@@ -65,6 +68,33 @@ function NodeEditor() {
     setGraph,
     success
   );
+
+  // Parent postMessage integration
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const { data } = event;
+      if (!data || typeof data !== 'object') return;
+
+      switch(data.type) {
+        case 'TRIGGER_EDITOR_IMPORT':
+          if (data.format === 'yaml' && typeof data.payload === 'string') {
+            importYamlData(data.payload);
+          } else if (data.format === 'json' && data.payload) {
+            importJsonData(data.payload);
+          }
+          break;
+        case 'TRIGGER_EDITOR_REQUEST_EXPORT':
+          handleHostExport();
+          break;
+        case 'TRIGGER_EDITOR_CLEAR':
+          clearAll();
+          break;
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [importYamlData, importJsonData, handleHostExport, clearAll]);
 
   // Connection validation hook
   const { isValidConnection } = useConnectionValidation(nodes, edges);
