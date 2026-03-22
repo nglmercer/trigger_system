@@ -7,6 +7,7 @@ const resources = {
       sidebar: {
         components: "Components",
         dragCanvas: "Drag onto canvas",
+        mobileTip: "(Tip: Tap to add on mobile)",
         nodes: {
           eventTrigger: "Event Trigger",
           startsRule: "Starts the rule",
@@ -184,6 +185,7 @@ const resources = {
       sidebar: {
         components: "Componentes",
         dragCanvas: "Arrastre al lienzo",
+        mobileTip: "(Tip: Toca para añadir en móvil)",
         nodes: {
           eventTrigger: "Evento (Trigger)",
           startsRule: "Inicia la regla",

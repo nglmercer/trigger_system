@@ -163,17 +163,16 @@ function NodeEditor() {
   // Screen to flow position hook
   const { screenToFlowPosition } = useReactFlow();
 
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      const type = event.dataTransfer.getData(DRAG_DATA_FORMAT);
-      if (!type) return;
+  const addNode = useCallback(
+    (type: string, position?: { x: number; y: number }) => {
+      const flowPosition = position 
+        ? screenToFlowPosition(position) 
+        : screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
-      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const newNode = {
         id: getId(),
         type,
-        position,
+        position: flowPosition,
         data: { 
           onChange: () => {},
           ...(type === NodeType.EVENT ? { 
@@ -190,7 +189,18 @@ function NodeEditor() {
       };
       setNodes((nds) => nds.concat(newNode as AppNode));
     },
-    [screenToFlowPosition, setNodes, clearAll]
+    [screenToFlowPosition, setNodes]
+  );
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      const type = event.dataTransfer.getData(DRAG_DATA_FORMAT);
+      if (!type) return;
+
+      addNode(type, { x: event.clientX, y: event.clientY });
+    },
+    [addNode]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -207,6 +217,7 @@ function NodeEditor() {
         onImport={handleImport}
         onImportYaml={handleImportYaml}
         onShare={handleShare}
+        onAddNode={addNode}
         hasNodes={nodes.length > 0}
       />
 

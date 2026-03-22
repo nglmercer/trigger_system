@@ -21,10 +21,11 @@ interface SidebarProps {
   onImport: () => void;
   onImportYaml: () => void;
   onShare: () => void;
+  onAddNode: (type: string) => void;
   hasNodes: boolean;
 }
 
-export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onImportYaml, onShare, hasNodes }: SidebarProps) {
+export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onImportYaml, onShare, onAddNode, hasNodes }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -117,12 +118,20 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
             </div>
           </div>
           <p className="sidebar-subtitle">{t('sidebar.dragCanvas')}</p>
+          <p style={{ fontSize: '9px', marginTop: '4px', textTransform: 'uppercase' }}>
+            {t('sidebar.mobileTip', ' (Tip: Tap to add on mobile)')}
+          </p>
         </div>
 
         {isOpen && (
           <>
-            <div className="drag-group">
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.EVENT)}>
+            <div className="drag-group" style={{ touchAction: 'none' }}>
+              <div 
+                className="drag-item" 
+                draggable 
+                onDragStart={(e) => onDragStart(e, NodeType.EVENT)}
+                onClick={() => onAddNode(NodeType.EVENT)}
+              >
                 <span className="drag-icon drag-icon--event"><StarIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.eventTrigger')}</span>
@@ -130,7 +139,12 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 </div>
               </div>
 
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION_GROUP)}>
+              <div 
+                className="drag-item" 
+                draggable 
+                onDragStart={(e) => onDragStart(e, NodeType.CONDITION_GROUP)}
+                onClick={() => onAddNode(NodeType.CONDITION_GROUP)}
+              >
                 <span className="drag-icon drag-icon--condition-group"><ConditionGroupIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.conditionGroup')}</span>
@@ -138,7 +152,12 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 </div>
               </div>
 
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.CONDITION)}>
+              <div 
+                className="drag-item" 
+                draggable 
+                onDragStart={(e) => onDragStart(e, NodeType.CONDITION)}
+                onClick={() => onAddNode(NodeType.CONDITION)}
+              >
                 <span className="drag-icon drag-icon--condition"><IfIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.condition')}</span>
@@ -146,7 +165,12 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 </div>
               </div>
               
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.DO)}>
+              <div 
+                className="drag-item" 
+                draggable 
+                onDragStart={(e) => onDragStart(e, NodeType.DO)}
+                onClick={() => onAddNode(NodeType.DO)}
+              >
                 <span className="drag-icon drag-icon--do"><DoIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.do')}</span>
@@ -154,7 +178,12 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 </div>
               </div>
 
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}>
+              <div 
+                className="drag-item" 
+                draggable 
+                onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}
+                onClick={() => onAddNode(NodeType.ACTION_GROUP)}
+              >
                 <span className="drag-icon drag-icon--action-group"><ActionGroupIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.actionGroup')}</span>
@@ -162,7 +191,12 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
                 </div>
               </div>
 
-              <div className="drag-item" draggable onDragStart={(e) => onDragStart(e, NodeType.ACTION)}>
+              <div 
+                className="drag-item" 
+                draggable 
+                onDragStart={(e) => onDragStart(e, NodeType.ACTION)}
+                onClick={() => onAddNode(NodeType.ACTION)}
+              >
                 <span className="drag-icon drag-icon--action"><ActionIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.action')}</span>
