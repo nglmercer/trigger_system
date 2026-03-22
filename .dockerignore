@@ -1,10 +1,12 @@
 node_modules
+**/node_modules
 .git
 .github
 dist
 coverage
 npm-debug.log
 bun.lockb
+**/bun.lockb
 .env
 .env.local
 .vscode
@@ -12,3 +14,7 @@ bun.lockb
 trigger-editor/dist
 vscode-extension/out
 vscode-extension/dist
+
+# Ensure lock files are NOT excluded
+!bun.lock
+!trigger-editor/bun.lock
