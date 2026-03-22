@@ -24,7 +24,6 @@
     "@xyflow/react": "^12.10.1",
     "drawflow": "^0.0.60",
     "i18next": "^25.10.3",
-    "lit": "^3.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-i18next": "^16.6.0",

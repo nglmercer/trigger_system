@@ -440,6 +440,8 @@ export function sanitizeEdgesForImport(
       ...edge,
       sourceHandle: sourceHandle ?? null,
       targetHandle: targetHandle ?? null,
+      className: `source-${sourceType}`,
+      animated: true,
     };
   });
 }

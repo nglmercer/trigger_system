@@ -80,6 +80,7 @@
     "lsp": "bun run src/lsp/server.ts --stdio",
     "package": "bun run build:all && cd vscode-extension && vsce package --no-dependencies",
     "editor": "cd trigger-editor && bun run dev",
+    "editor:build": "bun install && cd trigger-editor && bun install && bun run build",
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {

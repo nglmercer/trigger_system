@@ -319,14 +319,32 @@ export function triggerRuleToNodes(
           ? conditionNodes[conditionNodes.length - 1]!.id 
           : groupNodeId || eventNode.id;
         
+        // Find position for DO node
+        const condNodeObj = nodes.find(n => n.id === lastCondNode);
+        const condPos = condNodeObj?.position || { x: 300, y: 300 };
+        
+        const doNodeId = getNodeId();
+        const doNode = buildDoNode('do', doNodeId, { 
+          x: condPos.x + 300, 
+          y: condPos.y - 100 
+        });
+        nodes.push(doNode);
+        
+        let sourceHandle: string | null = null;
+        if (lastCondNode === eventNode.id) sourceHandle = HandleId.EVENT_OUTPUT;
+        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.CONDITION_GROUP_OUTPUT;
+        else sourceHandle = HandleId.CONDITION_OUTPUT;
+        
+        edges.push(buildEdge(lastCondNode, doNodeId, sourceHandle, HandleId.DO_INPUT, getEdgeId));
+
         processActions(
           doActions,
           nodes,
           edges,
-          lastCondNode,
+          doNodeId,
           getNodeId,
           getEdgeId,
-          getPosition,
+          (level, i, total) => ({ x: doNode.position.x + 300, y: doNode.position.y + (i * 150) }),
           'do'
         );
       }
@@ -338,15 +356,33 @@ export function triggerRuleToNodes(
         const lastCondNode = conditionNodes.length > 0 
           ? conditionNodes[conditionNodes.length - 1]!.id 
           : groupNodeId || eventNode.id;
+          
+        // Find position for ELSE node
+        const condNodeObj = nodes.find(n => n.id === lastCondNode);
+        const condPos = condNodeObj?.position || { x: 300, y: 300 };
         
+        const elseNodeId = getNodeId();
+        const elseNode = buildDoNode('else', elseNodeId, { 
+          x: condPos.x + 300, 
+          y: condPos.y + 100 
+        });
+        nodes.push(elseNode);
+        
+        let sourceHandle: string | null = null;
+        if (lastCondNode === eventNode.id) sourceHandle = HandleId.EVENT_OUTPUT;
+        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.CONDITION_GROUP_OUTPUT;
+        else sourceHandle = HandleId.CONDITION_OUTPUT;
+        
+        edges.push(buildEdge(lastCondNode, elseNodeId, sourceHandle, HandleId.DO_INPUT, getEdgeId));
+
         processActions(
           elseActions,
           nodes,
           edges,
-          lastCondNode,
+          elseNodeId,
           getNodeId,
           getEdgeId,
-          getPosition,
+          (level, i, total) => ({ x: elseNode.position.x + 300, y: elseNode.position.y + (i * 150) }),
           'else'
         );
       }
@@ -354,14 +390,24 @@ export function triggerRuleToNodes(
       // No conditions - process actions directly from event
       const doActions = ensureArray(rule.do);
       if (doActions.length > 0) {
+        const doNodeId = getNodeId();
+        const eventPos = eventNode.position;
+        const doNode = buildDoNode('do', doNodeId, { 
+          x: eventPos.x + 300, 
+          y: eventPos.y 
+        });
+        nodes.push(doNode);
+        
+        edges.push(buildEdge(eventNode.id, doNodeId, HandleId.EVENT_OUTPUT, HandleId.DO_INPUT, getEdgeId));
+
         processActions(
           doActions,
           nodes,
           edges,
-          eventNode.id,
+          doNodeId,
           getNodeId,
           getEdgeId,
-          getPosition,
+          (level, i, total) => ({ x: doNode.position.x + 300, y: doNode.position.y + (i * 150) }),
           'do'
         );
       }
@@ -573,20 +619,8 @@ function processActions(
       const ifCondRaw = inlineAction.if;
       const ifCond = Array.isArray(ifCondRaw) ? ifCondRaw[0] : ifCondRaw;
       
-      if (ifCond && isSimpleCondition(ifCond)) {
-        // 1. Create the condition node first
-        const condNodeId = getNodeId();
-        const parentPos = getPosition(2, idx, actions.length);
-        const condNode = buildConditionNode(
-          getConditionField(ifCond),
-          getConditionOperator(ifCond),
-          getConditionValue(ifCond),
-          condNodeId,
-          { x: parentPos.x + 300, y: parentPos.y }
-        );
-        nodes.push(condNode);
-
-        // 2. Connect source directly to condition
+      if (ifCond) {
+        // Determine sourceHandleForCond
         const sourceNodeForCond = nodes.find(n => n.id === sourceId);
         let sourceHandleForCond: string;
         if (sourceNodeForCond?.type === NodeType.EVENT) {
@@ -598,23 +632,81 @@ function processActions(
         } else if (sourceNodeForCond?.type === NodeType.DO) {
           sourceHandleForCond = HandleId.DO_OUTPUT;
         } else {
-          sourceHandleForCond = branchType === BranchType.ELSE ? HandleId.CONDITION_OUTPUT : HandleId.CONDITION_OUTPUT;
+          sourceHandleForCond = HandleId.CONDITION_OUTPUT;
         }
-        
-        edges.push(buildEdge(sourceId, condNodeId, sourceHandleForCond, HandleId.CONDITION_INPUT, getEdgeId));
+
+        let terminalCondNodeId: string;
+        const parentPos = getPosition(2, idx, actions.length);
+
+        if (utilsIsConditionGroup(ifCond)) {
+          // It's a condition group
+          const groupNodeId = getNodeId();
+          const groupOperator = ifCond.operator || 'AND';
+          const groupNode = buildConditionGroupNode(groupOperator, groupNodeId, { x: parentPos.x + 300, y: parentPos.y - 75 });
+          nodes.push(groupNode);
+          
+          edges.push(buildEdge(sourceId, groupNodeId, sourceHandleForCond, HandleId.CONDITION_GROUP_INPUT, getEdgeId));
+          
+          let previousCondNodeId: string | null = null;
+          
+          if (ifCond.conditions) {
+            ifCond.conditions.forEach((nestedCond: RuleCondition, nestedIdx: number) => {
+              if (utilsIsConditionGroup(nestedCond)) return;
+              
+              const currentCondNodeId = getNodeId();
+              const currentCondNode = buildConditionNode(
+                getConditionField(nestedCond),
+                getConditionOperator(nestedCond),
+                getConditionValue(nestedCond),
+                currentCondNodeId,
+                { x: parentPos.x + 600, y: parentPos.y + (nestedIdx * 100) }
+              );
+              nodes.push(currentCondNode);
+              
+              if (previousCondNodeId) {
+                edges.push(buildEdge(previousCondNodeId, currentCondNodeId, HandleId.CONDITION_OUTPUT, HandleId.CONDITION_INPUT, getEdgeId));
+              } else {
+                edges.push(buildEdge(groupNodeId, currentCondNodeId, HandleId.CONDITION_GROUP_OUTPUT, HandleId.CONDITION_INPUT, getEdgeId));
+              }
+              previousCondNodeId = currentCondNodeId;
+            });
+          }
+          terminalCondNodeId = previousCondNodeId || groupNodeId;
+        } else if (isSimpleCondition(ifCond)) {
+          // 1. Create the condition node first
+          const condNodeId = getNodeId();
+          const condNode = buildConditionNode(
+            getConditionField(ifCond),
+            getConditionOperator(ifCond),
+            getConditionValue(ifCond),
+            condNodeId,
+            { x: parentPos.x + 300, y: parentPos.y }
+          );
+          nodes.push(condNode);
+
+          // 2. Connect source directly to condition
+          edges.push(buildEdge(sourceId, condNodeId, sourceHandleForCond, HandleId.CONDITION_INPUT, getEdgeId));
+          terminalCondNodeId = condNodeId;
+        } else {
+           return;
+        }
 
         // 3. Process Then branch via a DO node
         const thenAction = (action as InlineConditionalAction).then;
         if (thenAction) {
           const thenDoNodeId = getNodeId();
+          const condNodeForPos = nodes.find(n => n.id === terminalCondNodeId);
           const thenDoNode = buildDoNode('do', thenDoNodeId, { 
-            x: condNode.position.x + 300, 
-            y: condNode.position.y - 100 
+            x: (condNodeForPos?.position.x || 0) + 300, 
+            y: (condNodeForPos?.position.y || 0) - 100 
           });
           nodes.push(thenDoNode);
           
           // Connect Condition -> then-DO
-          edges.push(buildEdge(condNodeId, thenDoNodeId, HandleId.CONDITION_OUTPUT, HandleId.DO_INPUT, getEdgeId));
+          const doSourceHandle: string = condNodeForPos?.type === NodeType.CONDITION_GROUP
+            ? HandleId.CONDITION_GROUP_OUTPUT
+            : HandleId.CONDITION_OUTPUT;
+          edges.push(buildEdge(terminalCondNodeId, thenDoNodeId, doSourceHandle, HandleId.DO_INPUT, getEdgeId));
           
           const thenActions = Array.isArray(thenAction) ? thenAction : [thenAction];
           const thenGetPosition = (level: number, i: number, total: number) => {
@@ -640,14 +732,18 @@ function processActions(
         const elseAction = (action as InlineConditionalAction).else;
         if (elseAction) {
           const elseDoNodeId = getNodeId();
+          const condNodeForPos = nodes.find(n => n.id === terminalCondNodeId);
           const elseDoNode = buildDoNode('else', elseDoNodeId, { 
-            x: condNode.position.x + 300, 
-            y: condNode.position.y + 100 
+            x: (condNodeForPos?.position.x || 0) + 300, 
+            y: (condNodeForPos?.position.y || 0) + 100 
           });
           nodes.push(elseDoNode);
           
           // Connect Condition -> else-DO
-          edges.push(buildEdge(condNodeId, elseDoNodeId, HandleId.CONDITION_OUTPUT, HandleId.DO_INPUT, getEdgeId));
+          const doSourceHandle: string = condNodeForPos?.type === NodeType.CONDITION_GROUP
+            ? HandleId.CONDITION_GROUP_OUTPUT
+            : HandleId.CONDITION_OUTPUT;
+          edges.push(buildEdge(terminalCondNodeId, elseDoNodeId, doSourceHandle, HandleId.DO_INPUT, getEdgeId));
           
           const elseActions = Array.isArray(elseAction) ? elseAction : [elseAction];
           const elseGetPosition = (level: number, i: number, total: number) => {

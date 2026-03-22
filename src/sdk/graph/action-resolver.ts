@@ -172,8 +172,19 @@ export function resolveAction(
     return { mode, actions };
   }
 
+  // Handle DO nodes
+  if (node.type === NodeType.DO) {
+    if (ctx.visitedActs?.has(id)) return null;
+    ctx.visitedActs?.add(id);
+
+    const actions = collectActionsFromDoNode(id, ctx);
+    if (actions.length === 0) return null;
+    if (actions.length === 1) return actions[0]!;
+    return { mode: 'ALL', actions: actions as Action[] };
+  }
+
   // Handle Condition nodes (Inline Conditional Actions)
-  if (node.type === NodeType.CONDITION) {
+  if (node.type === NodeType.CONDITION || node.type === NodeType.CONDITION_GROUP) {
     // We need to resolve the condition and its branches
     if (ctx.options.resolveCondition) {
       const condition = ctx.options.resolveCondition(id, ctx);
@@ -216,7 +227,6 @@ export function resolveAction(
         if (thenAct || elseAct) {
           return {
             if: condition,
-            then: thenAct ?? undefined,
             do: thenAct ?? undefined,
             else: elseAct ?? undefined
           } as any;
@@ -236,7 +246,40 @@ export function resolveAction(
   if (ctx.transformers?.action) {
     const transformed = ctx.transformers.action(action, node);
     if (transformed === null) return null;
+    
+    // Process chained actions from the transformed action
+    const chainEdges = findEdgesBySource(ctx, id, HandleFilters.ACTION_OUTPUT)
+      .filter(e => {
+        const target = ctx.nodes.find(n => n.id === e.target);
+        return target && isAct(target);
+      });
+      
+    if (chainEdges.length > 0) {
+      const chainedActions: (Action | ActionGroup)[] = [transformed];
+      for (const edge of chainEdges) {
+        const chainedAct = resolveAction(edge.target, ctx);
+        if (chainedAct) chainedActions.push(chainedAct);
+      }
+      return { mode: 'ALL', actions: chainedActions as Action[] };
+    }
+    
     return transformed;
+  }
+
+  // Without transformers, also process chained actions
+  const chainEdges = findEdgesBySource(ctx, id, HandleFilters.ACTION_OUTPUT)
+    .filter(e => {
+      const target = ctx.nodes.find(n => n.id === e.target);
+      return target && isAct(target);
+    });
+
+  if (chainEdges.length > 0) {
+    const chainedActions: (Action | ActionGroup)[] = [action];
+    for (const edge of chainEdges) {
+      const chainedAct = resolveAction(edge.target, ctx);
+      if (chainedAct) chainedActions.push(chainedAct);
+    }
+    return { mode: 'SEQUENCE', actions: chainedActions as Action[] };
   }
 
   return action;
@@ -301,6 +344,39 @@ export function categorizeDoNodesByBranch(
   function traverse(condId: string) {
     if (visited.has(condId)) return;
     visited.add(condId);
+
+    const currentNode = ctx.nodes.find(n => n.id === condId);
+
+    // If this is a condition_group, traverse its child conditions first 
+    // using CONDITION_GROUP_OUTPUT, then also look for DO nodes directly connected
+    if (currentNode?.type === NodeType.CONDITION_GROUP) {
+      // DO nodes directly from condition_group (less common, but possible)
+      const doEdgesDirect = findEdgesBySource(ctx, condId, [HandleId.CONDITION_GROUP_OUTPUT])
+        .filter(e => {
+          const target = ctx.nodes.find(n => n.id === e.target);
+          return target && isDo(target);
+        });
+      for (const edge of doEdgesDirect) {
+        const doNode = ctx.nodes.find(n => n.id === edge.target);
+        if (!doNode) continue;
+        const branchType = getDoBranchType(doNode);
+        if (branchType === BranchType.ELSE) {
+          if (!elseBranches.includes(edge.target)) elseBranches.push(edge.target);
+        } else {
+          if (!doBranches.includes(edge.target)) doBranches.push(edge.target);
+        }
+      }
+      // Traverse child conditions reachable from the group
+      const childCondEdges = findEdgesBySource(ctx, condId, [HandleId.CONDITION_GROUP_OUTPUT])
+        .filter(e => {
+          const target = ctx.nodes.find(n => n.id === e.target);
+          return target && isCond(target);
+        });
+      for (const edge of childCondEdges) {
+        traverse(edge.target);
+      }
+      return;
+    }
     
     // Find DO nodes directly connected to this condition
     // Include THEN_OUTPUT for condition→do connections (inline conditionals)
