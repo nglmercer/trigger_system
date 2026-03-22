@@ -20,6 +20,7 @@ import type { ImportConfig, ImportMode, LSPContext } from '../lsp/types.ts';
 import { JsonPreview } from './JsonPreview.tsx';
 import { FetchModal } from './FetchModal.tsx';
 import { getDataSummary, fetchData } from '../utils/getData.ts';
+import { useTranslation } from 'react-i18next';
 
 /** A single import entry */
 export interface ImportEntry {
@@ -43,6 +44,7 @@ interface ImportListProps {
  * Features: drag-drop, data preview, URL fetch, validation, stats
  */
 export function ImportList({ onImportsChange }: ImportListProps) {
+  const { t } = useTranslation();
   const [imports, setImports] = useState<ImportEntry[]>([]);
   const [expandedPreviews, setExpandedPreviews] = useState<Set<string>>(new Set());
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -131,7 +133,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
     try {
       const json = await loadFromFile(file);
       if (!json || typeof json !== 'object') {
-        error('Invalid JSON: must be an object');
+        error(t('importList.invalidJson'));
         return;
       }
       updateImport(id, { 
@@ -140,9 +142,9 @@ export function ImportList({ onImportsChange }: ImportListProps) {
         url: undefined, 
         lastUpdated: Date.now() 
       });
-      success(`Loaded ${file.name} (${Object.keys(json).length} keys)`);
+      success(`${t('importList.loadedFile')} ${file.name} (${Object.keys(json).length} ${t('importList.keys')})`);
     } catch (e) {
-      error('Failed to load file: invalid JSON');
+      error(t('importList.invalidJson'));
     }
   };
 
@@ -174,10 +176,10 @@ export function ImportList({ onImportsChange }: ImportListProps) {
             saveImports(newImports);
             updateLSP(newImports);
           }
-          success(`Fetched data from ${new URL(url).hostname}`);
+          success(`${t('importList.fetchSuccess')} ${new URL(url).hostname}`);
         },
         onError: (e) => {
-          error(`Fetch failed: ${e.message}`);
+          error(`${t('importList.fetchFailed')} ${e.message}`);
         }
       });
     } catch (e) {
@@ -217,7 +219,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
     if (file && file.name.endsWith('.json')) {
       await handleFileLoad(id, file);
     } else {
-      error('Please drop a JSON file');
+      error(t('importList.dropJson'));
     }
   }, []);
   
@@ -225,7 +227,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
   const copyAlias = (alias: string) => {
     const text = `\${${alias}}`;
     navigator.clipboard.writeText(text);
-    success(`Copied: ${text}`);
+    success(`${t('importList.copied')} ${text}`);
   };
   
   // Render data preview
@@ -265,7 +267,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
               <ChevronIcon direction="right" size={16} />
             </div>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Data Preview
+              {t('importList.dataPreview')}
             </span>
             <div style={{ display: 'flex', gap: '6px' }}>
               <span style={{ 
@@ -276,7 +278,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                 color: 'var(--text-secondary)',
                 border: '1px solid var(--border)'
               }}>
-                {summary.keys} keys
+                {summary.keys} {t('importList.keys')}
               </span>
             </div>
           </div>
@@ -334,7 +336,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
               alignItems: 'center',
               gap: '8px'
             }}>
-              Data Imports
+              {t('importList.dataImports')}
               <span style={{
                 fontSize: '11px',
                 padding: '1px 8px',
@@ -348,7 +350,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
               </span>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Manage external data sources for autocompletion
+              {t('importList.manageExternal')}
             </div>
           </div>
         </div>
@@ -371,7 +373,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
               transition: 'all 0.2s'
             }}
           >
-            <LinkIcon size={14} /> Fetch URL
+            <LinkIcon size={14} /> {t('importList.fetchUrl')}
           </button>
           <button
             onClick={addImport}
@@ -390,7 +392,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
               boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
             }}
           >
-            <PlusIcon size={14} /> New Import
+            <PlusIcon size={14} /> {t('importList.newImport')}
           </button>
         </div>
       </div>
@@ -415,10 +417,10 @@ export function ImportList({ onImportsChange }: ImportListProps) {
           >
             <DatabaseIcon size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
             <p style={{ margin: 0, fontSize: '15px', fontWeight: 500, color: 'var(--text-primary)' }}>
-              No Data Sources
+              {t('importList.noDataSources')}
             </p>
             <p style={{ margin: '8px 0 0 0', fontSize: '13px', opacity: 0.7 }}>
-              Upload a JSON file or fetch from an API to start.
+              {t('importList.uploadOrFetch')}
             </p>
           </div>
         ) : (
@@ -477,7 +479,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                       pointerEvents: 'none',
                       opacity: 0.5
                     }}>
-                      ALIAS
+                      {t('importList.alias')}
                     </div>
                   </div>
                   
@@ -519,8 +521,8 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                       cursor: 'pointer'
                     }}
                   >
-                    <option value="path">Path Mode</option>
-                    <option value="value">Value Mode</option>
+                    <option value="path">{t('importList.pathMode')}</option>
+                    <option value="value">{t('importList.valueMode')}</option>
                   </select>
                   
                   <button
@@ -570,7 +572,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                       flexDirection: 'column'
                     }}>
                       <span style={{ fontWeight: 500 }}>
-                        {imp.filename || (imp.url ? new URL(imp.url).hostname : 'No file loaded')}
+                        {imp.filename || (imp.url ? new URL(imp.url).hostname : t('importList.noFile'))}
                       </span>
                       {imp.url && (
                         <span style={{ fontSize: '10px', opacity: 0.6, textOverflow: 'ellipsis', overflow: 'hidden' }}>
@@ -658,18 +660,18 @@ export function ImportList({ onImportsChange }: ImportListProps) {
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <strong>Path Mode</strong>
+              <strong>{t('importList.pathMode')}</strong>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--action-color)' }}>
                   {`\${alias.prop}`}
                 </code>
-                <span>Reference key</span>
+                <span>{t('importList.referenceKey')}</span>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <strong>Value Mode</strong>
+              <strong>{t('importList.valueMode')}</strong>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ opacity: 0.8 }}>Inserts values (1, true, "foo")</span>
+                <span style={{ opacity: 0.8 }}>{t('importList.insertsValues')}</span>
               </div>
             </div>
           </div>

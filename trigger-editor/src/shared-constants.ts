@@ -24,6 +24,8 @@ export {
   ACTION_TYPE_DOCS 
 } from '../../src';
 
+import i18n from './i18n.ts';
+
 /**
  * Operator options for the Condition Node dropdown
  * Derived from OPERATOR_DOCS for use in the UI
@@ -38,7 +40,7 @@ export interface OperatorOption {
  * Generate operator options for dropdown UI
  */
 export function getOperatorOptions(): OperatorOption[] {
-  return [
+  const options = [
     { value: 'EQ', label: 'Equals (==)', description: 'Equal to' },
     { value: 'NEQ', label: 'Not Equals (!=)', description: 'Not equal to' },
     { value: 'GT', label: 'Greater Than (>)', description: 'Greater than' },
@@ -57,6 +59,11 @@ export function getOperatorOptions(): OperatorOption[] {
     { value: 'MATCHES', label: 'Matches Regex', description: 'Value matches the regular expression pattern' },
     { value: 'RANGE', label: 'In Range', description: 'Value is within the specified range [min, max]' },
   ];
+  return options.map(opt => ({
+    ...opt,
+    label: i18n.t(`shared.operators.${opt.value}`, { defaultValue: opt.label }) as string,
+    description: i18n.t(`shared.operators.descriptions.${opt.value}`, { defaultValue: opt.description }) as string
+  }));
 }
 
 /**
@@ -224,5 +231,7 @@ export const FIELD_TOOLTIPS: Record<string, string> = {
  * Get tooltip for a field
  */
 export function getFieldTooltip(field: string): string | undefined {
-  return FIELD_TOOLTIPS[field];
+  const fallback = FIELD_TOOLTIPS[field];
+  if (!fallback) return undefined;
+  return i18n.t(`shared.tooltips.${field}`, { defaultValue: fallback }) as string;
 }

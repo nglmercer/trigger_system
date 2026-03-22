@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Modal } from './Modal.tsx';
 import { DatabaseIcon, PlusIcon, XCircleIcon, CheckCircleIcon } from './Icons.tsx';
 import { useAlert } from './Alert.tsx';
+import { useTranslation } from 'react-i18next';
 
 interface FetchModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface FetchModalProps {
 }
 
 export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState('');
   const [headers, setHeaders] = useState([{ key: '', value: '' }]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +28,7 @@ export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
 
   const handleFetch = async () => {
     if (!url) {
-      error('URL is required');
+      error(t('fetchModal.urlRequired'));
       return;
     }
     
@@ -39,18 +41,18 @@ export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
       await onFetch(url, headerObj);
       onClose();
     } catch (e) {
-      error(e instanceof Error ? e.message : 'Fetch failed');
+      error(e instanceof Error ? e.message : t('fetchModal.fetchFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Import from URL">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('fetchModal.title')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: '400px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-            GET URL
+            {t('fetchModal.getUrl')}
           </label>
           <input
             type="text"
@@ -71,7 +73,7 @@ export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-              Headers (Optional)
+              {t('fetchModal.headersOptional')}
             </label>
             <button
               onClick={handleAddHeader}
@@ -85,7 +87,7 @@ export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
                 cursor: 'pointer'
               }}
             >
-              + Add Header
+              {t('fetchModal.addHeader')}
             </button>
           </div>
           
@@ -93,7 +95,7 @@ export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
             <div key={i} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
-                placeholder="Key (e.g., Authorization)"
+                placeholder={t('fetchModal.keyPlaceholder')}
                 value={h.key}
                 onChange={(e) => {
                   const newHeaders = [...headers];
@@ -112,7 +114,7 @@ export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
               />
               <input
                 type="text"
-                placeholder="Value"
+                placeholder={t('fetchModal.valuePlaceholder')}
                 value={h.value}
                 onChange={(e) => {
                   const newHeaders = [...headers];
@@ -164,9 +166,9 @@ export function FetchModal({ isOpen, onClose, onFetch }: FetchModalProps) {
             gap: '8px'
           }}
         >
-          {loading ? 'Fetching...' : (
+          {loading ? t('fetchModal.fetching') : (
             <>
-              <DatabaseIcon size={16} /> Load Data
+              <DatabaseIcon size={16} /> {t('fetchModal.loadData')}
             </>
           )}
         </button>

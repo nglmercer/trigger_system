@@ -64,18 +64,21 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
       <div className="node-body">
         <FormField 
           label={t('nodeDetails.operator')}
-          hint="AND: All conditions must match. OR: Any condition can match."
+          hint={t('nodeHints.condGroupAndOrHint')}
         >
           <SelectInput
             value={data.operator || 'AND'}
-            options={CONDITION_GROUP_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
+            options={CONDITION_GROUP_OPTIONS.map(opt => ({
+              ...opt,
+              label: t(`shared.condGroup.${opt.value}`, opt.label)
+            }))}
             onChange={(val) => data.onChange(val, NodeField.OPERATOR)}
           />
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
           {connectedConditions > 0 
-            ? `${connectedConditions} condition(s) connected`
-            : 'Connect from event or condition to left'
+            ? t('nodeHints.condGroupConnected', { count: connectedConditions })
+            : t('nodeHints.condGroupConnect')
           }
         </div>
       </div>

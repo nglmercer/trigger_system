@@ -127,16 +127,19 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
         <FormField label={t('nodeDetails.branchType')}>
           <SelectInput
             value={data.branchType || 'do'}
-            options={BRANCH_OPTIONS}
+            options={BRANCH_OPTIONS.map(opt => ({
+              ...opt,
+              label: opt.value === BranchType.DO ? t('nodeDetails.doTitle') + ' (then)' : t('nodeDetails.elseTitle')
+            }))}
             onChange={(val) => data.onChange(val as BranchType, NodeField.BRANCH_TYPE)}
           />
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
           {hasConditionInput 
             ? (hasActionOutput || hasConditionOutput 
-              ? `${isElse ? 'ELSE' : 'DO'} path configured` 
-              : 'Connect to Action, ActionGroup, or Condition')
-            : 'Connect from Condition to start'}
+              ? t('nodeHints.doPathConfigured', { branch: isElse ? t('nodeDetails.elseTitle') : t('nodeDetails.doTitle') }) 
+              : t('nodeHints.doConnectPath'))
+            : t('nodeHints.doConnectStart')}
         </div>
       </div>
     </div>

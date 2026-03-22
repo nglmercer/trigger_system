@@ -129,14 +129,17 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
         <FormField label={t('nodeDetails.executionMode')}>
           <SelectInput
             value={data.mode || 'ALL'}
-            options={MODE_OPTIONS}
+            options={MODE_OPTIONS.map(opt => ({
+              ...opt,
+              label: t(`shared.execMode.${opt.value}`, opt.label) as string
+            }))}
             onChange={(val) => data.onChange(val as ExecutionMode, NodeField.MODE)}
           />
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
           {showOutputHandles 
-            ? 'Actions configured. Connect more or add conditions.' 
-            : 'Connect from an input source to start adding actions.'}
+            ? t('nodeHints.actionGroupConfigured') 
+            : t('nodeHints.actionGroupConnect')}
         </div>
       </div>
     </div>

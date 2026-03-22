@@ -13,6 +13,7 @@ import {
   clearShareDataFromUrl,
 } from '../utils/exportImport';
 import { createYamlImportPicker, parseYamlContent } from '../utils/yamlImport';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Hook for import/export and sharing functionality
@@ -25,6 +26,8 @@ export function useImportExport(
   setGraph: (nodes: AppNode[], edges: Edge[]) => void,
   success: (message: string, options?: { title?: string }) => void
 ) {
+  const { t } = useTranslation();
+
   // Export to JSON
   const handleExportJson = useCallback(() => {
     if (nodes.length === 0) return;
@@ -76,8 +79,8 @@ export function useImportExport(
     
     setGraph(sanitizedNodes, sanitizedEdges);
     
-    success('YAML imported successfully!', { title: 'Import Complete' });
-  }, [onNodeDataChange, setGraph, success]);
+    success(t('notifications.yamlImported'), { title: t('notifications.importComplete') });
+  }, [onNodeDataChange, setGraph, success, t]);
 
   // Generate share URL
   const handleShare = useCallback(() => {
@@ -92,13 +95,13 @@ export function useImportExport(
     // Copy to clipboard
     navigator.clipboard.writeText(shareUrl).then(() => {
       // Show success feedback
-      success('Share link copied to clipboard!', { title: 'Link Shared' });
+      success(t('notifications.shareLinkCopied'), { title: t('notifications.linkShared') });
     }).catch(err => {
       console.error('Failed to copy to clipboard:', err);
       // Fallback: open in new tab
       window.open(shareUrl, '_blank');
     });
-  }, [nodes, edges, success]);
+  }, [nodes, edges, success, t]);
 
   // Load shared data from URL
   const loadSharedData = useCallback((): { nodes: AppNode[]; edges: Edge[] } | null => {
@@ -123,8 +126,8 @@ export function useImportExport(
     const sanitizedEdges = sanitizeEdgesForImport(yamlEdges || [], sanitizedNodes);
     
     setGraph(sanitizedNodes, sanitizedEdges);
-    success('YAML imported from host successfully!', { title: 'Import Complete' });
-  }, [onNodeDataChange, setGraph, success]);
+    success(t('notifications.yamlImportedFromHost'), { title: t('notifications.importComplete') });
+  }, [onNodeDataChange, setGraph, success, t]);
 
   // Import directly from JSON data (for host integration)
   const importJsonData = useCallback((jsonData: any) => {
@@ -133,8 +136,8 @@ export function useImportExport(
     const sanitizedEdges = sanitizeEdgesForImport(jsonData.edges || [], sanitizedNodes);
     
     setGraph(sanitizedNodes, sanitizedEdges);
-    success('Project imported from host successfully!', { title: 'Import Complete' });
-  }, [onNodeDataChange, setGraph, success]);
+    success(t('notifications.projectImportedFromHost'), { title: t('notifications.importComplete') });
+  }, [onNodeDataChange, setGraph, success, t]);
 
   // Export to host
   const handleHostExport = useCallback(() => {
@@ -150,8 +153,8 @@ export function useImportExport(
       }
     }, '*');
     
-    success('Data sent to host application!', { title: 'Export Complete' });
-  }, [nodes, edges, getYaml, success]);
+    success(t('notifications.dataSentToHost'), { title: t('notifications.exportComplete') });
+  }, [nodes, edges, getYaml, success, t]);
 
   return {
     handleExportJson,
