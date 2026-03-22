@@ -9,18 +9,17 @@ RUN apt-get update && apt-get install -y curl unzip \
 
 ENV PATH="/root/.bun/bin:${PATH}"
 
-# Copy root package files
-COPY package.json .
-COPY bun.lock .
-
-# Copy trigger-editor package files
+# Copy trigger-editor package files for dependency install
 COPY trigger-editor/package.json ./trigger-editor/
+COPY trigger-editor/bun.lock ./trigger-editor/
 
-# Install dependencies
+# Install trigger-editor dependencies
+WORKDIR /app/trigger-editor
 RUN bun install --frozen-lockfile
 
-# Copy the rest of the application
-COPY . .
+# Copy the rest of the trigger-editor source
+WORKDIR /app
+COPY trigger-editor/ ./trigger-editor/
 
 WORKDIR /app/trigger-editor
 
