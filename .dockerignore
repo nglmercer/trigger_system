@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+dist
+coverage
+npm-debug.log
+bun.lockb
+.env
+.env.local
+.vscode
+.cache
+trigger-editor/dist
+vscode-extension/out
+vscode-extension/dist
