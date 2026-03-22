@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Modal } from './Modal.tsx';
 import { DownloadIcon, UploadIcon, ShareIcon, CodeIcon } from './Icons.tsx';
+import { useTranslation } from 'react-i18next';
 
 interface ExchangeModalsProps {
   isImportOpen: boolean;
@@ -25,13 +26,15 @@ export function ExchangeModals({
   onExportYaml,
   onShare
 }: ExchangeModalsProps) {
+  const { t } = useTranslation();
+  
   return (
     <>
       {/* Import Selection Modal */}
       <Modal 
         isOpen={isImportOpen} 
         onClose={onCloseImport} 
-        title="Import Rule Project"
+        title={t('exchangeModals.importTitle')}
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div 
@@ -44,8 +47,8 @@ export function ExchangeModals({
               <UploadIcon size={24} />
             </div>
             <div>
-              <div style={cardTitleStyle}>JSON Project</div>
-              <div style={cardDescStyle}>Load a saved workspace draft (.json) to continue editing.</div>
+              <div style={cardTitleStyle}>{t('exchangeModals.jsonTitle')}</div>
+              <div style={cardDescStyle}>{t('exchangeModals.jsonDesc')}</div>
             </div>
           </div>
 
@@ -59,8 +62,8 @@ export function ExchangeModals({
               <CodeIcon size={24} />
             </div>
             <div>
-              <div style={cardTitleStyle}>YAML Rule</div>
-              <div style={cardDescStyle}>Convert an existing .yaml rule file back into a graph.</div>
+              <div style={cardTitleStyle}>{t('exchangeModals.yamlTitle')}</div>
+              <div style={cardDescStyle}>{t('exchangeModals.yamlDesc')}</div>
             </div>
           </div>
 
@@ -78,8 +81,8 @@ export function ExchangeModals({
                 <ShareIcon size={24} />
               </div>
               <div>
-                <div style={cardTitleStyle}>Host Application</div>
-                <div style={cardDescStyle}>Request rule data from the parent application environment.</div>
+                <div style={cardTitleStyle}>{t('exchangeModals.hostTitle')}</div>
+                <div style={cardDescStyle}>{t('exchangeModals.hostImportDesc')}</div>
               </div>
             </div>
           )}
@@ -90,7 +93,7 @@ export function ExchangeModals({
       <Modal 
         isOpen={isExportOpen} 
         onClose={onCloseExport} 
-        title="Export Project Data"
+        title={t('exchangeModals.exportTitle')}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <button 
@@ -100,8 +103,8 @@ export function ExchangeModals({
           >
             <DownloadIcon size={20} style={{ color: 'var(--accent)' }} />
             <div style={{ textAlign: 'left' }}>
-              <div style={buttonTitleStyle}>Download YAML</div>
-              <div style={buttonDescStyle}>Final production rule configuration bundle.</div>
+              <div style={buttonTitleStyle}>{t('exchangeModals.downloadYaml')}</div>
+              <div style={buttonDescStyle}>{t('exchangeModals.downloadYamlDesc')}</div>
             </div>
           </button>
 
@@ -112,8 +115,8 @@ export function ExchangeModals({
           >
             <DownloadIcon size={20} style={{ color: '#ffb900' }} />
             <div style={{ textAlign: 'left' }}>
-              <div style={buttonTitleStyle}>Save JSON Workspace</div>
-              <div style={buttonDescStyle}>Full graph state for re-importing later.</div>
+              <div style={buttonTitleStyle}>{t('exchangeModals.saveJson')}</div>
+              <div style={buttonDescStyle}>{t('exchangeModals.saveJsonDesc')}</div>
             </div>
           </button>
 
@@ -133,8 +136,8 @@ export function ExchangeModals({
             >
               <ShareIcon size={20} style={{ color: 'var(--text-primary)' }} />
               <div style={{ textAlign: 'left' }}>
-                <div style={buttonTitleStyle}>Send to Host</div>
-                <div style={buttonDescStyle}>Sync current rule directly back to the parent application.</div>
+                <div style={buttonTitleStyle}>{t('exchangeModals.sendHost')}</div>
+                <div style={buttonDescStyle}>{t('exchangeModals.sendHostDesc')}</div>
               </div>
             </button>
           )}
@@ -146,8 +149,8 @@ export function ExchangeModals({
           >
             <ShareIcon size={20} style={{ color: '#2ecc71' }} />
             <div style={{ textAlign: 'left' }}>
-              <div style={buttonTitleStyle}>Share Link</div>
-              <div style={buttonDescStyle}>Copy a unique URL to share this project with others.</div>
+              <div style={buttonTitleStyle}>{t('exchangeModals.shareLink')}</div>
+              <div style={buttonDescStyle}>{t('exchangeModals.shareLinkDesc')}</div>
             </div>
           </button>
         </div>

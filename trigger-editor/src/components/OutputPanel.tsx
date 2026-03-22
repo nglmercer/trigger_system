@@ -7,6 +7,7 @@ import { getHoverInfo } from '../lsp/engine.ts';
 import { HoverTooltip } from './AutocompletePopup.tsx';
 import { JsonPreview } from './JsonPreview.tsx';
 import { parse } from 'yaml';
+import { useTranslation } from 'react-i18next';
 
 interface OutputPanelProps {
   yaml: string;
@@ -14,6 +15,7 @@ interface OutputPanelProps {
 }
 
 export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(true);
   const [viewMode, setViewMode] = useState<'yaml' | 'json'>('yaml');
   const preRef = useRef<HTMLPreElement>(null);
@@ -106,7 +108,7 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
       const btn = document.getElementById('btn-copy');
       if (btn) {
         const originalText = btn.innerHTML;
-        btn.innerHTML = '✓ Copied';
+        btn.innerHTML = t('outputPanel.copied');
         btn.classList.add('btn--success');
         setTimeout(() => {
           btn.innerHTML = originalText;
@@ -307,7 +309,7 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
             justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}
-          title="Show YAML Output"
+          title={t('outputPanel.showYaml')}
         >
           <CodeIcon />
         </button>
@@ -318,7 +320,7 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           {isVisible && (
             <>
               <div className="output-header-left">
-                <span className="output-title">Output</span>
+                <span className="output-title">{t('outputPanel.output')}</span>
                 <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
                   <button 
                     onClick={() => setViewMode('yaml')}
@@ -327,7 +329,7 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
                       border: '1px solid var(--border)',
                       fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', color: 'white'
                     }}
-                  >YAML</button>
+                  >{t('outputPanel.yaml')}</button>
                   <button 
                     onClick={() => setViewMode('json')}
                     style={{ 
@@ -335,14 +337,14 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
                       border: '1px solid var(--border)',
                       fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', color: 'white'
                     }}
-                  >JSON</button>
+                  >{t('outputPanel.json')}</button>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button id="btn-copy" className="btn btn-icon" onClick={onCopy} title="Copy YAML" disabled={!yaml}>
-                  <CopyIcon /> Copy
+                <button id="btn-copy" className="btn btn-icon" onClick={onCopy} title={t('outputPanel.copy')} disabled={!yaml}>
+                  <CopyIcon /> {t('outputPanel.copy')}
                 </button>
-                <button className="btn btn-icon btn-secondary" onClick={() => setIsVisible(false)} title="Hide">
+                <button className="btn btn-icon btn-secondary" onClick={() => setIsVisible(false)} title={t('outputPanel.hide')}>
                   <ChevronIcon direction="right" />
                 </button>
               </div>
@@ -354,7 +356,7 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
           <div className="output-scroll-container" style={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             {errors.length > 0 && (
               <div className="output-errors" style={{ padding: '15px 20px', background: 'rgba(207, 34, 46, 0.1)', borderBottom: '1px solid var(--border)' }}>
-                <strong style={{ color: '#cf222e', fontSize: '0.8rem', display: 'block', marginBottom: '8px' }}>⚠️ Graph Issues</strong>
+                <strong style={{ color: '#cf222e', fontSize: '0.8rem', display: 'block', marginBottom: '8px' }}>{t('outputPanel.graphIssues')}</strong>
                 <ul style={{ margin: 0, paddingLeft: '18px', color: '#ff7b72', fontSize: '0.75rem' }}>
                   {errors.map((err, i) => <li key={i}>{err}</li>)}
                 </ul>

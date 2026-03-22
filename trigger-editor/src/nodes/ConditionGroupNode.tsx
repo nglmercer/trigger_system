@@ -5,8 +5,10 @@ import { NodeField, NodeType, NodeHandle } from '../constants';
 import { CONDITION_GROUP_OPTIONS } from '../shared-constants';
 import { ClearIcon, ConditionGroupIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/inputs/FormFields';
+import { useTranslation } from 'react-i18next';
 
 export default function ConditionGroupNode({ id, data }: { id: string, data: ConditionGroupNodeData }) {
+  const { t } = useTranslation();
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
@@ -54,14 +56,14 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
         title="Connect to condition"
       />
       <div className="node-title node-title--condition-group">
-        <span className="node-icon"><ConditionGroupIcon /></span> Condition Group
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
+        <span className="node-icon"><ConditionGroupIcon /></span> {t('nodeDetails.conditionGroupTitle')}
+        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
           <ClearIcon size={14} />
         </button>
       </div>
       <div className="node-body">
         <FormField 
-          label="Operator"
+          label={t('nodeDetails.operator')}
           hint="AND: All conditions must match. OR: Any condition can match."
         >
           <SelectInput

@@ -4,12 +4,14 @@ import { TextInput, TextAreaInput } from './inputs/FormFields.tsx';
 import { JsonPreview } from './JsonPreview.tsx';
 import type { ParamEntry, JsonValue } from '../utils/getData.ts';
 import { getValueType, stringToValue, valueToString, generateId, parseParams } from '../utils/getData.ts';
-import { TrashIcon } from './Icons.tsx'
+import { TrashIcon } from './Icons.tsx';
+import { useTranslation } from 'react-i18next';
 export const openParamsModal = (value: string, onChange: (val: string) => void) => {
   window.dispatchEvent(new CustomEvent('open-params-modal', { detail: { value, onChange } }));
 };
 
 export function ParamsModal() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [entries, setEntries] = useState<ParamEntry[]>([]);
   const [viewMode, setViewMode] = useState<'builder' | 'json'>('builder');
@@ -179,7 +181,7 @@ export function ParamsModal() {
           `}
         </style>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-color)', fontWeight: 600 }}>Edit Parameters</h3>
+          <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-color)', fontWeight: 600 }}>{t('paramsModal.editParams')}</h3>
           <button 
             onClick={handleClose} 
             className="node-btn"
@@ -202,7 +204,7 @@ export function ParamsModal() {
               onClick={() => setViewMode('builder')} 
               style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '6px' }}
             >
-              Builder View
+              {t('paramsModal.builderView')}
             </button>
             <button 
               type="button" 
@@ -210,16 +212,16 @@ export function ParamsModal() {
               onClick={() => setViewMode('json')} 
               style={{ flex: 1, fontSize: '12px', padding: '8px', borderRadius: '6px' }}
             >
-              JSON / Tree View
+              {t('paramsModal.jsonView')}
             </button>
           </div>
 
           {viewMode === 'builder' ? (
             <div className="params-builder__list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 110px 1.8fr 36px', gap: '16px', padding: '0 12px', color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
-                <span>Parameter Name</span>
-                <span>Type</span>
-                <span>Value / Variable</span>
+                <span>{t('paramsModal.paramName')}</span>
+                <span>{t('paramsModal.type')}</span>
+                <span>{t('paramsModal.valueVariable')}</span>
                 <span></span>
               </div>
               {entries.map((entry) => (
@@ -237,11 +239,11 @@ export function ParamsModal() {
                     const defaultVal = newType === 'string' ? '' : newType === 'number' ? 0 : newType === 'boolean' ? false : newType === 'array' ? [] : newType === 'object' ? {} : null;
                     updateEntry(entry.id, { type: newType, value: defaultVal });
                   }}>
-                    <option value="string">Text</option>
-                    <option value="number">Number</option>
-                    <option value="boolean">Bool</option>
-                    <option value="array">Array</option>
-                    <option value="object">Object</option>
+                    <option value="string">{t('paramsModal.types.string')}</option>
+                    <option value="number">{t('paramsModal.types.number')}</option>
+                    <option value="boolean">{t('paramsModal.types.boolean')}</option>
+                    <option value="array">{t('paramsModal.types.array')}</option>
+                    <option value="object">{t('paramsModal.types.object')}</option>
                   </select>
                   
                   <div style={{ minWidth: 0 }}>
@@ -268,17 +270,17 @@ export function ParamsModal() {
                     )}
                   </div>
                   
-                  <button type="button" onClick={() => removeEntry(entry.id)} className="node-btn node-btn--danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '6px' }} title="Remove"><TrashIcon /></button>
+                  <button type="button" onClick={() => removeEntry(entry.id)} className="node-btn node-btn--danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '6px' }} title={t('paramsModal.remove')}><TrashIcon /></button>
                 </div>
               ))}
-              {entries.length === 0 && <div className="params-builder__empty" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', fontSize: '13px', border: '1px dashed var(--border)', borderRadius: '8px' }}>No parameters defined yet. Start by adding one.</div>}
+              {entries.length === 0 && <div className="params-builder__empty" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', fontSize: '13px', border: '1px dashed var(--border)', borderRadius: '8px' }}>{t('paramsModal.noParams')}</div>}
               <button 
                 type="button" 
                 onClick={addEntry} 
                 className="node-btn node-btn--secondary" 
                 style={{ width: '100%', marginTop: '12px', padding: '10px', fontSize: '13px', borderStyle: 'dashed' }}
               >
-                + Add New Parameter
+                {t('paramsModal.addParam')}
               </button>
             </div>
           ) : (
@@ -296,8 +298,8 @@ export function ParamsModal() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
-          <button onClick={handleClose} className="node-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>Cancel</button>
-          <button onClick={handleSave} className="node-btn node-btn--primary" style={{ padding: '6px 12px', fontSize: '12px', opacity: jsonError ? 0.5 : 1 }} disabled={!!jsonError}>Save Changes</button>
+          <button onClick={handleClose} className="node-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>{t('paramsModal.cancel')}</button>
+          <button onClick={handleSave} className="node-btn node-btn--primary" style={{ padding: '6px 12px', fontSize: '12px', opacity: jsonError ? 0.5 : 1 }} disabled={!!jsonError}>{t('paramsModal.save')}</button>
         </div>
 
       </div>

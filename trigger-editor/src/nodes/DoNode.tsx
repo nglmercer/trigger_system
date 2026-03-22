@@ -24,7 +24,10 @@ import { SelectInput, FormField } from '../components/inputs/FormFields';
  * Also supports "after do allow conditions" - connecting to Condition nodes
  * for inline conditional actions within the DO branch.
  */
+import { useTranslation } from 'react-i18next';
+
 export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
+  const { t } = useTranslation();
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
@@ -114,14 +117,14 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
       
       <div className="node-title node-title--do">
         <span className="node-icon">{isElse ? <ElseIcon /> : <DoIcon />}</span> 
-        {isElse ? 'ELSE' : 'DO'}
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
+        {isElse ? t('nodeDetails.elseTitle') : t('nodeDetails.doTitle')}
+        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
           <ClearIcon size={14} />
         </button>
       </div>
       
       <div className="node-body">
-        <FormField label="Branch Type">
+        <FormField label={t('nodeDetails.branchType')}>
           <SelectInput
             value={data.branchType || 'do'}
             options={BRANCH_OPTIONS}

@@ -5,6 +5,7 @@ import { NodeField, NodeType, NodeHandle } from '../constants';
 import { ClearIcon, ActionGroupIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/inputs/FormFields';
 import type { ExecutionMode } from '../../../src/types';
+import { useTranslation } from 'react-i18next';
 
 const MODE_OPTIONS = [
   { value: 'ALL', label: 'ALL (Run all)' },
@@ -14,6 +15,7 @@ const MODE_OPTIONS = [
 
 
 export default function ActionGroupNode({ id, data }: { id: string, data: ActionGroupNodeData }) {
+  const { t } = useTranslation();
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
@@ -117,14 +119,14 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
       )}
       
       <div className="node-title node-title--action-group">
-        <span className="node-icon"><ActionGroupIcon /></span> Action Group
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
+        <span className="node-icon"><ActionGroupIcon /></span> {t('nodeDetails.actionGroupTitle')}
+        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
           <ClearIcon size={14} />
         </button>
       </div>
       
       <div className="node-body">
-        <FormField label="Execution Mode">
+        <FormField label={t('nodeDetails.executionMode')}>
           <SelectInput
             value={data.mode || 'ALL'}
             options={MODE_OPTIONS}

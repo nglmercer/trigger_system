@@ -5,10 +5,12 @@ import { getOperatorOptions, getOperatorDescription, getFieldTooltip } from '../
 import { ClearIcon, IfIcon } from '../components/Icons';
 import { TextInput, SelectInput, FormField } from '../components/inputs/FormFields';
 import type { ComparisonOperator } from '../../../src/types';
+import { useTranslation } from 'react-i18next';
 
 const OPERATOR_OPTIONS = getOperatorOptions();
 
 export default function ConditionNode({ id, data }: { id: string, data: ConditionNodeData }) {
+  const { t } = useTranslation();
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
@@ -45,26 +47,26 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         style={{ background: 'var(--condition-color)', border: '2px solid var(--bg-color)', width: '12px', height: '12px' }}
       />
       <div className="node-title node-title--condition">
-        <span className="node-icon"><IfIcon /></span> Condition
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title="Delete node">
+        <span className="node-icon"><IfIcon /></span> {t('nodeDetails.conditionTitle')}
+        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
           <ClearIcon size={14} />
         </button>
       </div>
       <div className="node-body">
         <FormField 
-          label="Field" 
+          label={t('nodeDetails.field')} 
           hint={getFieldTooltip('field')}
         >
           <TextInput
             value={data.field || ''}
             onChange={(val) => data.onChange(val as string, NodeField.FIELD)}
-            placeholder="data.amount"
+            placeholder={t('nodeDetails.fieldPlaceholder')}
           />
         </FormField>
         
         <FormField 
-          label="Operator"
-          hint={getOperatorDescription(data.operator) || 'Select comparison operator'}
+          label={t('nodeDetails.operator')}
+          hint={getOperatorDescription(data.operator) || t('nodeDetails.operatorHint')}
         >
           <SelectInput
             value={data.operator || 'EQ'}
@@ -74,7 +76,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         </FormField>
         
         <FormField 
-          label="Value"
+          label={t('nodeDetails.value')}
           hint={getFieldTooltip('value')}
         >
           <TextInput
