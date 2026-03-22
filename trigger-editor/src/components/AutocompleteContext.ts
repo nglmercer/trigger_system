@@ -28,7 +28,7 @@ export const useAutocompletePaths = (): string[] => {
     const rebuild = () => {
       const ctx = getContext();
       const out: string[] = [];
-      function recurse(obj: any, prefix: string) {
+      function recurse(obj: Record<string, any> | unknown, prefix: string) {
         if (!prefix) return;
         out.push(prefix);
         if (obj && typeof obj === 'object' && !Array.isArray(obj)) {

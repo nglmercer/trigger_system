@@ -85,6 +85,7 @@ export function TextInput({
   const [hoverInfo, setHoverInfo] = useState<ReturnType<typeof getHoverInfo>>(undefined);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [cursorVar, setCursorVar] = useState<string | undefined>(undefined);
+  const [cursorOffset, setCursorOffset] = useState<number>(0);
 
   const handleChange = (newVal: string | number) => {
     onChange(type === 'number' ? (typeof newVal === 'string' ? parseFloat(newVal) || 0 : newVal) : newVal);
@@ -93,6 +94,7 @@ export function TextInput({
   // While editing: track which ${...} the caret is inside
   const updateCursorVar = () => {
     const pos = inputRef.current?.selectionStart ?? 0;
+    setCursorOffset(pos);
     const found = findVariableAtOffset(String(value), pos);
     setCursorVar(found);
   };
@@ -127,6 +129,7 @@ export function TextInput({
           isFocused={isFocused}
           mode={autocompleteMode}
           primitiveOnly={primitiveOnly}
+          cursorOffset={cursorOffset}
         />
       )}
       <input
@@ -179,9 +182,11 @@ export function TextAreaInput({
   const [hoverInfo, setHoverInfo] = useState<ReturnType<typeof getHoverInfo>>(undefined);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [cursorVar, setCursorVar] = useState<string | undefined>(undefined);
+  const [cursorOffset, setCursorOffset] = useState<number>(0);
 
   const updateCursorVar = () => {
     const pos = textareaRef.current?.selectionStart ?? 0;
+    setCursorOffset(pos);
     const found = findVariableAtOffset(String(value), pos);
     setCursorVar(found);
   };
@@ -212,6 +217,7 @@ export function TextAreaInput({
           onSelect={onChange}
           anchorRef={containerRef}
           isFocused={isFocused}
+          cursorOffset={cursorOffset}
         />
       )}
       <textarea

@@ -71,29 +71,49 @@ function NodeEditor() {
 
   // Parent postMessage integration
   useEffect(() => {
+    // Default hostIntegration to false if not set
+    if ((window as any).hostIntegration === undefined) {
+      (window as any).hostIntegration = false;
+    }
+
+    // Expose methods to window for desktop/IPC integration
+    (window as any).triggerEditor = {
+      importJson: importJsonData,
+      importYaml: importYamlData,
+      requestExport: handleHostExport,
+      clear: clearAll
+    };
+
+    const events = {
+      TRIGGER_EDITOR_IMPORT : 'TRIGGER_EDITOR_IMPORT',
+      TRIGGER_EDITOR_REQUEST_EXPORT: 'TRIGGER_EDITOR_REQUEST_EXPORT',
+      TRIGGER_EDITOR_CLEAR: 'TRIGGER_EDITOR_CLEAR',
+    }
     const handleMessage = (event: MessageEvent) => {
       const { data } = event;
       if (!data || typeof data !== 'object') return;
-
       switch(data.type) {
-        case 'TRIGGER_EDITOR_IMPORT':
+        case events.TRIGGER_EDITOR_IMPORT:
           if (data.format === 'yaml' && typeof data.payload === 'string') {
             importYamlData(data.payload);
           } else if (data.format === 'json' && data.payload) {
             importJsonData(data.payload);
           }
           break;
-        case 'TRIGGER_EDITOR_REQUEST_EXPORT':
+        case events.TRIGGER_EDITOR_REQUEST_EXPORT:
           handleHostExport();
           break;
-        case 'TRIGGER_EDITOR_CLEAR':
+        case events.TRIGGER_EDITOR_CLEAR:
           clearAll();
           break;
       }
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      delete (window as any).triggerEditor;
+    };
   }, [importYamlData, importJsonData, handleHostExport, clearAll]);
 
   // Connection validation hook

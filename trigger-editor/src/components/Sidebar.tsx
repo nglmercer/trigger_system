@@ -76,8 +76,11 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
             <h1 className="sidebar-title">{t('sidebar.components')}</h1>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <select 
-                value={i18n.language} 
-                onChange={(e) => i18n.changeLanguage(e.target.value)}
+                value={localStorage?.getItem('lang') || i18n.language} 
+                onChange={(e) => {
+                  i18n.changeLanguage(e.target.value)
+                  localStorage?.setItem('lang', e.target.value);
+                }}
                 style={{
                   background: 'var(--bg-secondary)',
                   border: '1px solid var(--border)',

@@ -17,7 +17,7 @@ import type { CompletionItem, HoverInfo } from './types.ts';
  * Returns all available completion items for a given text value.
  * Reactively updates when context changes.
  */
-export function useCompletions(value: string): {
+export function useCompletions(value: string, cursorOffset?: number): {
   items: CompletionItem[];
   term: string | null;
   isOpen: boolean;
@@ -30,7 +30,7 @@ export function useCompletions(value: string): {
     return onContextChange(() => forceUpdate(n => n + 1));
   }, []);
 
-  const term = getCompletionTrigger(value);
+  const term = getCompletionTrigger(value, cursorOffset);
   const isOpen = term !== null;
 
   useEffect(() => {
@@ -65,49 +65,44 @@ export function useHoverInfo(variable: string | undefined): HoverInfo | undefine
  */
 export function useApplyCompletion(
   value: string,
-  onChange: (newValue: string) => void
+  onChange: (newValue: string) => void,
+  cursorOffset?: number
 ): (item: CompletionItem) => void {
   return useCallback(
     (item: CompletionItem) => {
-      onChange(applyCompletion(value, item));
+      onChange(applyCompletion(value, item, cursorOffset));
     },
-    [value, onChange]
+    [value, onChange, cursorOffset]
   );
 }
 
 /**
  * Provides a handler to apply a completion item by inserting the RAW VALUE
  * instead of ${} reference. Useful for fields like Condition Value.
- * 
- * - Strings are inserted as "value"
- * - Numbers are inserted as 123
- * - Booleans as true/false
- * - Arrays/Objects as JSON
  */
 export function useApplyValueCompletion(
   value: string,
-  onChange: (newValue: string) => void
+  onChange: (newValue: string) => void,
+  cursorOffset?: number
 ): (item: CompletionItem) => void {
   return useCallback(
     (item: CompletionItem) => {
-      onChange(applyValueCompletion(value, item));
+      onChange(applyValueCompletion(value, item, cursorOffset));
     },
-    [value, onChange]
+    [value, onChange, cursorOffset]
   );
 }
 
 /**
  * Filter completion items to only include primitive types (string, number, boolean).
- * Useful for value fields where you want to insert actual values.
  */
-export function usePrimitiveCompletions(value: string): {
+export function usePrimitiveCompletions(value: string, cursorOffset?: number): {
   items: CompletionItem[];
   term: string | null;
   isOpen: boolean;
 } {
-  const { items, term, isOpen } = useCompletions(value);
+  const { items, term, isOpen } = useCompletions(value, cursorOffset);
   
-  // Filter to only show primitive types
   const primitiveItems = items.filter(
     item => item.kind === 'string' || item.kind === 'number' || item.kind === 'boolean'
   );

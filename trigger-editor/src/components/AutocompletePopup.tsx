@@ -80,30 +80,63 @@ interface AutocompletePopupProps {
   mode?: 'variable' | 'value' | 'none';
   /** Show only primitive values (string, number, boolean) in autocomplete */
   primitiveOnly?: boolean;
+  /** Cursor position in the input */
+  cursorOffset?: number;
 }
 
-export function AutocompletePopup({ value, onSelect, anchorRef, isFocused, mode = 'variable', primitiveOnly = false }: AutocompletePopupProps) {
+export function AutocompletePopup({ value, onSelect, anchorRef, isFocused, mode = 'variable', primitiveOnly = false, cursorOffset }: AutocompletePopupProps) {
   const valStr = String(value);
   
   // Handle completions based on mode
   const completionData = mode === 'none'
     ? { items: [], isOpen: false }
     : primitiveOnly
-      ? usePrimitiveCompletions(valStr)
-      : useCompletions(valStr);
+      ? usePrimitiveCompletions(valStr, cursorOffset)
+      : useCompletions(valStr, cursorOffset);
   
   const { items, isOpen } = completionData;
   
   // Use the appropriate completion function based on mode
-  const applyCompletion = mode === 'value'
-    ? useApplyValueCompletion(valStr, onSelect)
-    : useApplyCompletion(valStr, onSelect);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close when focus is lost
   const show = isFocused && isOpen && items.length > 0;
+
+  // Use the appropriate completion function based on mode
+  const applyCompletion = mode === 'value'
+    ? useApplyValueCompletion(valStr, onSelect, cursorOffset)
+    : useApplyCompletion(valStr, onSelect, cursorOffset);
+
+  // Reset active index when items change
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [items]);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!show) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex(prev => (prev + 1) % items.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex(prev => (prev - 1 + items.length) % items.length);
+      } else if (e.key === 'Enter' || (e.key === 'Tab')) {
+        if (items.length > 0) {
+          e.preventDefault();
+          applyCompletion(items[activeIndex]!);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [show, items, activeIndex, applyCompletion]);
 
   useLayoutEffect(() => {
     if (show && anchorRef.current) {
@@ -133,7 +166,9 @@ export function AutocompletePopup({ value, onSelect, anchorRef, isFocused, mode 
 
   if (!show || typeof document === 'undefined') return null;
 
-  const hoveredInfo = hoveredItem ? getHoverInfo(hoveredItem) : undefined;
+  // Sync hoveredItem with activeIndex for info panel
+  const currentItem = items[activeIndex];
+  const hoveredInfo = currentItem ? getHoverInfo(currentItem.label) : undefined;
 
   const menu = (
     <div
@@ -174,32 +209,43 @@ export function AutocompletePopup({ value, onSelect, anchorRef, isFocused, mode 
         }}>
           Variables (LSP)
         </li>
-        {items.map((item, i) => (
-          <li
-            key={`${item.label}-${i}`}
-            onClick={() => applyCompletion(item)}
-            onMouseEnter={() => setHoveredItem(item.label)}
-            style={{
-              padding: '6px 12px',
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: hoveredItem === item.label ? 'var(--bg-color)' : 'transparent',
-              borderLeft: hoveredItem === item.label ? '2px solid #58a6ff' : '2px solid transparent'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-              <span style={{ fontSize: '14px', color: '#58a6ff' }}>{'{}'}</span>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {item.label}
+        {items.map((item, i) => {
+          const isActive = i === activeIndex;
+          return (
+            <li
+              key={`${item.label}-${i}`}
+              onClick={() => applyCompletion(item)}
+              onMouseEnter={() => {
+                setHoveredItem(item.label);
+                setActiveIndex(i);
+              }}
+              style={{
+                padding: '6px 12px',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: isActive ? 'rgba(88, 166, 255, 0.15)' : 'transparent',
+                borderLeft: isActive ? '2px solid #58a6ff' : '2px solid transparent'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                <span style={{ fontSize: '14px', color: '#58a6ff' }}>{'{}'}</span>
+                <span style={{ 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  fontWeight: isActive ? 600 : 400
+                }}>
+                  {item.label}
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', opacity: 0.6, color: '#8b949e', fontStyle: 'italic', paddingLeft: '8px' }}>
+                {item.kind}
               </span>
-            </div>
-            <span style={{ fontSize: '11px', opacity: 0.6, color: '#8b949e', fontStyle: 'italic', paddingLeft: '8px' }}>
-              {item.kind}
-            </span>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
 
       {/* Side panel on hover */}

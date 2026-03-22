@@ -143,6 +143,48 @@ export function onContextChange(fn: () => void): () => void {
 }
 
 /**
+ * Scores a label against a term for fuzzy matching.
+ * Higher score means better match. -1 means no match.
+ */
+function fuzzyScore(label: string, term: string): number {
+  if (!term) return 0;
+  const lLabel = label.toLowerCase();
+  const lTerm = term.toLowerCase();
+  
+  // Exact match
+  if (lLabel === lTerm) return 1000;
+  // Prefix match
+  if (lLabel.startsWith(lTerm)) return 800;
+  // Substring match
+  const idx = lLabel.indexOf(lTerm);
+  if (idx !== -1) return 500 - idx; // Earlier index is better
+
+  // Fuzzy match (characters in order)
+  let score = 0;
+  let labelIdx = 0;
+  let termIdx = 0;
+  let consecutiveMatches = 0;
+
+  while (termIdx < lTerm.length && labelIdx < lLabel.length) {
+    if (lTerm[termIdx] === lLabel[labelIdx]) {
+      // Bonus for consecutive characters
+      score += 10 + (consecutiveMatches * 5);
+      // Bonus for matches after a dot (start of a property)
+      if (labelIdx === 0 || lLabel[labelIdx - 1] === '.') {
+        score += 50;
+      }
+      termIdx++;
+      consecutiveMatches++;
+    } else {
+      consecutiveMatches = 0;
+    }
+    labelIdx++;
+  }
+
+  return termIdx === lTerm.length ? score : -1;
+}
+
+/**
  * Get all completion items for a given partial term.
  * @param term - What the user has typed after ${ (e.g. "data.us")
  */
@@ -166,31 +208,27 @@ export function getCompletions(term: string): CompletionItem[] {
       contextKeys.length === 1 && contextKeys[0] === 'data';
 
     if (hasNativeData) {
-      // Context = { data: { ... } } — build from context.data under "data" prefix
       const dataVal = (_context as Record<string, JsonValue>)['data'];
       if (dataVal !== undefined) buildPaths(dataVal, 'data', all, seen);
     } else {
-      // Context is flat — treat entire context as the "data" root
       buildPaths(_context as JsonValue, 'data', all, seen);
     }
   }
 
-  // Output is already deduplicated by seen Set — no extra filter needed
-  const unique = all;
+  if (!term) return all.slice(0, 50);
 
-  const lterm = term.toLowerCase();
-  return unique
-    .filter(item => item.label.toLowerCase().includes(lterm))
+  return all
+    .map(item => ({ item, score: fuzzyScore(item.label, term) }))
+    .filter(pair => pair.score >= 0)
     .sort((a, b) => {
-      const aStarts = a.label.toLowerCase().startsWith(lterm);
-      const bStarts = b.label.toLowerCase().startsWith(lterm);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      const aDepth = (a.label.match(/\./g) || []).length;
-      const bDepth = (b.label.match(/\./g) || []).length;
-      return aDepth !== bDepth ? aDepth - bDepth : a.label.localeCompare(b.label);
+      if (b.score !== a.score) return b.score - a.score;
+      // Tie-breaker: prefer shallower depth (fewer dots)
+      const aDepth = (a.item.label.match(/\./g) || []).length;
+      const bDepth = (b.item.label.match(/\./g) || []).length;
+      return aDepth !== bDepth ? aDepth - bDepth : a.item.label.localeCompare(b.item.label);
     })
-    .slice(0, 10);
+    .map(pair => pair.item)
+    .slice(0, 50);
 }
 
 /**
@@ -246,96 +284,78 @@ export function findFirstVariable(text: string): string | undefined {
 /**
  * Detect trigger state for autocomplete popup.
  * Returns the current partial term being typed, or null if not in a variable expression.
+ * @param text - The full text value
+ * @param cursorOffset - Optional cursor position. If not provided, uses end of text.
  */
-export function getCompletionTrigger(text: string): string | null | undefined {
-  // Must end with $, ${, or ${partial (not yet closed with })
-  if (text.endsWith('}')) return null;
+export function getCompletionTrigger(text: string, cursorOffset?: number): string | null | undefined {
+  const offset = cursorOffset ?? text.length;
+  const beforeCursor = text.substring(0, offset);
 
-  const match = text.match(/\$\{?([a-zA-Z0-9_.]*)$/);
+  // If it ends with }, we just closed an expression, don't show autocomplete
+  if (beforeCursor.endsWith('}')) return null;
+
+  // Match the end of the string before cursor for something like ${data.u or $data.u or just $
+  // This regex grabs both the lead-in ($ or ${) and the partial term
+  const match = beforeCursor.match(/(\$\{?)([a-zA-Z0-9_.]*)$/);
   if (!match) return null;
 
-  const dollarIdx = text.lastIndexOf('$');
-  const spaceIdx = text.lastIndexOf(' ');
-  if (dollarIdx === -1) return null;
-  // Don't trigger if there's a space after the last $
-  if (spaceIdx > dollarIdx) return null;
-
-  return match[1]; // The partial term (could be empty string)
+  return match[2]; // The partial term (could be empty string)
 }
 
 /**
  * Build the completed text after a user selects a completion item.
- * Automatically detects import mode from the item and applies:
- * - For 'path' mode: inserts ${variable} format
- * - For 'value' mode: inserts raw value directly
+ * @param text - The full text value
+ * @param item - Selected completion item
+ * @param cursorOffset - Position of the cursor
  */
-export function applyCompletion(text: string, item: CompletionItem): string {
-  const trigger = getCompletionTrigger(text);
-  if (trigger === null) return text;
+export function applyCompletion(text: string, item: CompletionItem, cursorOffset?: number): string {
+  const offset = cursorOffset ?? text.length;
+  const beforeCursor = text.substring(0, offset);
+  const afterCursor = text.substring(offset);
 
-  const match = text.match(/\$\{?([a-zA-Z0-9_.]*)$/);
+  const match = beforeCursor.match(/(\$\{?)([a-zA-Z0-9_.]*)$/);
   if (!match) return text;
 
-  const prefix = text.substring(0, text.length - match[0].length);
+  const fullTrigger = match[0]; // e.g. "${data.u" or "$da"
+  const prefix = beforeCursor.substring(0, beforeCursor.length - fullTrigger.length);
   
-  // Check if this item has value mode
   const importMode = item.importMode || 'path';
   
   if (importMode === 'value' && item.value !== undefined) {
-    // Value mode: insert raw value
-    return applyValueCompletion(text, item);
+    return applyValueCompletion(text, item, offset);
   }
   
-  // Path mode: insert ${variable} format
-  return `${prefix}\${${item.label}}`;
+  // Return prefix + completed variable + rest of text
+  return `${prefix}\${${item.label}}${afterCursor}`;
 }
 
 /**
  * Apply completion by inserting the raw VALUE instead of ${} reference.
- * This is useful for fields like Condition Value where you want to insert
- * the actual value (string, number, boolean) directly.
- * 
- * For strings: inserts "value"
- * For numbers: inserts the number
- * For booleans: inserts true/false
- * For arrays/objects: inserts JSON stringified
  */
-export function applyValueCompletion(text: string, item: CompletionItem): string {
-  const trigger = getCompletionTrigger(text);
-  if (trigger === null) return text;
+export function applyValueCompletion(text: string, item: CompletionItem, cursorOffset?: number): string {
+  const offset = cursorOffset ?? text.length;
+  const beforeCursor = text.substring(0, offset);
+  const afterCursor = text.substring(offset);
 
-  const match = text.match(/\$\{?([a-zA-Z0-9_.]*)$/);
+  const match = beforeCursor.match(/(\$\{?)([a-zA-Z0-9_.]*)$/);
   if (!match) return text;
 
-  const prefix = text.substring(0, text.length - match[0].length);
-  
-  // Get the actual value from the item
+  const fullTrigger = match[0];
+  const prefix = beforeCursor.substring(0, beforeCursor.length - fullTrigger.length);
   const value = item.value;
   
   if (value === undefined || value === null) {
-    // If no value, fall back to variable reference
-    return `${prefix}\${${item.label}}`;
+    return `${prefix}\${${item.label}}${afterCursor}`;
   }
   
-  // Format the value based on its type
   let formattedValue: string;
-  
   if (typeof value === 'string') {
-    // Wrap strings in quotes
     formattedValue = `"${value}"`;
   } else if (typeof value === 'number' || typeof value === 'boolean') {
-    // Numbers and booleans don't need quotes
     formattedValue = String(value);
-  } else if (Array.isArray(value)) {
-    // Arrays -> JSON string
-    formattedValue = JSON.stringify(value);
-  } else if (typeof value === 'object') {
-    // Objects -> JSON string
-    formattedValue = JSON.stringify(value);
   } else {
-    // Fallback to variable reference
-    return `${prefix}\${${item.label}}`;
+    formattedValue = JSON.stringify(value);
   }
   
-  return `${prefix}${formattedValue}`;
+  return `${prefix}${formattedValue}${afterCursor}`;
 }

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Modal } from './Modal.tsx';
 import { DownloadIcon, UploadIcon, ShareIcon, CodeIcon } from './Icons.tsx';
 import { useTranslation } from 'react-i18next';
-
+const EXPORT_CLICKED = 'TRIGGER_EDITOR_EXPORT_CLICKED';
 interface ExchangeModalsProps {
   isImportOpen: boolean;
   isExportOpen: boolean;
@@ -67,25 +67,6 @@ export function ExchangeModals({
             </div>
           </div>
 
-          {(window as any).triggerEditorConfig?.hostIntegration && (
-            <div 
-              onClick={() => { 
-                window.parent.postMessage({ type: 'TRIGGER_EDITOR_REQUEST_IMPORT' }, '*');
-                onCloseImport(); 
-              }}
-              style={{ ...cardStyle, gridColumn: 'span 2' }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#e1e4e8'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
-            >
-              <div style={{ ...iconBoxStyle, background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)' }}>
-                <ShareIcon size={24} />
-              </div>
-              <div>
-                <div style={cardTitleStyle}>{t('exchangeModals.hostTitle')}</div>
-                <div style={cardDescStyle}>{t('exchangeModals.hostImportDesc')}</div>
-              </div>
-            </div>
-          )}
         </div>
       </Modal>
 
@@ -120,7 +101,7 @@ export function ExchangeModals({
             </div>
           </button>
 
-          {(window as any).triggerEditorConfig?.hostIntegration && (
+          {(window as any)?.hostIntegration && (
             <button 
               className="btn btn-secondary" 
               onClick={() => { 
@@ -129,7 +110,7 @@ export function ExchangeModals({
                 // However, the note said "implement window methods to enable custom export".
                 // Let's assume the parent handles the actual "GET_DATA" request if needed, 
                 // or we can pass a callback.
-                window.parent.postMessage({ type: 'TRIGGER_EDITOR_EXPORT_CLICKED' }, '*');
+                window.parent.postMessage({ type: EXPORT_CLICKED }, '*');
                 onCloseExport(); 
               }}
               style={actionButtonStyle}
