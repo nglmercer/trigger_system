@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { useRFStore } from '../store/rfStore';
 import type { EventNodeData } from '../types.ts';
 import { NodeField, NodeHandle } from '../constants';
 import { getFieldTooltip } from '../shared-constants';
@@ -7,9 +8,16 @@ import { ClearIcon, SettingsIcon, StarIcon, CopyIcon } from '../components/Icons
 import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from '../components/inputs/FormFields.tsx';
 import { useTranslation } from 'react-i18next';
 
-export default function EventNode({ id, data }: { id: string, data: EventNodeData }) {
+export default function EventNode({ id }: { id: string }) {
   const { deleteElements } = useReactFlow();
   const { t } = useTranslation();
+  
+  // Connect to store for granular updates
+  const data = useRFStore(s => s.nodes.find(n => n.id === id)?.data) as EventNodeData | undefined;
+  const updateNodeData = useRFStore(s => s.updateNodeData);
+  const duplicateNode = useRFStore(s => s.duplicateNode);
+
+  if (!data) return null;
 
   return (
     <div className="drawflow-node event">
@@ -18,7 +26,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
           <button 
             className="node-delete" 
-            onClick={(e) => { e.stopPropagation(); data.onDuplicate(); }} 
+            onClick={(e) => { e.stopPropagation(); duplicateNode(id); }} 
             title={t('nodeDetails.duplicateNode', 'Duplicate Node')}
             style={{ background: 'rgba(255,255,255,0.1)' }}
           >
@@ -37,7 +45,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
         >
           <TextInput
             value={data.id || ''}
-            onChange={(val) => data.onChange(val as string, NodeField.ID)}
+            onChange={(val) => updateNodeData(id, val, NodeField.ID)}
             placeholder={t('nodeDetails.ruleIdPlaceholder')}
           />
         </FormField>
@@ -48,7 +56,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
         >
           <TextInput
             value={data.name || ''}
-            onChange={(val) => data.onChange(val as string, NodeField.NAME)}
+            onChange={(val) => updateNodeData(id, val, NodeField.NAME)}
             placeholder={t('nodeDetails.displayNamePlaceholder')}
           />
         </FormField>
@@ -59,7 +67,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
         >
           <TextInput
             value={data.event || ''}
-            onChange={(val) => data.onChange(val as string, NodeField.EVENT)}
+            onChange={(val) => updateNodeData(id, val, NodeField.EVENT)}
             placeholder={t('nodeDetails.eventNamePlaceholder')}
           />
         </FormField>
@@ -76,7 +84,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
           >
             <TextAreaInput
               value={data.description || ''}
-              onChange={(val) => data.onChange(val, NodeField.DESCRIPTION)}
+              onChange={(val) => updateNodeData(id, val, NodeField.DESCRIPTION)}
               placeholder={t('nodeDetails.descriptionPlaceholder')}
             />
           </FormField>
@@ -89,7 +97,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
               >
                 <TextInput
                   value={data.priority || 0}
-                  onChange={(val) => data.onChange(val as number, NodeField.PRIORITY)}
+                  onChange={(val) => updateNodeData(id, val, NodeField.PRIORITY)}
                   type="number"
                 />
               </FormField>
@@ -97,7 +105,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
             <div style={{ display: 'flex', alignItems: 'center', marginTop: '20px' }}>
               <CheckboxInput
                 checked={data.enabled !== false}
-                onChange={(val) => data.onChange(val, 'enabled')}
+                onChange={(val) => updateNodeData(id, val, 'enabled')}
                 label={t('nodeDetails.enabled')}
               />
             </div>
@@ -111,7 +119,7 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
               >
                 <TextInput
                   value={data.cooldown || 0}
-                  onChange={(val) => data.onChange(val as number, 'cooldown')}
+                  onChange={(val) => updateNodeData(id, val, 'cooldown')}
                   type="number"
                   placeholder="0"
                 />
@@ -124,7 +132,10 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
               >
                 <TextInput
                   value={data.tags?.join(', ') || ''}
-                  onChange={(val) => data.onChange((val as string).split(',').map(s => s.trim()).filter(Boolean), 'tags')}
+                  onChange={(val) => {
+                    const str = typeof val === 'string' ? val : '';
+                    updateNodeData(id, str.split(',').map(s => s.trim()).filter(Boolean), 'tags');
+                  }}
                   placeholder={t('nodeDetails.tagsPlaceholder')}
                 />
               </FormField>

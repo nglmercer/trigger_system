@@ -336,7 +336,7 @@ export function ParamsModal() {
                   })()} 
                   editable={true}
                   onChange={handleJsonUpdate}
-                  maxHeight="600px"
+                  maxHeight="100%"
                 />
             </div>
           )}

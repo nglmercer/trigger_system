@@ -12,9 +12,10 @@ export type AppNode = Node<
 >;
 
 export interface AppNodeData {
-  onChange: (val: any, field: string) => void;
+  _id?: string;
+  onChange: (val: unknown, field: string) => void;
   onDuplicate: () => void;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface EventNodeData extends AppNodeData {

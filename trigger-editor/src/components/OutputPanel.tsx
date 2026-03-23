@@ -19,10 +19,14 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
   const isMobile = useIsMobile();
   const [isVisible, setIsVisible] = useState(!isMobile); // Auto-hide on mobile by default
   const [viewMode, setViewMode] = useState<'yaml' | 'json'>('yaml');
+  const [panelWidth, setPanelWidth] = useState(400);
+  const [isResizing, setIsResizing] = useState(false);
   const preRef = useRef<HTMLPreElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const widthRef = useRef(400);
   const [hoveredVar, setHoveredVar] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-
+  
   // const getVarAtPoint = useCallback((e: React.MouseEvent) => {
   //   let targetNode: Node | null = null;
   //   let offsetInNode = 0;
@@ -87,6 +91,55 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
   //     setHoveredVar(null);
   //   }
   // }, [getVarAtPoint]);
+
+  const startResizing = useCallback((e: React.MouseEvent | React.PointerEvent) => {
+    e.preventDefault();
+    widthRef.current = panelWidth;
+    setIsResizing(true);
+  }, [panelWidth]);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+    // Commit the final width to React state only on mouseup
+    setPanelWidth(widthRef.current);
+  }, []);
+
+  const resize = useCallback((e: MouseEvent | PointerEvent) => {
+    const newWidth = Math.round(window.innerWidth - e.clientX);
+    if (newWidth > 250 && newWidth < window.innerWidth * 0.8) {
+      widthRef.current = newWidth;
+      // Update DOM directly to avoid React re-render & ResizeObserver cascade
+      if (panelRef.current) {
+        panelRef.current.style.width = `${newWidth}px`;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', resize);
+      window.addEventListener('mouseup', stopResizing);
+      window.addEventListener('pointermove', resize);
+      window.addEventListener('pointerup', stopResizing);
+    } else {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener('pointermove', resize);
+      window.removeEventListener('pointerup', stopResizing);
+    }
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+      window.removeEventListener('pointermove', resize);
+      window.removeEventListener('pointerup', stopResizing);
+    };
+  }, [isResizing, resize, stopResizing]);
 
   const renderTooltip = () => {
     if (!hoveredVar) return null;
@@ -323,16 +376,38 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
       )}
 
       <aside 
-        className="panel output-panel" 
+        ref={panelRef}
+        className={`panel output-panel ${isResizing ? 'resizing' : ''}`} 
         style={{ 
-          width: isVisible ? (isMobile ? '90vw' : '400px') : '0px', 
+          width: isVisible ? (isMobile ? '90vw' : `${panelWidth}px`) : '0px', 
           flexShrink: 0, 
-          transition: 'width 0.3s ease', 
+          transition: isResizing ? 'none' : 'width 0.3s ease', 
           overflow: 'hidden',
           position: isMobile ? 'fixed' : 'relative',
           zIndex: 999
         }}
       >
+        {/* Resize Handle */}
+        {!isMobile && isVisible && (
+          <div
+            className="resize-handle"
+            onMouseDown={startResizing}
+            onPointerDown={startResizing}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: '6px',
+              cursor: 'col-resize',
+              zIndex: 1001,
+              background: isResizing ? 'var(--accent)' : 'transparent',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => { if (!isResizing) e.currentTarget.style.background = 'rgba(88, 166, 255, 0.3)'; }}
+            onMouseLeave={(e) => { if (!isResizing) e.currentTarget.style.background = 'transparent'; }}
+          />
+        )}
         <div className="output-header" style={{ padding: isVisible ? '18px 20px' : '0', opacity: isVisible ? 1 : 0, transition: 'opacity 0.2s' }}>
           {isVisible && (
             <>
@@ -390,12 +465,12 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
                 {yaml ? renderYamlWithHighlights(yaml) : INITIAL_HINT}
               </pre>
             ) : (
-              <div style={{ padding: '10px' }}>
+              <div style={{ padding: '10px', height: 'auto' }}>
                 <JsonPreview 
                   data={(() => {
                     try { return parse(yaml); } catch { return { error: 'Failed to parse YAML' }; }
                   })()} 
-                  maxHeight="calc(100vh - 120px)"
+                  maxHeight="calc(100dvh - 120px)"
                 />
               </div>
             )}

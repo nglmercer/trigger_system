@@ -605,7 +605,8 @@ export function JsonPreview({ data, maxHeight = '400px', editable = false, onCha
       lineHeight: '1.4',
       position: 'relative',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      height: '100%'
     }}>
       {/* Header / Tabs */}
       <div style={{ 

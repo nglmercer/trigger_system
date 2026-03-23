@@ -72,17 +72,16 @@ export default function DeletableEdge({
             }}
             className="nodrag nopan"
             >
+              {selected ?
             <button
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
-              onPointerEnter={onMouseEnter}
-              onPointerLeave={onMouseLeave}
               className="edge-delete-btn"
               onClick={onEdgeClick}
               title="Delete Edge"
             >
               {isHovered ? <TrashIconOpen size={14} /> : <TrashIcon size={14} />}
-            </button>
+            </button> : ''}
           </div>
         </EdgeLabelRenderer>
       )}
