@@ -92,7 +92,7 @@ function NodeEditor() {
       importJson: importJsonData,
       importYaml: importYamlData,
       requestExport: handleHostExport,
-      clear: clearAll
+      clear: clearAll,
     };
 
     const events = {

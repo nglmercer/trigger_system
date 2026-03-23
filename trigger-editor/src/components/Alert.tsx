@@ -84,6 +84,37 @@ export function AlertProvider({ children, maxAlerts = 5 }: AlertProviderProps) {
     setAlerts([]);
   }, []);
 
+  // Expose alert functions to window for external integrations
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Store original alert function
+      const originalAlert = (window as any).alert;
+
+      // Expose alert API to window.triggerEditorAlerts
+      (window as any).triggerEditorAlerts = {
+        alert: (message: string, title?: string) => showAlert(message, { title, type: 'info' }),
+        success: (message: string, title?: string) => showAlert(message, { title, type: 'success' }),
+        info: (message: string, title?: string) => showAlert(message, { title, type: 'info' }),
+        warning: (message: string, title?: string) => showAlert(message, { title, type: 'warning' }),
+        error: (message: string, title?: string) => showAlert(message, { title, type: 'error' }),
+        debug: (message: string, title?: string) => showAlert(message, { title, type: 'debug' }),
+        dismiss: dismissAlert,
+        clear: clearAllAlerts,
+      };
+
+      // Replace window.alert with our custom implementation
+      (window as any).alert = (message: string, title?: string) => {
+        return showAlert(message, { title, type: 'info' });
+      };
+
+      // Cleanup on unmount
+      return () => {
+        (window as any).alert = originalAlert;
+        delete (window as any).triggerEditorAlerts;
+      };
+    }
+  }, [showAlert, dismissAlert, clearAllAlerts]);
+
   return (
     <AlertContext.Provider value={{ alerts, showAlert, dismissAlert, clearAllAlerts }}>
       {children}
