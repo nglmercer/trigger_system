@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Modal } from './Modal.tsx';
 import { DownloadIcon, UploadIcon, ShareIcon, CodeIcon } from './Icons.tsx';
 import { useTranslation } from 'react-i18next';
-const EXPORT_CLICKED = 'TRIGGER_EDITOR_EXPORT_CLICKED';
+export const EXPORT_CLICKED = 'TRIGGER_EDITOR_EXPORT_CLICKED';
 interface ExchangeModalsProps {
   isImportOpen: boolean;
   isExportOpen: boolean;

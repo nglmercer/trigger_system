@@ -14,7 +14,7 @@ import {
 } from '../utils/exportImport';
 import { createYamlImportPicker, parseYamlContent } from '../utils/yamlImport';
 import { useTranslation } from 'react-i18next';
-
+import { EXPORT_CLICKED } from '../components/ExchangeModals';
 /**
  * Hook for import/export and sharing functionality
  */
@@ -143,15 +143,17 @@ export function useImportExport(
   const handleHostExport = useCallback(() => {
     const yamlValue = getYaml();
     const jsonValue = exportToJson(nodes, edges, yamlValue);
-    
-    window.parent.postMessage({ 
-      type: 'TRIGGER_EDITOR_EXPORT', 
-      payload: {
-        yaml: yamlValue,
-        json: jsonValue,
-        timestamp: new Date().toISOString()
-      }
-    }, '*');
+    const emitter = [window,window.parent]
+    emitter.forEach(e => {
+      e.postMessage({ 
+        type: EXPORT_CLICKED, 
+        payload: {
+          yaml: yamlValue,
+          json: jsonValue,
+          timestamp: new Date().toISOString()
+        }
+      }, '*');
+    })
     
     success(t('notifications.dataSentToHost'), { title: t('notifications.exportComplete') });
   }, [nodes, edges, getYaml, success, t]);
