@@ -13,6 +13,7 @@ interface ExchangeModalsProps {
   onExportJson: () => void;
   onExportYaml: () => void;
   onShare: () => void;
+  handleHostExport: () => void;
 }
 
 export function ExchangeModals({
@@ -24,7 +25,8 @@ export function ExchangeModals({
   onImportYaml,
   onExportJson,
   onExportYaml,
-  onShare
+  onShare,
+  handleHostExport
 }: ExchangeModalsProps) {
   const { t } = useTranslation();
   
@@ -110,7 +112,7 @@ export function ExchangeModals({
                 // However, the note said "implement window methods to enable custom export".
                 // Let's assume the parent handles the actual "GET_DATA" request if needed, 
                 // or we can pass a callback.
-                window.parent.postMessage({ type: EXPORT_CLICKED }, '*');
+                handleHostExport()
                 onCloseExport(); 
               }}
               style={actionButtonStyle}

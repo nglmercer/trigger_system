@@ -23,9 +23,10 @@ interface SidebarProps {
   onShare: () => void;
   onAddNode: (type: string) => void;
   hasNodes: boolean;
+  handleHostExport: () => void;
 }
 
-export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onImportYaml, onShare, onAddNode, hasNodes }: SidebarProps) {
+export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onImportYaml, onShare, onAddNode, hasNodes, handleHostExport }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -317,6 +318,7 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
         isExportOpen={isExportModalOpen}
         onCloseImport={() => setIsImportModalOpen(false)}
         onCloseExport={() => setIsExportModalOpen(false)}
+        handleHostExport={handleHostExport}
         onImportJson={onImport}
         onImportYaml={onImportYaml}
         onExportJson={onExportJson}

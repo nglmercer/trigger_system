@@ -232,6 +232,7 @@ function NodeEditor() {
         onImportYaml={handleImportYaml}
         onShare={handleShare}
         onAddNode={addNode}
+        handleHostExport={handleHostExport}
         hasNodes={nodes.length > 0}
       />
 
