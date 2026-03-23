@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useIsMobile } from './hooks/useMediaQuery.ts';
 import {
   ReactFlow,
   Background,
@@ -34,6 +34,7 @@ import { getSharedDataFromUrl, clearShareDataFromUrl } from './utils/exportImpor
 const getId = () => `node_${Math.random().toString(36).substring(2, 7)}`;
 
 function NodeEditor() {
+  const isMobile = useIsMobile();
   // Use modular hooks for state management
   const { 
     nodes, 
@@ -48,7 +49,7 @@ function NodeEditor() {
     clearAll,
     setGraph
   } = useNodeEdgeState();
-  const [isShortcutsOpen, setIsShortcutsOpen] = React.useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const { t } = useTranslation();
 
   const { success } = useAlert();
@@ -209,7 +210,14 @@ function NodeEditor() {
   }, []);
 
   return (
-    <div className="react-flow-wrapper" style={{ display: 'flex', width: '100vw', height: '100vh', background: '#0d1117' }}>
+    <div className="react-flow-wrapper" style={{ 
+      display: 'flex', 
+      width: '100dvw', 
+      height: '100dvh', 
+      background: '#0d1117',
+      position: 'relative',
+      flexDirection: isMobile ? 'column' : 'row'
+    }}>
       <Sidebar 
         onClear={clearAll} 
         onExportJson={handleExportJson}
@@ -243,13 +251,13 @@ function NodeEditor() {
           onClick={() => setIsShortcutsOpen(true)}
           style={{
             position: 'absolute',
-            left: '0.9rem',
-            bottom: '8rem', // Above the Controls
+            left: isMobile ? '2.2rem' : '0.9rem',
+            bottom: isMobile ? '9rem' : '8rem', // Above the Controls
             zIndex: 10,
             background: 'var(--bg-secondary)',
             border: '1px solid var(--border)',
             color: 'var(--text-secondary)',
-            padding: '8px',
+            padding: isMobile ? '6px' : '8px',
             borderRadius: '8px',
             cursor: 'pointer',
             display: 'flex',
@@ -262,7 +270,7 @@ function NodeEditor() {
           onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
         >
-          <KeyboardIcon size={12} />
+          <KeyboardIcon size={isMobile ? 12 : 14} />
         </button>
       </main>
 

@@ -714,3 +714,61 @@ textarea:focus {
   stroke-width: 2;
   stroke-dasharray: 5 5;
 }
+/* ─── Responsive Styles ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .react-flow-wrapper {
+    flex-direction: column;
+  }
+
+  .panel {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+  }
+
+  .sidebar {
+    left: 0;
+    max-width: 85vw;
+  }
+
+  .output-panel {
+    right: 0;
+    max-width: 90vw;
+  }
+
+  /* Adjust floating buttons for mobile */
+  .sidebar-toggle, .output-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Make nodes slightly wider on mobile to be easier to tap */
+  .drawflow-node {
+    width: 260px;
+  }
+
+  /* Ensure ReactFlow controls are accessible */
+  .react-flow__controls {
+    bottom: 20px !important;
+    left: 20px !important;
+    transform: none !important;
+  }
+
+  /* Backdrop for mobile when panels are open */
+  .panel-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 9;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .panel-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

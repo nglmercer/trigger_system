@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useIsMobile } from '../hooks/useMediaQuery.ts';
 import { copyToClipboard } from '../utils.ts';
 import { INITIAL_HINT } from '../constants.ts';
 import { CopyIcon, CodeIcon, ChevronIcon } from './Icons.tsx';
@@ -16,7 +16,8 @@ interface OutputPanelProps {
 
 export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
   const { t } = useTranslation();
-  const [isVisible, setIsVisible] = useState(true);
+  const isMobile = useIsMobile();
+  const [isVisible, setIsVisible] = useState(!isMobile); // Auto-hide on mobile by default
   const [viewMode, setViewMode] = useState<'yaml' | 'json'>('yaml');
   const preRef = useRef<HTMLPreElement>(null);
   const [hoveredVar, setHoveredVar] = useState<string | null>(null);
@@ -287,18 +288,24 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
 
   return (
     <>
+      <div 
+        className={`panel-backdrop ${isVisible && isMobile ? 'active' : ''}`} 
+        onClick={() => setIsVisible(false)}
+      />
+
       {/* Floating Toggle Button */}
       {!isVisible && (
         <button 
           onClick={() => setIsVisible(true)}
+          className="output-toggle"
           style={{
             position: 'fixed',
-            right: '16px',
+            right: isMobile ? '12px' : '16px',
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 1000,
-            width: '48px',
-            height: '48px',
+            width: isMobile ? '44px' : '48px',
+            height: isMobile ? '44px' : '48px',
             borderRadius: '12px',
             background: 'var(--bg-secondary)',
             border: '1px solid var(--border)',
@@ -315,7 +322,17 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
         </button>
       )}
 
-      <aside className="panel output-panel" style={{ width: isVisible ? '400px' : '0px', flexShrink: 0, transition: 'width 0.3s ease', overflow: 'hidden' }}>
+      <aside 
+        className="panel output-panel" 
+        style={{ 
+          width: isVisible ? (isMobile ? '90vw' : '400px') : '0px', 
+          flexShrink: 0, 
+          transition: 'width 0.3s ease', 
+          overflow: 'hidden',
+          position: isMobile ? 'fixed' : 'relative',
+          zIndex: 999
+        }}
+      >
         <div className="output-header" style={{ padding: isVisible ? '18px 20px' : '0', opacity: isVisible ? 1 : 0, transition: 'opacity 0.2s' }}>
           {isVisible && (
             <>

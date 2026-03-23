@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useIsMobile } from '../hooks/useMediaQuery.ts';
 import { NodeType, DRAG_DATA_FORMAT } from '../constants.ts';
 import { ConditionGroupIcon, ActionIcon, ActionGroupIcon, ChevronIcon, GridIcon, ClearIcon, DatabaseIcon, SettingsIcon, DownloadIcon, UploadIcon, DoIcon } from './Icons.tsx';
 import { IfIcon, StarIcon } from './Icons.tsx';
@@ -31,26 +31,34 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const { t, i18n } = useTranslation();
+  const isMobile = useIsMobile();
   
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData(DRAG_DATA_FORMAT, nodeType);
     event.dataTransfer.effectAllowed = 'move';
   };
 
+  const sidebarWidth = isOpen ? (isMobile ? '85vw' : '300px') : '0px';
+
   return (
     <>
-      {/* Floating Toggle Button */}
+      <div 
+        className={`panel-backdrop ${isOpen && isMobile ? 'active' : ''}`} 
+        onClick={() => setIsOpen(false)}
+      />
+      
       {!isOpen && (
         <button 
           onClick={() => setIsOpen(true)}
+          className="sidebar-toggle"
           style={{
             position: 'fixed',
-            left: '16px',
+            left: isMobile ? '12px' : '16px',
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 1000,
-            width: '48px',
-            height: '48px',
+            width: isMobile ? '44px' : '48px',
+            height: isMobile ? '44px' : '48px',
             borderRadius: '12px',
             background: 'var(--bg-secondary)',
             border: '1px solid var(--border)',
@@ -70,12 +78,14 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
       <aside 
         className="panel sidebar" 
         style={{ 
-          width: isOpen ? '300px' : '0px', 
+          width: sidebarWidth, 
           flexShrink: 0, 
-          overflow: 'hidden',
+          overflowX: 'hidden',
+          overflowY: 'auto',
           transition: 'width 0.3s ease',
-          position: 'relative',
-          zIndex: 999
+          position: isMobile ? 'fixed' : 'relative',
+          zIndex: 999,
+          height: '100dvh'
         }}
       >
         <div className="sidebar-header" style={{ padding: isOpen ? '18px 20px' : '0', opacity: isOpen ? 1 : 0, transition: 'opacity 0.2s' }}>
@@ -125,90 +135,94 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
 
         {isOpen && (
           <>
-            <div className="drag-group" style={{ touchAction: 'none' }}>
-              <div 
+            <div className="drag-group" style={{ touchAction: 'pan-y' }}>
+              <button 
                 className="drag-item" 
                 draggable 
                 onDragStart={(e) => onDragStart(e, NodeType.EVENT)}
                 onClick={() => onAddNode(NodeType.EVENT)}
+                style={{ textAlign: 'left', width: '100%', border: '1px solid var(--border)', background: 'transparent', color: 'inherit', fontFamily: 'inherit' }}
               >
                 <span className="drag-icon drag-icon--event"><StarIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.eventTrigger')}</span>
                   <span className="drag-desc">{t('sidebar.nodes.startsRule')}</span>
                 </div>
-              </div>
+              </button>
 
-              <div 
+              <button 
                 className="drag-item" 
                 draggable 
                 onDragStart={(e) => onDragStart(e, NodeType.CONDITION_GROUP)}
                 onClick={() => onAddNode(NodeType.CONDITION_GROUP)}
+                style={{ textAlign: 'left', width: '100%', border: '1px solid var(--border)', background: 'transparent', color: 'inherit', fontFamily: 'inherit' }}
               >
                 <span className="drag-icon drag-icon--condition-group"><ConditionGroupIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.conditionGroup')}</span>
                   <span className="drag-desc">{t('sidebar.nodes.logicalGroup')}</span>
                 </div>
-              </div>
+              </button>
 
-              <div 
+              <button 
                 className="drag-item" 
                 draggable 
                 onDragStart={(e) => onDragStart(e, NodeType.CONDITION)}
                 onClick={() => onAddNode(NodeType.CONDITION)}
+                style={{ textAlign: 'left', width: '100%', border: '1px solid var(--border)', background: 'transparent', color: 'inherit', fontFamily: 'inherit' }}
               >
                 <span className="drag-icon drag-icon--condition"><IfIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.condition')}</span>
                   <span className="drag-desc">{t('sidebar.nodes.filterFieldValue')}</span>
                 </div>
-              </div>
+              </button>
               
-              <div 
+              <button 
                 className="drag-item" 
                 draggable 
                 onDragStart={(e) => onDragStart(e, NodeType.DO)}
                 onClick={() => onAddNode(NodeType.DO)}
+                style={{ textAlign: 'left', width: '100%', border: '1px solid var(--border)', background: 'transparent', color: 'inherit', fontFamily: 'inherit' }}
               >
                 <span className="drag-icon drag-icon--do"><DoIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.do')}</span>
                   <span className="drag-desc">{t('sidebar.nodes.explicitThenPath')}</span>
                 </div>
-              </div>
+              </button>
 
-              <div 
+              <button 
                 className="drag-item" 
                 draggable 
                 onDragStart={(e) => onDragStart(e, NodeType.ACTION_GROUP)}
                 onClick={() => onAddNode(NodeType.ACTION_GROUP)}
+                style={{ textAlign: 'left', width: '100%', border: '1px solid var(--border)', background: 'transparent', color: 'inherit', fontFamily: 'inherit' }}
               >
                 <span className="drag-icon drag-icon--action-group"><ActionGroupIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.actionGroup')}</span>
                   <span className="drag-desc">{t('sidebar.nodes.groupActions')}</span>
                 </div>
-              </div>
+              </button>
 
-              <div 
+              <button 
                 className="drag-item" 
                 draggable 
                 onDragStart={(e) => onDragStart(e, NodeType.ACTION)}
                 onClick={() => onAddNode(NodeType.ACTION)}
+                style={{ textAlign: 'left', width: '100%', border: '1px solid var(--border)', background: 'transparent', color: 'inherit', fontFamily: 'inherit' }}
               >
                 <span className="drag-icon drag-icon--action"><ActionIcon /></span>
                 <div className="drag-info">
                   <span className="drag-name">{t('sidebar.nodes.action')}</span>
                   <span className="drag-desc">{t('sidebar.nodes.executeHandler')}</span>
                 </div>
-              </div>
-
+              </button>
             </div>
 
             <div className="sidebar-divider"></div>
             
-            {/* Context Data Section */}
             <div style={{ padding: '0 20px', marginBottom: '24px' }}>
               <div style={{ 
                 display: 'flex', 
