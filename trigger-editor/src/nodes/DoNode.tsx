@@ -7,7 +7,7 @@ const BRANCH_OPTIONS = [
   { value: BranchType.DO, label: 'DO (then)' },
   { value: BranchType.ELSE, label: 'ELSE' },
 ];
-import { ClearIcon, DoIcon, ElseIcon } from '../components/Icons';
+import { ClearIcon, DoIcon, ElseIcon, CopyIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/inputs/FormFields';
 
 
@@ -118,9 +118,19 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
       <div className="node-title node-title--do">
         <span className="node-icon">{isElse ? <ElseIcon /> : <DoIcon />}</span> 
         {isElse ? t('nodeDetails.elseTitle') : t('nodeDetails.doTitle')}
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
-          <ClearIcon size={14} />
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+          <button 
+            className="node-delete" 
+            onClick={(e) => { e.stopPropagation(); data.onDuplicate(); }} 
+            title={t('nodeDetails.duplicateNode', 'Duplicate Node')}
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+          >
+            <CopyIcon size={14} />
+          </button>
+          <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
+            <ClearIcon size={14} />
+          </button>
+        </div>
       </div>
       
       <div className="node-body">

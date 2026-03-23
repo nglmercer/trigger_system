@@ -2,7 +2,7 @@ import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle, BranchType } from '../constants';
 import { getOperatorOptions, getOperatorDescription, getFieldTooltip } from '../shared-constants';
-import { ClearIcon, IfIcon } from '../components/Icons';
+import { ClearIcon, IfIcon, CopyIcon } from '../components/Icons';
 import { TextInput, SelectInput, FormField } from '../components/inputs/FormFields';
 import type { ComparisonOperator } from '../../../src/types';
 import { useTranslation } from 'react-i18next';
@@ -48,9 +48,19 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
       />
       <div className="node-title node-title--condition">
         <span className="node-icon"><IfIcon /></span> {t('nodeDetails.conditionTitle')}
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
-          <ClearIcon size={14} />
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+          <button 
+            className="node-delete" 
+            onClick={(e) => { e.stopPropagation(); data.onDuplicate(); }} 
+            title={t('nodeDetails.duplicateNode', 'Duplicate Node')}
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+          >
+            <CopyIcon size={14} />
+          </button>
+          <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
+            <ClearIcon size={14} />
+          </button>
+        </div>
       </div>
       <div className="node-body">
         <FormField 

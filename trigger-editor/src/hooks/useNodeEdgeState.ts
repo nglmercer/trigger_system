@@ -37,17 +37,48 @@ export function useNodeEdgeState() {
     );
   }, []);
 
+  // Duplicate a node with new ID and same data
+  const onDuplicateNode = useCallback((id: string) => {
+    setNodes((nds) => {
+      const nodeToDuplicate = nds.find(n => n.id === id);
+      if (!nodeToDuplicate) return nds;
+
+      const newNodeId = `node_${Math.random().toString(36).substring(2, 7)}`;
+      // Deep clone data and reset internal IDs
+      const newData = { ...nodeToDuplicate.data };
+      
+      // If it's an event node, it needs a new rule ID
+      if (nodeToDuplicate.type === NodeType.EVENT && (newData as any).id) {
+        (newData as any).id = `rule_${Math.random().toString(36).substring(2, 7)}`;
+      }
+
+      const newNode: AppNode = {
+        ...nodeToDuplicate,
+        id: newNodeId,
+        selected: false,
+        position: {
+          x: nodeToDuplicate.position.x + 30,
+          y: nodeToDuplicate.position.y + 30,
+        },
+        data: newData,
+      };
+
+      return [...nds, newNode];
+    });
+  }, []);
+
   // Ensure nodes have their onChange and latest state
   useEffect(() => {
     setNodes((nds) => 
       nds.map((node) => {
-        if (typeof node.data.onChange !== 'function' || node.data._id !== node.id) {
+        if (typeof node.data.onChange !== 'function' || typeof node.data.onDuplicate !== 'function' || node.data._id !== node.id) {
           return {
             ...node,
             data: {
               ...node.data,
               _id: node.id,
               onChange: (val: unknown, f: string) => onNodeDataChange(node.id, val, f),
+              onDuplicate: () => onDuplicateNode(node.id),
             },
           };
         }
@@ -156,6 +187,7 @@ export function useNodeEdgeState() {
         // Create edge with unique ID and class for coloring
         const newEdge: Edge = {
           id: edgeId,
+          type: 'deletable', // Use custom deletable edge type
           source: params.source,
           target: params.target,
           sourceHandle: params.sourceHandle,
@@ -186,7 +218,8 @@ export function useNodeEdgeState() {
   // Set nodes and edges (for import)
   const setGraph = useCallback((newNodes: AppNode[], newEdges: Edge[]) => {
     setNodes(newNodes);
-    setEdges(newEdges);
+    // Ensure all imported edges have the deletable type
+    setEdges(newEdges.map(e => ({ ...e, type: 'deletable' })));
   }, []);
 
   return {
@@ -199,6 +232,7 @@ export function useNodeEdgeState() {
     onNodeDataChange,
     onConnect,
     onReconnect,
+    onDuplicateNode,
     clearAll,
     setGraph,
   };

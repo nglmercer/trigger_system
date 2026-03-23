@@ -19,6 +19,11 @@ import { KeyboardIcon } from './components/Icons.tsx';
 import { useTranslation } from 'react-i18next';
 
 import { nodeTypes } from './nodes';
+import DeletableEdge from './edges/DeletableEdge.tsx';
+
+const edgeTypes = {
+  deletable: DeletableEdge,
+};
 
 import { useRuleBuilder, useNodeEdgeState, useImportExport, useConnectionValidation } from './hooks';
 import { NodeType, DRAG_DATA_FORMAT } from './constants.ts';
@@ -176,6 +181,7 @@ function NodeEditor() {
         position: flowPosition,
         data: { 
           onChange: () => {},
+          onDuplicate: () => {},
           ...(type === NodeType.EVENT ? { 
             id: generateRandomId(), 
             name: 'New Rule', 
@@ -239,6 +245,8 @@ function NodeEditor() {
           onReconnect={onReconnect}
           isValidConnection={isValidConnection}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={{ type: 'deletable', interactionWidth: 20 }}
           fitView
           colorMode="dark"
         >

@@ -143,9 +143,15 @@ export const ClearIcon = ({ size = 16, style, className }: IconProps) => (
 );
 
 export const TrashIcon = ({ size = 16, style, className }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}>
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}>
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="8" y1="6" x2="8"  y2="4" />
+    <line x1="16" y1="6" x2="16" y2="4" />
+    <line x1="8" y1="4" x2="16" y2="4" />
+    <path d="M5 8 L6.5 20 Q6.5 21 7.5 21 L16.5 21 Q17.5 21 17.5 20 L19 8Z" />
+    <line x1="10" y1="11" x2="10" y2="18" strokeWidth="1.5" opacity="0.7" />
+    <line x1="14" y1="11" x2="14" y2="18" strokeWidth="1.5" opacity="0.7" />
   </svg>
 );
 
@@ -327,5 +333,23 @@ export const RefreshIcon = ({ size = 16, style, className }: IconProps) => (
     <polyline points="23 4 23 10 17 10"></polyline>
     <polyline points="1 20 1 14 7 14"></polyline>
     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+  </svg>
+);
+export const TrashIconOpen = ({ size = 16, style, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 36 36" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}>
+    {/* lid, rotated open */}
+    <g transform="rotate(-30, 18, 7)">
+      <line x1="4"  y1="7" x2="32" y2="7" />
+      <line x1="10" y1="7" x2="10" y2="3" />
+      <line x1="26" y1="7" x2="26" y2="3" />
+      <line x1="10" y1="3" x2="26" y2="3" />
+    </g>
+    {/* body */}
+    <path d="M6 10 L8 30 Q8 32 10 32 L26 32 Q28 32 28 30 L30 10Z" />
+    {/* inner lines */}
+    <line x1="14" y1="15" x2="14" y2="27" strokeWidth="1.5" opacity="0.7" />
+    <line x1="18" y1="15" x2="18" y2="27" strokeWidth="1.5" opacity="0.7" />
+    <line x1="22" y1="15" x2="22" y2="27" strokeWidth="1.5" opacity="0.7" />
   </svg>
 );

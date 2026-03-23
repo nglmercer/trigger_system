@@ -674,9 +674,11 @@ textarea:focus {
   stroke-opacity: 0.6;
 }
 
-/* Edge hover */
-.react-flow__edge:hover .react-flow__edge-path {
-  stroke-width: 3;
+/* Edge hover - only on devices that support hover */
+@media (hover: hover) {
+  .react-flow__edge:hover .react-flow__edge-path {
+    stroke-width: 3;
+  }
 }
 
 /* Edge colors by source node type - muted for hierarchy */
@@ -771,4 +773,39 @@ textarea:focus {
     opacity: 1;
     pointer-events: auto;
   }
+
+  /* Larger touch target for edge deletion on mobile */
+  .edge-delete-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
 }
+.edge-delete-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #cf222e;
+  color: white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+  transition: transform 0.15s ease, background 0.15s ease,
+              box-shadow 0.15s ease, outline 0.15s ease;
+  outline: none;
+}
+
+.edge-delete-btn:hover {
+  background: #E24B4A;
+  transform: scale(1.15);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+  outline: 3px solid rgba(240,149,149,0.45);
+  outline-offset: 2px;
+}
+
+.edge-delete-btn .icon-hover   { display: none; }
+.edge-delete-btn .icon-default { display: flex; }
+.edge-delete-btn:hover .icon-default { display: none; }
+.edge-delete-btn:hover .icon-hover   { display: flex; }

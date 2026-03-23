@@ -3,7 +3,7 @@ import { Handle, Position, useReactFlow } from '@xyflow/react';
 import type { EventNodeData } from '../types.ts';
 import { NodeField, NodeHandle } from '../constants';
 import { getFieldTooltip } from '../shared-constants';
-import { ClearIcon, SettingsIcon, StarIcon } from '../components/Icons';
+import { ClearIcon, SettingsIcon, StarIcon, CopyIcon } from '../components/Icons';
 import { TextInput, TextAreaInput, CheckboxInput, FormField, Collapsible } from '../components/inputs/FormFields.tsx';
 import { useTranslation } from 'react-i18next';
 
@@ -15,9 +15,19 @@ export default function EventNode({ id, data }: { id: string, data: EventNodeDat
     <div className="drawflow-node event">
       <div className="node-title node-title--event">
         <StarIcon /> {t('nodeDetails.eventTriggerTitle')}
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
-          <ClearIcon size={14} />
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+          <button 
+            className="node-delete" 
+            onClick={(e) => { e.stopPropagation(); data.onDuplicate(); }} 
+            title={t('nodeDetails.duplicateNode', 'Duplicate Node')}
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+          >
+            <CopyIcon size={14} />
+          </button>
+          <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
+            <ClearIcon size={14} />
+          </button>
+        </div>
       </div>
       <div className="node-body">
         {/* Required Fields - Always Visible */}

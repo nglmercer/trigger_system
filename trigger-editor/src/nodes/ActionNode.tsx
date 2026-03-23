@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
-import { ClearIcon, ActionIcon } from '../components/Icons';
+import { ClearIcon, ActionIcon, CopyIcon } from '../components/Icons';
 import { TextInput, FormField } from '../components/inputs/FormFields';
 import { ParamsBuilder } from '../components/ParamsBuilder';
 import { useTranslation } from 'react-i18next';
@@ -29,9 +29,19 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
       />
       <div className="node-title node-title--action">
         <span className="node-icon"><ActionIcon /></span> {t('nodeDetails.actionTitle')}
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
-          <ClearIcon size={14} />
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+          <button 
+            className="node-delete" 
+            onClick={(e) => { e.stopPropagation(); data.onDuplicate(); }} 
+            title={t('nodeDetails.duplicateNode', 'Duplicate Node')}
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+          >
+            <CopyIcon size={14} />
+          </button>
+          <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
+            <ClearIcon size={14} />
+          </button>
+        </div>
       </div>
       <div className="node-body">
         <FormField label={t('nodeDetails.actionType')}>

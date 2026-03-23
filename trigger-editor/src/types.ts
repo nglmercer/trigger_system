@@ -13,6 +13,7 @@ export type AppNode = Node<
 
 export interface AppNodeData {
   onChange: (val: any, field: string) => void;
+  onDuplicate: () => void;
   [key: string]: any;
 }
 

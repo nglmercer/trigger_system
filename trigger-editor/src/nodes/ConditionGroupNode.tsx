@@ -3,7 +3,7 @@ import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ConditionGroupNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
 import { CONDITION_GROUP_OPTIONS } from '../shared-constants';
-import { ClearIcon, ConditionGroupIcon } from '../components/Icons';
+import { ClearIcon, ConditionGroupIcon, CopyIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/inputs/FormFields';
 import { useTranslation } from 'react-i18next';
 
@@ -57,9 +57,19 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
       />
       <div className="node-title node-title--condition-group">
         <span className="node-icon"><ConditionGroupIcon /></span> {t('nodeDetails.conditionGroupTitle')}
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
-          <ClearIcon size={14} />
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+          <button 
+            className="node-delete" 
+            onClick={(e) => { e.stopPropagation(); data.onDuplicate(); }} 
+            title={t('nodeDetails.duplicateNode', 'Duplicate Node')}
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+          >
+            <CopyIcon size={14} />
+          </button>
+          <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
+            <ClearIcon size={14} />
+          </button>
+        </div>
       </div>
       <div className="node-body">
         <FormField 

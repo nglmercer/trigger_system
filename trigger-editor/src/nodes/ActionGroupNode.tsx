@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionGroupNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
-import { ClearIcon, ActionGroupIcon } from '../components/Icons';
+import { ClearIcon, ActionGroupIcon, CopyIcon } from '../components/Icons';
 import { SelectInput, FormField } from '../components/inputs/FormFields';
 import type { ExecutionMode } from '../../../src/types';
 import { useTranslation } from 'react-i18next';
@@ -85,7 +85,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
       {/* Always show output handles so users can connect actions from the start */}
       {showOutputHandles && (
         <>
-          {/* Action output - for chaining actions within the group */}
+          {/* Action_output - for chaining actions within the group */}
           <Handle
             type="source"
             position={Position.Right}
@@ -120,9 +120,19 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
       
       <div className="node-title node-title--action-group">
         <span className="node-icon"><ActionGroupIcon /></span> {t('nodeDetails.actionGroupTitle')}
-        <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
-          <ClearIcon size={14} />
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+          <button 
+            className="node-delete" 
+            onClick={(e) => { e.stopPropagation(); data.onDuplicate(); }} 
+            title={t('nodeDetails.duplicateNode', 'Duplicate Node')}
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+          >
+            <CopyIcon size={14} />
+          </button>
+          <button className="node-delete" onClick={() => deleteElements({ nodes: [{ id }] })} title={t('nodeDetails.deleteNode')}>
+            <ClearIcon size={14} />
+          </button>
+        </div>
       </div>
       
       <div className="node-body">
