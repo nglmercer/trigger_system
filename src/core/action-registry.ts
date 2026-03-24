@@ -1,7 +1,6 @@
 import { type as arkType, type Type } from "arktype";
-import type { TriggerAction, TriggerContext } from "../types";
+import type { TriggerAction, TriggerContext,Action } from "../types";
 import { ExpressionEngine } from "./expression-engine";
-
 export type ActionHandler = (action: TriggerAction, context: TriggerContext) => Promise<any> | any;
 
 /**
@@ -10,11 +9,9 @@ export type ActionHandler = (action: TriggerAction, context: TriggerContext) => 
 export const BuiltInAction = {
   LOG: "LOG",
   MATH: "MATH",
-  RESPONSE: "RESPONSE",
-  EXECUTE: "EXECUTE",
   FORWARD: "FORWARD",
+  FETCH: "FETCH",
   EMIT_EVENT: "EMIT_EVENT",
-  NOTIFY: "NOTIFY",
 } as const;
 
 export interface ActionDefinition {
@@ -23,7 +20,82 @@ export interface ActionDefinition {
   params?: Type; 
   returns?: Type;
 }
+const fetchFunction = async (action: Action, context: TriggerContext) => {
+    const urlTemplate = action.params?.url || "";
+    const url = typeof urlTemplate === 'string' ? ExpressionEngine.interpolate(urlTemplate, context) : String(urlTemplate);
+    const method = String(action.params?.method || "POST").toUpperCase();
 
+    const methodsWithBody = ['POST', 'PUT', 'PATCH'];
+    const hasBody = methodsWithBody.includes(method);
+
+    const { bodyContent, defaultContentType } = (() => {
+        if (!hasBody || action.params?.body == null) {
+            return {
+                bodyContent: hasBody ? JSON.stringify(context.data) : undefined,
+                defaultContentType: "application/json",
+            };
+        }
+
+        const raw = action.params.body;
+
+        if (typeof raw === 'string') {
+            const interpolated = ExpressionEngine.interpolate(raw, context);
+            // If the interpolated string looks like JSON, treat it as such
+            const looksLikeJson = interpolated.trimStart().startsWith('{') || interpolated.trimStart().startsWith('[');
+            return {
+                bodyContent: interpolated,
+                defaultContentType: looksLikeJson ? "application/json" : "text/plain",
+            };
+        }
+
+        // Object — serialize to JSON
+        return {
+            bodyContent: JSON.stringify(raw),
+            defaultContentType: "application/json",
+        };
+    })();
+
+    try {
+        const response = await fetch(url, {
+            method,
+            headers: {
+                "Content-Type": defaultContentType,
+                ...(typeof action.params?.headers === 'object' && action.params.headers !== null && !Array.isArray(action.params.headers) ? action.params.headers : {}),
+            },
+            ...(hasBody && bodyContent !== undefined ? { body: bodyContent } : {}),
+        });
+        return {
+            url,
+            method,
+            status: response.status,
+            headers: (() => {
+                const h: Record<string, string> = {};
+                response.headers.forEach((v, k) => h[k] = v);
+                return h;
+            })(),
+            body: await response.text(),
+        };
+    } catch (error) {
+        return { url, method, error: String(error) };
+    }
+}
+const fetchDefinition = {
+    description: "Forwards the current event data to a remote URL via HTTP",
+    params: arkType({
+        url: "string",
+        "method?": "'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'",
+        "headers?": "Record<string, string>",
+        "body?": "string | Record<string, unknown>",
+    }),
+    returns: arkType({
+        url: "string",
+        method: "string",
+        status: "number",
+        headers: "Record<string, string>",
+        body: "string"
+    }).or(arkType({ url: "string", method: "string", error: "string" })),
+    handler: fetchFunction
+}
 export class ActionRegistry {
   private static instance: ActionRegistry;
   private actions = new Map<string, ActionDefinition>();
@@ -98,153 +170,8 @@ export class ActionRegistry {
             return ExpressionEngine.evaluate(expression, context);
         }
     });
-
-    // Response Action
-    this.register(BuiltInAction.RESPONSE, {
-        description: "Constructs a standardized response object (useful for webhooks/APIs)",
-        params: arkType({ 
-            "content?": "string", 
-            "body?": "string", 
-            "statusCode?": "number", 
-            "headers?": "Record<string, string>" 
-        }),
-        returns: arkType({
-            statusCode: "number",
-            headers: "Record<string, string>",
-            body: "string"
-        }),
-        handler: (action, context) => {
-            const contentTemplate = action.params?.content || action.params?.body || "";
-            const content = typeof contentTemplate === 'string' ? ExpressionEngine.interpolate(contentTemplate, context) : String(contentTemplate);
-            return {
-                statusCode: action.params?.statusCode || 200,
-                headers: action.params?.headers || { "Content-Type": "application/json" },
-                body: content,
-            };
-        }
-    });
-
-    // Execute Action
-    this.register(BuiltInAction.EXECUTE, {
-        description: "Spawns a shell command and returns the output (Bun only)",
-        params: arkType({ 
-            "command?": "string", 
-            "content?": "string", 
-            "safe?": "boolean" 
-        }),
-        returns: arkType({
-            command: "string",
-            stdout: "string",
-            stderr: "string",
-            exitCode: "number"
-        }).or(arkType({ command: "string", error: "string" })),
-        handler: async (action, context) => {
-            const commandTemplate = action.params?.command || action.params?.content || "";
-            const command = typeof commandTemplate === 'string' ? ExpressionEngine.interpolate(commandTemplate, context) : String(commandTemplate);
-
-            if (!action.params?.safe) {
-                console.warn(`[Trigger] Executing unsafe command: ${command}`);
-            }
-
-            try {
-                if (typeof Bun === 'undefined') {
-                    return { command, error: "Bun is required for 'execute' action" };
-                }
-                const proc = Bun.spawn(command.split(" "), {
-                    stdout: "pipe",
-                    stderr: "pipe",
-                });
-                const [stdout, stderr] = await Promise.all([
-                    new Response(proc.stdout).text(),
-                    new Response(proc.stderr).text(),
-                ]);
-                return {
-                    command,
-                    stdout,
-                    stderr,
-                    exitCode: await proc.exited,
-                };
-            } catch (error) {
-                return { command, error: String(error) };
-            }
-        }
-    });
-
     // Forward Action
-    this.register(BuiltInAction.FORWARD, {
-        description: "Forwards the current event data to a remote URL via HTTP",
-        params: arkType({
-            url: "string",
-            "method?": "'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'",
-            "headers?": "Record<string, string>",
-            "body?": "string | Record<string, unknown>",
-        }),
-        returns: arkType({
-            url: "string",
-            method: "string",
-            status: "number",
-            headers: "Record<string, string>",
-            body: "string"
-        }).or(arkType({ url: "string", method: "string", error: "string" })),
-        handler: async (action, context) => {
-            const urlTemplate = action.params?.url || "";
-            const url = typeof urlTemplate === 'string' ? ExpressionEngine.interpolate(urlTemplate, context) : String(urlTemplate);
-            const method = String(action.params?.method || "POST").toUpperCase();
-
-            const methodsWithBody = ['POST', 'PUT', 'PATCH'];
-            const hasBody = methodsWithBody.includes(method);
-
-            const { bodyContent, defaultContentType } = (() => {
-                if (!hasBody || action.params?.body == null) {
-                    return {
-                        bodyContent: hasBody ? JSON.stringify(context.data) : undefined,
-                        defaultContentType: "application/json",
-                    };
-                }
-
-                const raw = action.params.body;
-
-                if (typeof raw === 'string') {
-                    const interpolated = ExpressionEngine.interpolate(raw, context);
-                    // If the interpolated string looks like JSON, treat it as such
-                    const looksLikeJson = interpolated.trimStart().startsWith('{') || interpolated.trimStart().startsWith('[');
-                    return {
-                        bodyContent: interpolated,
-                        defaultContentType: looksLikeJson ? "application/json" : "text/plain",
-                    };
-                }
-
-                // Object — serialize to JSON
-                return {
-                    bodyContent: JSON.stringify(raw),
-                    defaultContentType: "application/json",
-                };
-            })();
-
-            try {
-                const response = await fetch(url, {
-                    method,
-                    headers: {
-                        "Content-Type": defaultContentType,
-                        ...(typeof action.params?.headers === 'object' && action.params.headers !== null && !Array.isArray(action.params.headers) ? action.params.headers : {}),
-                    },
-                    ...(hasBody && bodyContent !== undefined ? { body: bodyContent } : {}),
-                });
-                return {
-                    url,
-                    method,
-                    status: response.status,
-                    headers: (() => {
-                        const h: Record<string, string> = {};
-                        response.headers.forEach((v, k) => h[k] = v);
-                        return h;
-                    })(),
-                    body: await response.text(),
-                };
-            } catch (error) {
-                return { url, method, error: String(error) };
-            }
-        }
-    });
+    this.register(BuiltInAction.FORWARD, fetchDefinition);
+    this.register(BuiltInAction.FETCH, fetchDefinition);
   }
 }

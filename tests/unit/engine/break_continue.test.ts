@@ -48,10 +48,10 @@ describe("Break functionality", () => {
             do: {
                 mode: "ALL",
                 actions: [
-                    { type: "STATE_SET", params: { key: "group1", value: "executed" } },
-                    { type: "STATE_SET", params: { key: "group2", value: "executed" } },
+                    { type: "vars", params: { op: "set", key: "group1", value: "executed" } },
+                    { type: "vars", params: { op: "set", key: "group2", value: "executed" } },
                     { break: true },
-                    { type: "STATE_SET", params: { key: "group3", value: "SHOULD_NOT_EXECUTE" } },
+                    { type: "vars", params: { op: "set", key: "group3", value: "SHOULD_NOT_EXECUTE" } },
                 ]
             }
         };
