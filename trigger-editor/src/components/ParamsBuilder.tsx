@@ -11,8 +11,15 @@ interface ParamsBuilderProps {
 }
 
 export function ParamsBuilder({ value, onChange }: ParamsBuilderProps) {
-  // Read-only external preview to show how many params we have
-  const externalParamsCount = React.useMemo(() => parseParams(value).length, [value]);
+  // Display only top-level key count for accuracy
+  const externalParamsCount = React.useMemo(() => {
+    try {
+      const parsed = JSON.parse(value);
+      return Object.keys(parsed || {}).length;
+    } catch {
+      return 0;
+    }
+  }, [value]);
   const { t } = useTranslation();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -80,12 +80,48 @@ export function ParamsModal() {
   };
 
   const updateEntry = (id: string, updates: Partial<ParamEntry>) => {
-    const newEntries = entries.map(e => e.id === id ? { ...e, ...updates } : e);
-    handleChange(newEntries);
+    setEntries(prevEntries => {
+      let newEntries = [...prevEntries];
+      const index = newEntries.findIndex(e => e.id === id);
+      if (index === -1) return prevEntries;
+      
+      const oldEntry = newEntries[index];
+      if (!oldEntry) return prevEntries;
+
+      // Handle renaming collision (but ONLY if they finished typing or manually edited validly)
+      // For now, let's keep the user's input as is to avoid jumping cursor issues.
+      const updatedEntry = { ...oldEntry, ...updates } as ParamEntry;
+      newEntries[index] = updatedEntry;
+
+      // Cascade key renaming for children (only if the key actually changed)
+      if (updates.key !== undefined && oldEntry.key && updates.key !== oldEntry.key) {
+        const oldPrefix = oldEntry.key + '.';
+        const newPrefix = updates.key + '.';
+        newEntries = newEntries.map(e => {
+          if (e.id !== id && e.key.startsWith(oldPrefix)) {
+            const childSubKey = e.key.substring(oldPrefix.length);
+            return { ...e, key: newPrefix + childSubKey };
+          }
+          return e;
+        });
+      }
+      
+      // Update local JSON preview without the full parseParams cycle to prevent duplications/ID resets
+      setLocalJson(entriesToJson(newEntries));
+      setJsonError(null);
+      return newEntries;
+    });
   };
 
   const removeEntry = (id: string) => {
-    handleChange(entries.filter(e => e.id !== id));
+    const entryToRemove = entries.find(e => e.id === id);
+    if (!entryToRemove) return;
+    
+    // Remove entry and all its children
+    const prefix = entryToRemove.key + '.';
+    const newEntries = entries.filter(e => e.id !== id && !e.key.startsWith(prefix));
+    
+    handleChange(newEntries);
   };
 
   const handleJsonUpdate = (newData: any) => {
