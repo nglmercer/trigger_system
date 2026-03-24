@@ -72,6 +72,54 @@ export function ImportList({ onImportsChange }: ImportListProps) {
     localStorage.setItem('trigger-editor-imports', JSON.stringify(newImports));
     onImportsChange?.(newImports);
   };
+
+  // Expose autocomplete methods to window
+  useEffect(() => {
+    window.triggerEditor = window.triggerEditor || {};
+
+    window.triggerEditor.addAutocompleteData = (alias: string, data: any, mode: ImportMode = 'path') => {
+      setImports(current => {
+        const index = current.findIndex(i => i.alias === alias);
+        const newEntry: ImportEntry = {
+          id: index >= 0 ? current[index]?.id || `ext-${Date.now()}` : `ext-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          alias,
+          mode,
+          data,
+          filename: 'External API',
+          lastUpdated: Date.now()
+        };
+        const next = index >= 0 
+          ? current.map((item, i) => i === index ? newEntry : item)
+          : [...current, newEntry];
+        
+        setTimeout(() => {
+          saveImports(next);
+          updateLSP(next);
+        }, 0);
+        return next;
+      });
+    };
+
+    window.triggerEditor.removeAutocompleteData = (alias: string) => {
+      setImports(current => {
+        const next = current.filter(i => i.alias !== alias);
+        if (next.length !== current.length) {
+          setTimeout(() => {
+            saveImports(next);
+            updateLSP(next);
+          }, 0);
+        }
+        return next;
+      });
+    };
+
+    return () => {
+      if (window.triggerEditor) {
+        delete window.triggerEditor.addAutocompleteData;
+        delete window.triggerEditor.removeAutocompleteData;
+      }
+    };
+  }, []);
   
   // Add new import
   const addImport = () => {

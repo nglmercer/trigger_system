@@ -72,6 +72,7 @@ declare global {
       clear?: () => void;
       addAutocompleteData?: (alias: string, data: any, mode?: 'path' | 'value') => void;
       removeAutocompleteData?: (alias: string) => void;
+      testEvent?: (eventName: string, data?: Record<string, any>, vars?: Record<string, any>, state?: Record<string, any>) => Promise<any>;
     };
   }
 }
