@@ -172,9 +172,6 @@ function createVariableInfoHover(variablePath: string, isTemplate: boolean): Hov
         } else if (variablePath === 'env') {
             description = 'Dynamic environment variables set during rule execution.';
             value = '{ ... }';
-        } else if (variablePath === 'helpers') {
-            description = 'Utility functions available in the context.';
-            value = '{ ... }';
         } else if (variablePath === 'Math') {
             description = 'Standard JavaScript Math functions.';
             value = 'Math Namespace';

@@ -122,7 +122,6 @@ export function getTemplateVariableCompletions(context: { prefix: string; inTemp
             { label: 'vars', kind: CompletionItemKind.Variable, detail: 'Global variables' },
             { label: 'env', kind: CompletionItemKind.Variable, detail: 'Dynamic variables' },
             { label: 'data', kind: CompletionItemKind.Variable, detail: 'Event data' },
-            { label: 'helpers', kind: CompletionItemKind.Variable, detail: 'Context helpers/functions' },
             { label: 'Math', kind: CompletionItemKind.Variable, detail: 'Mathematical functions (round, floor, etc.)' }
         ];
 
