@@ -36,6 +36,28 @@ import type { GraphParserOptions,GraphParserContext } from './graph/types';
 // Re-export for external use
 export type { GraphParserOptions, GraphParserContext } from './graph/types';
 
+export enum GraphParserErrorCode {
+  MISSING_EVENT_NODE = 'MISSING_EVENT_NODE',
+  MISSING_RULE_ID_OR_EVENT_NAME = 'MISSING_RULE_ID_OR_EVENT_NAME',
+  NO_EVENTS_FOUND = 'NO_EVENTS_FOUND',
+  RULE_ID_REQUIRED = 'RULE_ID_REQUIRED',
+  RULE_ON_EVENT_REQUIRED = 'RULE_ON_EVENT_REQUIRED',
+  RULE_DO_ACTION_REQUIRED = 'RULE_DO_ACTION_REQUIRED',
+  PARSE_FAILED = 'PARSE_FAILED'
+}
+
+export class GraphParserError extends Error {
+  public code: GraphParserErrorCode;
+  public eventId?: string;
+
+  constructor(message: string, code: GraphParserErrorCode, eventId?: string) {
+    super(message);
+    this.name = 'GraphParserError';
+    this.code = code;
+    this.eventId = eventId;
+  }
+}
+
 // ============================================================================
 // Factory Functions
 // ============================================================================
@@ -315,11 +337,11 @@ export function parseGraph(
   const extractEvent = options.extractEventData || defaultExtractEventData;
 
   const eventNode = nodes.find(n => isEvent(n));
-  if (!eventNode) throw new Error("Missing Event Trigger node");
+  if (!eventNode) throw new GraphParserError("Missing Event Trigger node", GraphParserErrorCode.MISSING_EVENT_NODE);
   
   const ed = extractEvent(eventNode);
   if (!ed.id || !ed.on) {
-    throw new Error("Rule ID and Event Name are required");
+    throw new GraphParserError("Rule ID and Event Name are required", GraphParserErrorCode.MISSING_RULE_ID_OR_EVENT_NAME, ed.id as string | undefined);
   }
 
   builder.id(ed.id as string).on(ed.on as string);
@@ -614,7 +636,7 @@ export function parseGraphToRules(
   edges: SDKGraphEdge[],
   options: GraphParserOptions = {},
   transformers?: GraphParserContext['transformers']
-): { rules: TriggerRule[]; errors: string[] } {
+): { rules: TriggerRule[]; errors: (string | GraphParserError)[] } {
   const isEvent = options.isEventNode || defaultIsEventNode;
   
   // Find all event nodes
@@ -623,12 +645,12 @@ export function parseGraphToRules(
   if (eventNodes.length === 0) {
     return { 
       rules: [], 
-      errors: ['No Event nodes found in the graph'] 
+      errors: [new GraphParserError('No Event nodes found in the graph', GraphParserErrorCode.NO_EVENTS_FOUND)] 
     };
   }
   
   const rules: TriggerRule[] = [];
-  const errors: string[] = [];
+  const errors: (string | GraphParserError)[] = [];
   
   // Process each event node as a separate rule
   for (const eventNode of eventNodes) {
@@ -663,9 +685,14 @@ export function parseGraphToRules(
       const rule = builder.build();
       rules.push(rule);
       
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`Failed to parse rule for event ${eventNode.id}: ${msg}`);
+    } catch (e: any) {
+      if (e instanceof GraphParserError) {
+         if (!e.eventId) e.eventId = eventNode.id;
+         errors.push(e);
+      } else {
+         const msg = e instanceof Error ? e.message : String(e);
+         errors.push(new GraphParserError(`Failed to parse rule for event ${eventNode.id}: ${msg}`, GraphParserErrorCode.PARSE_FAILED, eventNode.id));
+      }
     }
   }
   

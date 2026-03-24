@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 interface OutputPanelProps {
   yaml: string;
-  errors: string[];
+  errors: (string | any)[];
 }
 
 export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
@@ -27,71 +27,6 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
   const [hoveredVar, setHoveredVar] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   
-  // const getVarAtPoint = useCallback((e: React.MouseEvent) => {
-  //   let targetNode: Node | null = null;
-  //   let offsetInNode = 0;
-
-  //   // 1. Standard API (Modern browsers: Chrome 128+, Firefox 20+, Safari 17.4+)
-  //   if (typeof document.caretPositionFromPoint === 'function') {
-  //     const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
-  //     if (pos) {
-  //       targetNode = pos.offsetNode;
-  //       offsetInNode = pos.offset;
-  //     }
-  //   } 
-  //   // 2. Legacy/Deprecated API fallback (Older Chrome, Safari)
-  //   // else if (typeof (document as any).caretRangeFromPoint === 'function') {
-  //   //   const range = (document as any).caretRangeFromPoint(e.clientX, e.clientY);
-  //   //   if (range) {
-  //   //     targetNode = range.startContainer;
-  //   //     offsetInNode = range.startOffset;
-  //   //   }
-  //   // }
-
-  //   if (!targetNode || !preRef.current) return null;
-
-  //   const text = preRef.current.textContent || '';
-  //   let offset = 0;
-  //   const walker = document.createTreeWalker(preRef.current, NodeFilter.SHOW_TEXT);
-  //   let node;
-  //   while ((node = walker.nextNode())) {
-  //     if (node === targetNode) {
-  //       offset += offsetInNode;
-  //       break;
-  //     } else {
-  //       offset += (node.textContent || '').length;
-  //     }
-  //   }
-
-  //   const regex = /\$\{([a-zA-Z0-9_.]+)\}/g;
-  //   let m;
-  //   while ((m = regex.exec(text)) !== null) {
-  //     if (offset >= m.index && offset <= m.index + m[0].length) {
-  //       return m[1];
-  //     }
-  //   }
-  //   return null;
-  // }, []);
-
-  // const hoverTimer = useRef<any>(null);
-
-  // const handleMouseMove = useCallback((e: React.MouseEvent) => {
-  //   const x = e.clientX;
-  //   const y = e.clientY;
-    
-  //   if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    
-  //   const found = getVarAtPoint(e);
-  //   if (found && getHoverInfo(found) !== undefined) {
-  //     hoverTimer.current = setTimeout(() => {
-  //       setHoveredVar(found);
-  //       setTooltipPos({ x, y });
-  //     }, 500); // Consistent 500ms delay
-  //   } else {
-  //     setHoveredVar(null);
-  //   }
-  // }, [getVarAtPoint]);
-
   const startResizing = useCallback((e: React.MouseEvent | React.PointerEvent) => {
     e.preventDefault();
     widthRef.current = panelWidth;
@@ -450,7 +385,13 @@ export default function OutputPanel({ yaml, errors }: OutputPanelProps) {
               <div className="output-errors" style={{ padding: '15px 20px', background: 'rgba(207, 34, 46, 0.1)', borderBottom: '1px solid var(--border)' }}>
                 <strong style={{ color: '#cf222e', fontSize: '0.8rem', display: 'block', marginBottom: '8px' }}>{t('outputPanel.graphIssues')}</strong>
                 <ul style={{ margin: 0, paddingLeft: '18px', color: '#ff7b72', fontSize: '0.75rem' }}>
-                  {errors.map((err, i) => <li key={i}>{err}</li>)}
+                  {errors.map((err, i) => (
+                    <li key={i}>
+                      {typeof err === 'string' 
+                        ? err 
+                        : (err?.code ? t(`errors.${err.code}`, { defaultValue: err.message }) : err?.message || String(err))}
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}

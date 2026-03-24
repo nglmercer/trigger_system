@@ -15,7 +15,9 @@ import {
   type GraphParserOptions, 
   type GraphParserContext,
   parseGraph,
-  parseGraphToRules 
+  parseGraphToRules,
+  GraphParserError,
+  GraphParserErrorCode
 } from './graph-parser';
 import { optimizeCondition, optimizeAction, type OptimizeOptions } from './optimize';
 import type {
@@ -67,7 +69,7 @@ export class RuleBuilder {
     edges: SDKGraphEdge[], 
     options?: GraphParserOptions,
     transformers?: GraphParserContext['transformers']
-  ): { rules: TriggerRule[]; errors: string[] } {
+  ): { rules: TriggerRule[]; errors: (string | GraphParserError)[] } {
     return parseGraphToRules(nodes, edges, options, transformers);
   }
 
@@ -415,9 +417,9 @@ export class RuleBuilder {
    * Build the final TriggerRule.
    */
   build(): TriggerRule {
-    if (!this.rule.id) throw new Error("Rule ID is required");
-    if (!this.rule.on) throw new Error("Rule 'on' event is required");
-    if (!this.rule.do) throw new Error("Rule 'do' action is required");
+    if (!this.rule.id) throw new GraphParserError("Rule ID is required", GraphParserErrorCode.RULE_ID_REQUIRED);
+    if (!this.rule.on) throw new GraphParserError("Rule 'on' event is required", GraphParserErrorCode.RULE_ON_EVENT_REQUIRED, this.rule.id);
+    if (!this.rule.do) throw new GraphParserError("Rule 'do' action is required", GraphParserErrorCode.RULE_DO_ACTION_REQUIRED, this.rule.id);
 
     // Optimize structures before finalizing
     if (this.rule.if) {

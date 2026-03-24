@@ -4,10 +4,11 @@ import { RuleBuilder } from '../../../src/sdk/builder.ts';
 import { RuleExporter } from '../../../src/sdk/exporter.ts';
 import type { GraphParserContext, GraphParserOptions } from '../../../src/sdk/graph-parser.ts';
 import type { TriggerRule } from '../../../src/types.ts';
+import { GraphParserError, GraphParserErrorCode } from '../../../src/sdk/graph-parser.ts';
 
 export interface BuildResult {
   rules: TriggerRule[];
-  errors: string[];
+  errors: (string | GraphParserError)[];
   yaml: string;
 }
 
@@ -39,7 +40,7 @@ export function useRuleBuilder(nodes: Node[], edges: Edge[], options?: GraphPars
       }
       
       if (rules.length === 0) {
-        return { rules: [], errors: ['No rules found in graph'], yaml: '' };
+        return { rules: [], errors: [new GraphParserError('No rules found in graph', GraphParserErrorCode.NO_EVENTS_FOUND)], yaml: '' };
       }
       
       // Convert all rules to YAML
@@ -47,8 +48,11 @@ export function useRuleBuilder(nodes: Node[], edges: Edge[], options?: GraphPars
       
       return { rules, errors: [], yaml };
     } catch (e: unknown) {
+      if (e instanceof GraphParserError) {
+        return { rules: [], errors: [e], yaml: '' };
+      }
       const msg = e instanceof Error ? e.message : String(e);
-      return { rules: [], errors: [msg], yaml: '' };
+      return { rules: [], errors: [new GraphParserError(msg, GraphParserErrorCode.PARSE_FAILED)], yaml: '' };
     }
   }, [nodes, edges, options, transformers]);
 

@@ -177,6 +177,15 @@ const resources = {
         panKeys: "Space + Whell",
         zoom: "Zoom",
         zoomKeys: "Wheel / Cmd+Wheel",
+      },
+      errors: {
+        MISSING_EVENT_NODE: "Missing Event Trigger node",
+        MISSING_RULE_ID_OR_EVENT_NAME: "Rule ID and Event Name are required",
+        NO_EVENTS_FOUND: "No Event nodes found in the graph",
+        RULE_ID_REQUIRED: "Rule ID is required",
+        RULE_ON_EVENT_REQUIRED: "Rule 'on' event is required",
+        RULE_DO_ACTION_REQUIRED: "Rule 'do' action is required",
+        PARSE_FAILED: "Failed to parse rule"
       }
     }
   },
@@ -416,6 +425,15 @@ const resources = {
         panKeys: "Espacio + rueda",
         zoom: "Zoom",
         zoomKeys: "Rueda / Cmd+Rueda",
+      },
+      errors: {
+        MISSING_EVENT_NODE: "Falta el nodo de Evento (Trigger)",
+        MISSING_RULE_ID_OR_EVENT_NAME: "El ID de la Regla y el Nombre del Evento son obligatorios",
+        NO_EVENTS_FOUND: "No se encontraron nodos de Evento en el grafo",
+        RULE_ID_REQUIRED: "El ID de la Regla es obligatorio",
+        RULE_ON_EVENT_REQUIRED: "El evento 'on' de la regla es obligatorio",
+        RULE_DO_ACTION_REQUIRED: "La acción 'do' de la regla es obligatoria",
+        PARSE_FAILED: "Error al analizar la regla"
       }
     }
   }

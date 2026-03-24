@@ -61,3 +61,18 @@ export interface DoNodeData extends AppNodeData {
   // Can connect to Actions or ActionGroups
   branchType: 'do' | 'else';
 }
+
+declare global {
+  interface Window {
+    hostIntegration?: boolean;
+    triggerEditor?: {
+      importJson?: (json: string | object) => void;
+      importYaml?: (yaml: string) => void;
+      requestExport?: () => void;
+      clear?: () => void;
+      addAutocompleteData?: (alias: string, data: any, mode?: 'path' | 'value') => void;
+      removeAutocompleteData?: (alias: string) => void;
+    };
+  }
+}
+

@@ -83,12 +83,13 @@ function NodeEditor() {
   // Parent postMessage integration
   useEffect(() => {
     // Default hostIntegration to false if not set
-    if ((window as any).hostIntegration === undefined) {
-      (window as any).hostIntegration = false;
+    if (window.hostIntegration === undefined) {
+      window.hostIntegration = false;
     }
 
     // Expose methods to window for desktop/IPC integration
-    (window as any).triggerEditor = {
+    window.triggerEditor = {
+      ...(window.triggerEditor || {}),
       importJson: importJsonData,
       importYaml: importYamlData,
       requestExport: handleHostExport,
@@ -123,7 +124,12 @@ function NodeEditor() {
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
-      delete (window as any).triggerEditor;
+      if (window.triggerEditor) {
+        delete window.triggerEditor.importJson;
+        delete window.triggerEditor.importYaml;
+        delete window.triggerEditor.requestExport;
+        delete window.triggerEditor.clear;
+      }
     };
   }, [importYamlData, importJsonData, handleHostExport, clearAll]);
 
