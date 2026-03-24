@@ -13,11 +13,6 @@ describe('Extended Coverage - TriggerEngine', () => {
         const engine = new TriggerEngine([]);
         // Hit processEventSimple (base)
         await engine.processEventSimple('e', { x: 1 });
-        
-        // Hit getStateContext (base)
-        const anyEngine = engine as any;
-        anyEngine.getStateContext();
-
         // Hit interpolateDeep with various types (via Utils)
         EngineUtils.interpolateDeep(['a', '${data.x}'], { data: { x: 'b' } } as any);
         EngineUtils.interpolateDeep({ key: '${vars.y}' }, { vars: { y: 'val' } } as any);
@@ -37,7 +32,7 @@ describe('Extended Coverage - TriggerEngine', () => {
         const engine = new TriggerEngine([{ id: 'r', on: 'e', do: { log: 'hello' } as any }]);
         
         // When ActionRegistry is available, it uses the real log handler which returns { message: "hello" }
-        const results = await engine.processEvent({ event: 'e', data: {}, vars: {}, timestamp: Date.now(), state: {} });
+        const results = await engine.processEvent({ event: 'e', data: {}, vars: {}, timestamp: Date.now(), });
         expect(results[0]!.executedActions[0]!.type).toBe('log');
         expect(results[0]!.executedActions[0]!.result).toEqual({ message: 'hello' });
     });
@@ -57,7 +52,7 @@ describe('Extended Coverage - TriggerEngine', () => {
         }]);
         engine.registerAction('act', () => 'ok');
 
-        const results = await engine.processEvent({ event: 'e', data: {}, vars: {}, timestamp: Date.now(), state: {} });
+        const results = await engine.processEvent({ event: 'e', data: {}, vars: {}, timestamp: Date.now(), });
         expect(results[0]!.executedActions[0]!.result).toEqual({ skipped: ErrorMessages.PROBABILITY_FAILED });
         vi.useRealTimers();
     });
@@ -90,9 +85,8 @@ describe('Extended Coverage - Legacy & New RuleEngine', () => {
 
         // Directly hit overridden protected methods for coverage balance
         const anyEngine = engine as any;
-        anyEngine.getStateContext();
         anyEngine.shouldEvaluateAll();
-        await anyEngine.executeRuleActions([], { state: {}, data: {}, vars: {} });
-        await anyEngine.executeSingleAction({ type: 'log' }, { state: {}, data: {}, vars: {} });
+        await anyEngine.executeRuleActions([], {data: {}, vars: {} });
+        await anyEngine.executeSingleAction({ type: 'log' }, {data: {}, vars: {} });
     });
 });

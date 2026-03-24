@@ -17,7 +17,7 @@ The Agnostic Trigger System is an event-driven rule engine that allows you to de
 - **Triggers**: Events that fire when certain conditions are met
 - **Rules**: YAML definitions that specify when triggers should fire and what actions to take
 - **Actions**: Operations performed when a rule matches
-- **State**: Persistent data that can be modified and accessed across rule executions
+- **Data**: Event data that can be accessed and modified across rule executions
 
 ## Your First Rule
 

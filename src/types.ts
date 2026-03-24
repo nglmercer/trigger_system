@@ -152,7 +152,6 @@ export interface TriggerContext {
   data: Record<string, unknown>;
   id?: string;
   vars?: Record<string, unknown>;
-  state?: Record<string, unknown>;
   env?: Record<string, unknown>; // Dynamic variables for action flow
   helpers?: Record<string, HelperFunction>;
 }

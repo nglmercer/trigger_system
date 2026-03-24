@@ -141,8 +141,8 @@ export function getHover(document: TextDocument, position: Position): Hover | nu
                 }
             }
 
-            const isKnownRoot = value === 'data' || value === 'state' || value === 'env' || value === 'vars' || 
-                                value.startsWith('data.') || value.startsWith('state.') || value.startsWith('env.') || value.startsWith('vars.');
+            const isKnownRoot = value === 'data' || value === 'env' || value === 'vars' || 
+                                value.startsWith('data.') || value.startsWith('env.') || value.startsWith('vars.');
             
             if (isFieldPath || isKnownRoot) {
                 return createVariableInfoHover(value, false);
@@ -165,9 +165,6 @@ function createVariableInfoHover(variablePath: string, isTemplate: boolean): Hov
     if (value === undefined) {
         if (variablePath === 'data') {
             description = 'The payload data for the current event.';
-            value = '{ ... }';
-        } else if (variablePath === 'state') {
-            description = 'The current state of the rule engine.';
             value = '{ ... }';
         } else if (variablePath === 'vars') {
             description = 'Global variables available across all rules.';

@@ -170,7 +170,6 @@ interface TriggerContext {
   timestamp: number;
   data: Record<string, unknown>;
   vars?: Record<string, unknown>;
-  state?: Record<string, unknown>;
   id?: string;
 }
 ```

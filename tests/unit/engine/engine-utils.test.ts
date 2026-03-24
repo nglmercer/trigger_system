@@ -22,7 +22,7 @@ describe("EngineUtils - evaluateConditions", () => {
                 isAdmin: true,
                 threshold: 50
             },
-            state: {},
+           
             timestamp: Date.now()
         };
     });
@@ -208,7 +208,7 @@ describe("EngineUtils - interpolateParams", () => {
             event: "TEST",
             data: { name: "World" },
             vars: { prefix: "Hello" },
-            state: {},
+           
             timestamp: Date.now()
         };
         
@@ -225,7 +225,7 @@ describe("EngineUtils - interpolateParams", () => {
             event: "TEST",
             data: {},
             vars: { config: { timeout: 5000 } },
-            state: {},
+           
             timestamp: Date.now()
         };
         
@@ -246,7 +246,7 @@ describe("EngineUtils - interpolateParams", () => {
             event: "TEST",
             data: {},
             vars: { items: ["a", "b"] },
-            state: {},
+           
             timestamp: Date.now()
         };
         
@@ -268,7 +268,7 @@ describe("EngineUtils - processSingleActionBase", () => {
             event: "TEST",
             data: { value: 100 },
             vars: {},
-            state: {},
+           
             timestamp: Date.now()
         };
     });
@@ -333,7 +333,7 @@ describe("EngineUtils - interpolateDeep", () => {
             event: "TEST",
             data: { name: "World" },
             vars: {},
-            state: {},
+           
             timestamp: Date.now()
         };
         
@@ -346,7 +346,7 @@ describe("EngineUtils - interpolateDeep", () => {
             event: "TEST",
             data: {},
             vars: {},
-            state: {},
+           
             timestamp: Date.now()
         };
         
@@ -360,7 +360,7 @@ describe("EngineUtils - interpolateDeep", () => {
             event: "TEST",
             data: {},
             vars: { items: ["a", "b"] },
-            state: {},
+           
             timestamp: Date.now()
         };
         
@@ -374,7 +374,7 @@ describe("EngineUtils - interpolateDeep", () => {
             event: "TEST",
             data: {},
             vars: { value: 100 },
-            state: {},
+           
             timestamp: Date.now()
         };
         

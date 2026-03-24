@@ -74,14 +74,13 @@ export function checkTemplateVariable(line: string, character: number): { prefix
 }
 
 /**
- * Get completions for built-in variables (vars, state, env, etc.)
+ * Get completions for built-in variables (vars, env, etc.)
  */
 export function getBuiltInVariableCompletions(prefix: string): CompletionItem[] {
     const suggestions: CompletionItem[] = [];
 
     const builtIns = [
         { name: 'vars', detail: 'Global variables (configuration)', type: 'object' },
-        { name: 'state', detail: 'Global engine state', type: 'object' },
         { name: 'env', detail: 'Dynamic variables set by actions', type: 'object' },
     ];
 
@@ -120,7 +119,6 @@ export function getTemplateVariableCompletions(context: { prefix: string; inTemp
     // If we're at root level, suggest all available top-level variables
     if (!cleanPrefix || cleanPrefix === '') {
         const suggestions: CompletionItem[] = [
-            { label: 'state', kind: CompletionItemKind.Variable, detail: 'Global engine state' },
             { label: 'vars', kind: CompletionItemKind.Variable, detail: 'Global variables' },
             { label: 'env', kind: CompletionItemKind.Variable, detail: 'Dynamic variables' },
             { label: 'data', kind: CompletionItemKind.Variable, detail: 'Event data' },

@@ -85,11 +85,6 @@ export const ACTION_TYPES: CompletionItem[] = [
     { label: 'forward', kind: CompletionItemKind.EnumMember, detail: 'Forward event to URL' },
     { label: 'response', kind: CompletionItemKind.EnumMember, detail: 'Return HTTP response' },
     { label: 'notify', kind: CompletionItemKind.EnumMember, detail: 'Send a notification' },
-    { label: 'STATE_SET', kind: CompletionItemKind.EnumMember, detail: 'Save value to global state' },
-    { label: 'STATE_GET', kind: CompletionItemKind.EnumMember, detail: 'Read state and store in context.env' },
-    { label: 'STATE_INCREMENT', kind: CompletionItemKind.EnumMember, detail: 'Increment numeric state key' },
-    { label: 'STATE_DELETE', kind: CompletionItemKind.EnumMember, detail: 'Delete a state key' },
-    { label: 'STATE_OP', kind: CompletionItemKind.EnumMember, detail: 'Perform direct operations on state' },
     { label: 'EMIT_EVENT', kind: CompletionItemKind.EnumMember, detail: 'Trigger another event internally' },
 ];
 
@@ -149,22 +144,6 @@ export const PARAM_KEYS: Record<string, CompletionItem[]> = {
         { label: 'statusCode', kind: CompletionItemKind.Property, detail: '200, 404, etc.' },
         { label: 'contentType', kind: CompletionItemKind.Property, detail: 'application/json' },
     ],
-    'STATE_SET': [
-        { label: 'key', kind: CompletionItemKind.Property },
-        { label: 'value', kind: CompletionItemKind.Property },
-        { label: 'ttl', kind: CompletionItemKind.Property, detail: 'Time to live in ms' },
-    ],
-    'STATE_GET': [
-        { label: 'key', kind: CompletionItemKind.Property, detail: 'State key to read' },
-        { label: 'as', kind: CompletionItemKind.Property, detail: 'Variable name to store value in context.env' },
-    ],
-    'STATE_INCREMENT': [
-        { label: 'key', kind: CompletionItemKind.Property },
-        { label: 'amount', kind: CompletionItemKind.Property },
-    ],
-    'STATE_DELETE': [
-        { label: 'key', kind: CompletionItemKind.Property, detail: 'State key to delete' },
-    ],
     'EMIT_EVENT': [
         { label: 'event', kind: CompletionItemKind.Property },
         { label: 'data', kind: CompletionItemKind.Property },
@@ -201,13 +180,6 @@ export const SNIPPETS: CompletionItem[] = [
         insertText: '- if:\n    field: ${1:env.condition}\n    operator: ${2:EQ}\n    value: ${3:true}\n  then:\n    type: ${4:log}\n    params:\n      message: ${5:Condition met!}\n  else:\n    type: ${6:log}\n    params:\n      message: ${7:Condition not met!}',
         insertTextFormat: InsertTextFormat.Snippet,
         detail: 'Conditional action with if/then/else'
-    },
-    {
-        label: 'state_get_action',
-        kind: CompletionItemKind.Snippet,
-        insertText: 'type: STATE_GET\nparams:\n  key: ${1:stateKey}\n  as: ${2:variableName}',
-        insertTextFormat: InsertTextFormat.Snippet,
-        detail: 'Read state and store in variable'
     },
     {
         label: 'break_action',

@@ -1,6 +1,5 @@
 /**
  * RuleEngine - Extension of TriggerEngine with advanced features
- * Adds observability, persistent state, and integrated ActionRegistry
  */
 
 import type {
@@ -33,10 +32,8 @@ export class RuleEngine extends TriggerEngine {
 
   /**
    * Evaluates all rules against the provided context
-   * This is the main entry point for evaluating rules with state management
    */
   async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
-    // Inject vars proxy representing unified variables, state, and helpers
 
     // Initialize environment if not present
     if (!context.env) {

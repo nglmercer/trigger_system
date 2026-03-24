@@ -86,7 +86,7 @@ export const OPERATOR_DOCS: Record<string, { description: string; valueType: str
     GT: {
         description: 'Greater than (>)',
         valueType: 'Number or expression string',
-        examples: ['value: 100', 'value: "${state.count}"']
+        examples: ['value: 100', 'value: "${vars.count}"']
     },
     '>': {
         description: 'Greater than (same as GT)',
@@ -243,7 +243,7 @@ export const CONDITION_FIELD_DOCS: Record<string, { description: string; values?
 export const ACTION_FIELD_DOCS: Record<string, { description: string; values?: string }> = {
     type: {
         description: 'The type of action to perform',
-        values: 'String action type (e.g., `log`, `execute`, `notify`, `STATE_SET`, `EMIT_EVENT`)'
+        values: 'String action type (e.g., `log`, `execute`, `notify`, `FORWARD`, `EMIT_EVENT`)'
     },
     params: {
         description: 'Parameters for the action (varies by action type)',
@@ -293,9 +293,5 @@ export const ACTION_TYPE_DOCS: Record<string, { description: string; params: str
     notify: {
         description: 'Sends a notification to a specified target',
         params: ['message: string', 'target: string']
-    },
-    STATE_SET: {
-        description: 'Updates a value in the global state manager',
-        params: ['key: string', 'value: any']
     }
 };

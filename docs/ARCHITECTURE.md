@@ -103,7 +103,7 @@ Singleton registry that maps action types strings (e.g., "send_email") to handle
 
 ### 5. DependencyAnalyzer
 
-Static analysis tool to detect cycles and dependencies between rules (based on state keys read/written).
+Static analysis tool to detect cycles and dependencies between rules (based on data keys read/written).
 
 ### 6. triggerEmitter
 
@@ -121,7 +121,7 @@ Event Fired (processEvent)
 │  Context Setup  │
 │  - User Data    │
 │  - Vars      │
-│  - Current State│
+│  - Current Data│
 └────────┬────────┘
          │
     ▼

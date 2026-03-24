@@ -50,27 +50,6 @@ triggerEmitter.on('engine:rule_removed', (ruleId) => {
 });
 ```
 
-### State Change Monitoring
-
-```typescript
-// Monitor state changes
-triggerEmitter.on('state:changed', (key, oldValue, newValue) => {
-  console.log(`📝 State changed: ${key}`, {
-    oldValue,
-    newValue,
-    changed: oldValue !== newValue
-  });
-});
-
-triggerEmitter.on('state:cleared', (key) => {
-  console.log(`🧹 State cleared: ${key}`);
-});
-
-triggerEmitter.on('state:expired', (key) => {
-  console.log(`⏰ State expired: ${key}`);
-});
-```
-
 ## Structured Logging
 
 ### Winston Integration
@@ -227,7 +206,6 @@ class HealthChecker {
     const checks = {
       engine: this.checkEngine(),
       rules: await this.checkRules(),
-      state: await this.checkState(),
       actions: this.checkActions()
     };
     

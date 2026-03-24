@@ -13,13 +13,8 @@ export const BuiltInAction = {
   RESPONSE: "RESPONSE",
   EXECUTE: "EXECUTE",
   FORWARD: "FORWARD",
-  STATE_SET: "STATE_SET",
-  STATE_INCREMENT: "STATE_INCREMENT",
-  STATE_GET: "STATE_GET",
-  STATE_DELETE: "STATE_DELETE",
   EMIT_EVENT: "EMIT_EVENT",
   NOTIFY: "NOTIFY",
-  STATE_OP: "STATE_OP",
 } as const;
 
 export interface ActionDefinition {

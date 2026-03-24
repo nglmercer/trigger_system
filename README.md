@@ -36,7 +36,7 @@ _Technical details on classes, interfaces, and types._
 _How the system works under the hood._
 
 - System Diagram
-- Core Components (Loader, Engine, Expression, State)
+- Core Components (Loader, Engine, Expression)
 - Data Flow
 
 ### [🛠️ Developer Tools](./docs/developer_tools.md)

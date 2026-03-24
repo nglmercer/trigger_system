@@ -36,7 +36,6 @@ describe("Break functionality", () => {
             data: {},
             vars: {},
             timestamp: Date.now(),
-            state: {}
         });
 
         // Only first rule should execute
@@ -64,7 +63,6 @@ describe("Break functionality", () => {
             data: {},
             vars: {},
             timestamp: Date.now(),
-            state: {}
         });
 
         expect(results).toHaveLength(1);

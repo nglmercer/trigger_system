@@ -114,28 +114,6 @@ export class EngineUtils {
         }
     }
 
-    // 2. Handle 'run' block
-    if (normalizedAction.run) {
-        try {
-            const runResult = new Function(
-                "context", "state", "data", "vars", "env", "helpers",
-                `with(context) { ${normalizedAction.run} }`
-            )(context, context.state, context.data, context.vars, context.env, context.helpers);
-
-            return { 
-                shouldExecute: false, 
-                executedAction: { type: 'RUN', result: runResult, timestamp: Date.now() },
-                normalizedAction
-            };
-        } catch (error) {
-            return { 
-                shouldExecute: false, 
-                executedAction: { type: 'RUN', error: String(error), timestamp: Date.now() },
-                normalizedAction
-            };
-        }
-    }
-
     // 3. Handle Control Flow (Break/Continue)
     if (normalizedAction.break) {
         return { 

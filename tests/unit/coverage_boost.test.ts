@@ -11,7 +11,7 @@ describe('Coverage Boost - ActionRegistry', () => {
         data: { name: 'World' },
         vars: { val: 10 },
         timestamp: Date.now(),
-        state: {} as any
+
     };
 
     it('should handle case-insensitive registry lookups', () => {
@@ -136,7 +136,7 @@ describe('Coverage Boost - TriggerEngine', () => {
         ]);
         engine.registerAction('log', () => 'ok');
 
-        const context: TriggerContext = { event: 'test', data: {}, vars: {}, timestamp: Date.now(), state: {} as any };
+        const context: TriggerContext = { event: 'test', data: {}, vars: {}, timestamp: Date.now() };
         
         const res1 = await engine.processEvent(context);
         expect(res1.length).toBe(1);
@@ -150,7 +150,7 @@ describe('Coverage Boost - TriggerEngine', () => {
         engine.registerAction('a1', () => 'r1');
         engine.registerAction('a2', () => 'r2');
 
-        const context: TriggerContext = { event: 'test', data: { ok: true }, vars: {}, timestamp: Date.now(), state: {} as any };
+        const context: TriggerContext = { event: 'test', data: { ok: true }, vars: {}, timestamp: Date.now() };
         
         // Test executeNestedActions via conditional action
         const rule = {
@@ -196,7 +196,6 @@ describe('Coverage Boost - TriggerEngine', () => {
             data: { user: 'bob' }, 
             vars: { city: 'NY' }, 
             timestamp: Date.now(), 
-            state: {} as any 
         };
 
         const rule = {
@@ -226,7 +225,6 @@ describe('Coverage Boost - ExpressionEngine', () => {
         data: { val: 100 },
         vars: { score: 50 },
         timestamp: Date.now(),
-        state: {} as any
     };
 
     it('should handle errors in evaluate', () => {

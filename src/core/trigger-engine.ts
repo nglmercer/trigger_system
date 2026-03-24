@@ -75,13 +75,7 @@ export class TriggerEngine {
    */
   async processEvent(context: TriggerContext): Promise<TriggerResult[]> {
     const results: TriggerResult[] = [];
-
-    // Ensure state is at least an object
-    if (!context.state) {
-        context.state = this.getStateContext ? this.getStateContext() : {};
-    }
-
-    // Filter rules by event and enabled state
+    // Filter rules by event and enabled status
     const candidates = this._rules.filter(r => r.enabled !== false && r.on === context.event);
 
     for (const rule of candidates) {
@@ -141,7 +135,6 @@ export class TriggerEngine {
       data: data,
       vars: vars,
       timestamp: Date.now(),
-      state: this.getStateContext ? this.getStateContext() : {}
     };
     return this.processEvent(context);
   }
@@ -220,13 +213,6 @@ export class TriggerEngine {
    */
   protected shouldEvaluateAll(): boolean {
     return this._config?.globalSettings?.evaluateAll ?? true;
-  }
-
-  /**
-   * Gets the state context (can be overridden by subclasses)
-   */
-  protected getStateContext?(): Record<string, any> {
-    return {};
   }
 
   /**

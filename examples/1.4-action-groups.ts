@@ -65,10 +65,6 @@ export interface TriggerContext {
   id?: string;
   // Global variables (env vars, server state)
   vars?: Record<string, any>;
-  // Dynamic State (counters, flags, goals)
-  state?: Record<string, any>;
-  // Helper for computing derived values
-  helpers?: Record<string, Function>;
 }
 
 */

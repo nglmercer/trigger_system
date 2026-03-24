@@ -14,7 +14,6 @@ export const ContextKeys = {
   REQUEST: "request",
   COMPUTED: "computed",
   ENV: "env",
-  STATE: "state",
   EVENT: "event",
   TIMESTAMP: "timestamp",
 } as const;

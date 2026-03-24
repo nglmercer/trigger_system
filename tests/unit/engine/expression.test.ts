@@ -188,18 +188,6 @@ describe("Expression Engine Unit Tests", () => {
         expect(result).toBe("secret");
     });
 
-    // Test for lines 123-124: Simple single-level state access
-    test("Should access simple single-level state", () => {
-        const context = {
-            event: "test",
-            timestamp: 123456789,
-            state: { counter: 5 }
-        } as any;
-        
-        const result = ExpressionEngine.evaluate("state.counter", context);
-        expect(result).toBe(5);
-    });
-
     // Test for line 85-87: Error handling in interpolate returns original match
     test("Should return original match on interpolate error with invalid expression", () => {
         const context = {
@@ -360,7 +348,6 @@ describe("Expression Engine Unit Tests", () => {
         expect(ContextKeys.REQUEST).toBe("request");
         expect(ContextKeys.COMPUTED).toBe("computed");
         expect(ContextKeys.ENV).toBe("env");
-        expect(ContextKeys.STATE).toBe("state");
     });
 
     // --- 10. MathFunctions exports test ---
