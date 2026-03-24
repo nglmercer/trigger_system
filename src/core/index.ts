@@ -15,3 +15,7 @@ export * from "./action-registry";
 
 // Export with alias for gradual migration
 export { TriggerEngine as Engine } from "./trigger-engine";
+
+// Global reactive vars context (proxy-based in-memory store)
+export { vars, createVarsContext } from "./vars-context";
+export type { VarsStore, VarsAPI, VarsValue, VarsPrimitive, VarsObject, VarsCallback, MergeOptions } from "./vars-context";
