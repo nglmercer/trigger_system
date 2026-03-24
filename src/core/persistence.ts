@@ -1,7 +1,6 @@
 
 /**
  * Persistence Adapter Interface
- * Allows the StateManager to save/load state from external storage (Redis, SQLite, File, etc.)
  */
 export interface PersistenceAdapter {
   /**

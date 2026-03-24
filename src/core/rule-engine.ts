@@ -37,10 +37,6 @@ export class RuleEngine extends TriggerEngine {
    */
   async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
     // Inject vars proxy representing unified variables, state, and helpers
-    
-    // Ensure backwards compatibility properties are maintained inside the proxy logic
-    context.state = context.vars!.state as Record<string, unknown>;
-    context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
 
     // Initialize environment if not present
     if (!context.env) {
@@ -79,19 +75,11 @@ export class RuleEngine extends TriggerEngine {
         vars: vars,
         timestamp: Date.now(),
       };
-      
-      context.state = context.vars!.state as Record<string, unknown>;
-      context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
-      
+            
       return this.processEvent(context);
     }
 
     const context = contextOrType;
-
-    if (!context.vars || !(context.vars as any)._isProxy) {
-      context.state = context.vars!.state as Record<string, unknown>;
-      context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
-    }
 
     // Emit init event
     triggerEmitter.emit(EngineEvent.ENGINE_START, {

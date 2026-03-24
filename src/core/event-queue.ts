@@ -54,7 +54,6 @@ export class EventQueue {
         console.debug(`[EventQueue] Processing batch of ${batch.length} events.`);
 
         // Process sequentially to maintain state consistency
-        // (Or parallel if state not involved, but for "Stateful Triggers" sequential is safer)
         for (const context of batch) {
             try {
                 await this.engine.evaluateContext(context);

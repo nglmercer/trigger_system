@@ -12,8 +12,6 @@ export { RuleEngine } from "./rule-engine"; // Motor extendido con observabilida
 
 // Legacy exports for backward compatibility
 export * from "./action-registry";
-export * from "./context-adapter";
-export * from "./state-manager";
 
 // Export with alias for gradual migration
 export { TriggerEngine as Engine } from "./trigger-engine";

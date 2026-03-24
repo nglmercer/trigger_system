@@ -63,22 +63,6 @@ const multiActionRule = new RuleBuilder()
   .build();
 ```
 
-### Using State
-
-```typescript
-const statefulRule = new RuleBuilder()
-  .withId("user-streak-tracker")
-  .on("DAILY_LOGIN")
-  .if("state.consecutive_days", "LT", 7)
-  .do("state_increment", {
-    field: "consecutive_days",
-  })
-  .do("check_achievement", {
-    milestone: 7,
-  })
-  .build();
-```
-
 ## RuleExporter - YAML Generation
 
 Convert programmatically created rules to YAML format.

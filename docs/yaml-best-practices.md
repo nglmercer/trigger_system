@@ -342,16 +342,16 @@ Clearly indicate state dependencies:
 ```yaml
 # ✅ Good
 if:
-  field: "state.user.${data.userId}.loginCount"
+  field: "data.user.${data.userId}.loginCount"
   operator: "GTE"
   value: 5
 
 # ✅ Good - with fallback
 if:
-  field: "state.user.${data.userId}.loginCount"
+  field: "data.user.${data.userId}.loginCount"
   operator: "EXISTS"
 do:
-  - type: "state_set"
+  - type: "set"
     params:
       field: "user.${data.userId}.loginCount"
       value: 0
@@ -663,14 +663,6 @@ bun test -- rules/new.test.ts
     params:
       event: "CONDITION_C_D_MET"
 
-- id: "final-complex-rule"
-  on: "CONDITION_A_B_MET"
-  if:
-    field: "state.also_needs_c_d"
-    operator: "EQ"
-    value: true
-  do:
-    type: "final_action"
 ```
 
 ### ❌ Don't: Hardcode Values

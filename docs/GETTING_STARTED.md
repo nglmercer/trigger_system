@@ -132,6 +132,5 @@ do: # Required: Action to perform
 ## Next Steps
 
 - Learn about [SDK Usage](./SDK_GUIDE.md) for programmatic rule creation
-- Explore [Stateful Triggers](./STATEFUL_TRIGGERS.md) for advanced logic
 - Check out [Examples](./EXAMPLES_GUIDE.md) for common use cases
 - Read the [API Reference](./API_REFERENCE.md) for technical details

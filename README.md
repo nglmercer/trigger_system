@@ -1,6 +1,6 @@
 # Agnostic Trigger System
 
-An advanced, event-driven rule engine for creating dynamic, stateful logic in any TypeScript/Bun application.
+An advanced, event-driven rule engine for creating dynamic, conditional logic in any TypeScript/Bun application.
 
 ## 📚 Documentation Directory
 
@@ -39,14 +39,6 @@ _How the system works under the hood._
 - Core Components (Loader, Engine, Expression, State)
 - Data Flow
 
-### [⚡ Stateful Triggers](./docs/STATEFUL_TRIGGERS.md)
-
-_Guide to advanced logic like counters, sequences, and combos._
-
-- Accessing `state` in rules
-- Modifying state (`STATE_SET`, `STATE_INCREMENT`)
-- Examples (Repetition Goals, Combo Sequences)
-
 ### [🛠️ Developer Tools](./docs/developer_tools.md)
 
 _Tools to help you build and debug rules._
@@ -70,7 +62,6 @@ _Learn by doing with progressive tutorials._
 - 1.0 Basic Rule
 - 1.1 Multiple Conditions
 - 1.2 Advanced Operators
-- 1.3 Stateful Counters
 - 1.4 Action Groups
 - 2.0 SDK Usage
 - 2.1 Dynamic Rule Updates
@@ -161,5 +152,4 @@ do:
 - **Protocol Agnostic**: Works with HTTP, WebSockets, Game Events, CLI, etc.
 - **Hot Reloading**: Edit rules in YAML and see changes instantly.
 - **Type-Safe**: Built with TypeScript and ArkType for robust validation.
-- **Stateful**: Memories and counters allow for complex behaviors.
 - **Smart Validation**: LSP disabled by default to avoid false positives; activates via directives or rule heuristics.

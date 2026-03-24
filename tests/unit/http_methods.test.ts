@@ -7,7 +7,6 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { RuleEngine } from "../../src/core/rule-engine";
 import { ActionRegistry } from "../../src/core/action-registry";
-import { StateManager } from "../../src/core/state-manager";
 import { TriggerLoader } from "../../src/io/loader.node";
 import type { TriggerRule, TriggerContext } from "../../src/types";
 import path from "path";
@@ -15,7 +14,6 @@ import path from "path";
 describe("HTTP Methods (FORWARD Action) Tests with bun serve", () => {
     let engine: RuleEngine;
     const registry = ActionRegistry.getInstance();
-    const stateManager = StateManager.getInstance();
 
     // Server instance
     let server: ReturnType<typeof import("bun").serve>;
@@ -29,7 +27,6 @@ describe("HTTP Methods (FORWARD Action) Tests with bun serve", () => {
     }> = [];
 
     beforeEach(async () => {
-        await stateManager.clear();
         serverRequests = [];
 
         // Start a local HTTP server using bun serve

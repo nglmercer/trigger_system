@@ -176,24 +176,6 @@ Existence checks are handled via nullable checks or custom functions, or implici
 
 _Note: NOT_EXISTS / EXISTS operators are not in the core set but can be emulated or added via plugins._
 
-## 1.3 Stateful Counters
-
-Learn to use state to track information across multiple events.
-
-### Simple Counter
-
-```yaml
-- id: "login-attempt-counter"
-  on: "LOGIN_ATTEMPT"
-  do:
-    - type: "state_increment"
-      params:
-        key: "login_attempts.${data.userId}"
-    - type: "log_message"
-      params:
-        message: "Login attempt ${state.login_attempts.${data.userId}} for user ${data.userId}"
-```
-
 ## 1.4 Action Groups
 
 Execute multiple actions in sequence.
