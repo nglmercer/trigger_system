@@ -49,22 +49,12 @@ export class TriggerEngine {
 
     // Create an isolated vars context for this engine instance
     this._vars = createVarsContext();
-
-    // Seed vars from stateConfig if provided
-    if (!Array.isArray(rulesOrConfig) && rulesOrConfig.stateConfig?.state) {
-      const seed: Record<string, VarsValue> = {};
-      for (const [k, v] of Object.entries(rulesOrConfig.stateConfig.state)) {
-        if (typeof v !== 'function') seed[k] = v as VarsValue;
-      }
-      this._vars.merge(seed);
-    }
-
     // Ensure action registry is initialized with default values
     try {
       const { ActionRegistry } = require("./action-registry");
       ActionRegistry.getInstance(true);
-    } catch {
-      // Ignore if it cannot be loaded (e.g., limited environment)
+    } catch(e) {
+      console.log(e)
     }
 
     // Register built-in var-manipulation actions
@@ -221,13 +211,14 @@ export class TriggerEngine {
     if (context.vars && Object.keys(context.vars).length) {
       this._mergeWithCallbackRouting(context.vars, { overwrite: false });
     }
-    // ── Rebuild context.vars as a clean value-only snapshot ───────────────
+    // ── Rebuild context.vars with BOTH values AND callbacks ───────────────
     // Engine-level vars are the base; caller-supplied values take precedence.
+    // Use snapshotWithCallbacks() so callbacks like vars.last() are accessible in expressions
     const callerValues: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(context.vars ?? {})) {
       if (typeof v !== 'function') callerValues[k] = v;
     }
-    context.vars = { ...this._vars.snapshot(), ...callerValues };
+    context.vars = { ...this._vars.snapshotWithCallbacks(), ...callerValues };
 
     const results: TriggerResult[] = [];
     // Filter rules by event and enabled status
@@ -260,6 +251,13 @@ export class TriggerEngine {
 
         // Update cooldown
         this.lastExecution.set(rule.id, Date.now());
+
+        // ── Sync context.vars with engine vars after rule execution ──
+        // This ensures that vars changes (e.g., vars.lastitem) are visible to subsequent rules
+        const updatedVars = this._vars.snapshotWithCallbacks();
+        for (const [k, v] of Object.entries(updatedVars)) {
+          context.vars[k] = v;
+        }
 
         results.push({
           ruleId: rule.id,

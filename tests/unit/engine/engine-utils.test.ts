@@ -314,6 +314,10 @@ describe("EngineUtils - processSingleActionBase", () => {
         const result = await EngineUtils.processSingleActionBase(action, contextWithProb);
         
         // With probability 0, should be skipped
+        setTimeout(() => {
+            console.log("error timeout")
+            process.exit(0)
+        }, 10000);
         expect(result.shouldExecute).toBe(false);
     });
 

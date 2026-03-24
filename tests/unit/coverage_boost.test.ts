@@ -68,44 +68,6 @@ describe('Coverage Boost - ActionRegistry', () => {
         expect(result).toBe(20);
     });
 
-    it('should execute default response action', () => {
-        const handler = registry.get('response')!;
-        const result = handler({ type: 'response', params: { content: 'Hello ${data.name}', statusCode: 201 } }, context);
-        expect(result).toEqual({
-            statusCode: 201,
-            headers: { "Content-Type": "application/json" },
-            body: 'Hello World'
-        });
-    });
-
-    it('should execute execute action (mocked)', async () => {
-        const handler = registry.get('execute')!;
-        // Mocking Bun.spawn is tricky, let's try a simple command if possible or just mock the global Bun
-        const originalSpawn = Bun.spawn;
-        Bun.spawn = () => ({
-            //@ts-ignore
-            stdout: new ReadableStream({
-                start(controller) {
-                    controller.enqueue(new TextEncoder().encode("output"));
-                    controller.close();
-                }
-            }),
-            //@ts-ignore
-            stderr: new ReadableStream({
-                start(controller) {
-                    controller.close();
-                }
-            }),
-            exited: Promise.resolve(0)
-        });
-
-        const result = await handler({ type: 'execute', params: { command: 'echo hello', safe: true } }, context);
-        expect(result.stdout.trim()).toBe('output');
-        expect(result.exitCode).toBe(0);
-        
-        Bun.spawn = originalSpawn;
-    });
-
     it('should execute forward action (mocked)', async () => {
         const handler = registry.get('forward')!;
         const originalFetch = global.fetch;

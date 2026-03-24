@@ -108,6 +108,15 @@ export interface VarsAPI {
   snapshotCallbacks(): Record<string, VarsCallback>;
 
   /**
+   * Shallow copy of both values AND callbacks combined.
+   * Useful for building context where callbacks need to be accessible in expressions.
+   * @example
+   * const varsForContext = vars.snapshotWithCallbacks();
+   * // varsForContext includes both values and callbacks
+   */
+  snapshotWithCallbacks(): Record<string, unknown>;
+
+  /**
    * Reset value store (and optionally the callback store) to a new initial state.
    * By default callbacks are preserved unless resetCallbacks is true.
    */
@@ -138,14 +147,14 @@ const API_KEYS = new Set<string>([
   "get", "getCallback",
   "call", "interpolate",
   "increment", "decrement",
-  "snapshot", "snapshotCallbacks",
+  "snapshot", "snapshotCallbacks", "snapshotWithCallbacks",
   "reset", "keys", "callbackKeys",
   "toContext",
 ]);
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
-function createVarsContext(): VarsStore & VarsAPI {
+export const createVarsContext = (): VarsStore & VarsAPI => {
   // Only non-function values live here
   const _values: Record<string, VarsValue> = Object.create(null);
   // Only functions live here
@@ -167,11 +176,18 @@ function createVarsContext(): VarsStore & VarsAPI {
 
   /** Build a minimal TriggerContext that ExpressionEngine can work with */
   function buildContext(overrides?: Partial<TriggerContext>): TriggerContext {
+    // Include both values AND callbacks in vars so expressions like ${vars.last()} work
+    const varsSnapshot: Record<string, unknown> = { ..._values };
+    // Add callbacks to the snapshot so they're accessible in expressions
+    for (const [key, fn] of Object.entries(_callbacks)) {
+      varsSnapshot[key] = fn;
+    }
+    
     return {
       event: overrides?.event ?? "",
       timestamp: overrides?.timestamp ?? Date.now(),
       data: overrides?.data ?? {},
-      vars: { ..._values } as Record<string, unknown>,
+      vars: varsSnapshot,
       env: overrides?.env,
       id: overrides?.id,
     };
@@ -294,6 +310,14 @@ function createVarsContext(): VarsStore & VarsAPI {
       return { ..._callbacks };
     },
 
+    snapshotWithCallbacks(): Record<string, unknown> {
+      const combined: Record<string, unknown> = { ..._values };
+      for (const [key, fn] of Object.entries(_callbacks)) {
+        combined[key] = fn;
+      }
+      return combined;
+    },
+
     // ── reset ───────────────────────────────────────────────────────────
     reset(initial: VarsStore = {}, resetCallbacks = false): void {
       for (const k of Object.keys(_values))   delete _values[k];
@@ -413,7 +437,4 @@ function createVarsContext(): VarsStore & VarsAPI {
  * const ctx = vars.toContext({ event: 'tick', data: payload });
  * EngineUtils.evaluateConditions(rule.if, ctx);
  */
-export const vars: VarsStore & VarsAPI = createVarsContext();
-
-/** Create an isolated instance (per-engine scope, per-test isolation, etc.) */
-export { createVarsContext };
+export const vars = createVarsContext();

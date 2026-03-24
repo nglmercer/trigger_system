@@ -184,15 +184,9 @@ export interface StateDefinition {
   lifecycle?: StateLifecycle;
 }
 
-export interface GlobalStateConfig {
-  namespace?: string;
-  state?: Record<string, unknown | StateDefinition>;
-}
-
 export interface RuleEngineConfig {
   rules: TriggerRule[];
   globalSettings: GlobalSettings;
-  stateConfig?: GlobalStateConfig;
 }
 
 // --- Rule Update Events ---
