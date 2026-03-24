@@ -19,6 +19,7 @@ import { loadImports } from '../lsp/engine.ts';
 import type { ImportConfig, ImportMode, LSPContext } from '../lsp/types.ts';
 import { JsonPreview } from './JsonPreview.tsx';
 import { FetchModal } from './FetchModal.tsx';
+import { TestEventModal } from './TestEventModal.tsx';
 import { getDataSummary, fetchData } from '../utils/getData.ts';
 import { useTranslation } from 'react-i18next';
 
@@ -49,6 +50,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
   const [expandedPreviews, setExpandedPreviews] = useState<Set<string>>(new Set());
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
+  const [testTarget, setTestTarget] = useState<ImportEntry | null>(null);
   const { success, error } = useAlert();
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement>>({});
   
@@ -554,6 +556,32 @@ export function ImportList({ onImportsChange }: ImportListProps) {
                     </button>
                   )}
                   
+                  {/* Execute/Test button */}
+                  {isLoaded && window.triggerEditor?.testEvent && (
+                    <button
+                      onClick={() => setTestTarget(imp)}
+                      title={t('importList.testSimulationTitle', 'Simulate engine with this data payload')}
+                      style={{
+                        padding: '0.4rem',
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        border: '1px solid rgba(34, 197, 94, 0.2)',
+                        borderRadius: '8px',
+                        color: '#22c55e',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'rgba(34, 197, 94, 0.1)'}
+                    >
+                      ▶ {t('importList.runTest', 'Test')}
+                    </button>
+                  )}
+                  
                   <select
                     value={imp.mode}
                     onChange={(e) => updateImport(imp.id, { mode: e.target.value as ImportMode })}
@@ -730,6 +758,12 @@ export function ImportList({ onImportsChange }: ImportListProps) {
         isOpen={isFetchModalOpen} 
         onClose={() => setIsFetchModalOpen(false)} 
         onFetch={handleFetchData} 
+      />
+
+      <TestEventModal
+        isOpen={!!testTarget}
+        onClose={() => setTestTarget(null)}
+        importEntry={testTarget}
       />
     </div>
   );

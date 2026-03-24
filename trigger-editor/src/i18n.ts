@@ -110,7 +110,10 @@ const resources = {
         alias: "ALIAS",
         noFile: "No file loaded",
         referenceKey: "Reference key",
-        insertsValues: "Inserts values (1, true, \"foo\")"
+        insertsValues: "Inserts values (1, true, \"foo\")",
+        runningTest: "Simulating execution...",
+        testSimulationTitle: "Simulate engine with this data payload",
+        runTest: "Test"
       },
       nodeHints: {
         condGroupAndOrHint: "AND: All conditions must match. OR: Any condition can match.",
@@ -297,7 +300,10 @@ const resources = {
         alias: "ALIAS",
         noFile: "Ningún archivo cargado",
         referenceKey: "La referencia de la clave",
-        insertsValues: "Inserta valores (1, true, 'foo')"
+        insertsValues: "Inserta valores (1, true, 'foo')",
+        runningTest: "Simulando ejecución...",
+        testSimulationTitle: "Simular motor con estos datos",
+        runTest: "Testear"
       },
       nodeHints: {
         condGroupAndOrHint: "AND: Todas las condiciones deben cumplirse. OR: Cualquier condición puede cumplirse.",

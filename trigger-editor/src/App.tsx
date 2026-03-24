@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useIsMobile } from './hooks/useMediaQuery.ts';
 import {
   ReactFlow,
@@ -32,6 +32,7 @@ import type { AppNode } from './types.ts';
 import { loadImports } from './lsp/engine.ts';
 import type { ImportConfig } from './lsp/types.ts';
 import { getSharedDataFromUrl, clearShareDataFromUrl } from './utils/exportImport.ts';
+import { TriggerEngine } from '../../src/core/trigger-engine.ts';
 
 // Node types are now imported from ./nodes/index.ts
 
@@ -80,6 +81,15 @@ function NodeEditor() {
     success
   );
 
+  const buildRule = useRuleBuilder(nodes, edges);
+  const { rules, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
+
+  // Maintain a live ref to the rules for testing decoupled from UI re-renders
+  const currentRules = useRef(rules);
+  useEffect(() => {
+    currentRules.current = rules;
+  }, [rules]);
+
   // Parent postMessage integration
   useEffect(() => {
     // Default hostIntegration to false if not set
@@ -94,6 +104,23 @@ function NodeEditor() {
       importYaml: importYamlData,
       requestExport: handleHostExport,
       clear: clearAll,
+      testEvent: async (eventName: string, data = {}, vars = {}, state = {}) => {
+        // Run TriggerEngine simulation using the ONLY the active editing rules
+        const engine = new TriggerEngine(currentRules.current);
+        const context = {
+          event: eventName,
+          data,
+          vars,
+          state,
+          timestamp: Date.now()
+        };
+        try {
+          return await engine.processEvent(context);
+        } catch (err) {
+          console.error('[TriggerEngine Simulation] Error:', err);
+          return { error: String(err) };
+        }
+      }
     };
 
     const events = {
@@ -129,6 +156,7 @@ function NodeEditor() {
         delete window.triggerEditor.importYaml;
         delete window.triggerEditor.requestExport;
         delete window.triggerEditor.clear;
+        delete window.triggerEditor.testEvent;
       }
     };
   }, [importYamlData, importJsonData, handleHostExport, clearAll]);
@@ -167,10 +195,7 @@ function NodeEditor() {
     }
   }, [loadSharedData, clearSharedData, setGraph]);
 
-  const buildRule = useRuleBuilder(nodes, edges);
-  
-  // Compute rules, yaml and errors in real-time
-  const { rules, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
+  // (Moved rules computation above for testEvent referencing)
 
   // Screen to flow position hook
   const { screenToFlowPosition } = useReactFlow();

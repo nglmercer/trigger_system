@@ -11,7 +11,8 @@ import type {
   Action,
   ActionGroup,
   ExecutedAction,
-  ActionParams
+  ActionParams,
+  HelperFunction
 } from "../types";
 
 import { TriggerEngine } from "./trigger-engine";
@@ -38,10 +39,12 @@ export class RuleEngine extends TriggerEngine {
    * This is the main entry point for evaluating rules with state management
    */
   async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
-    // Inject current state proxy into context for direct manipulation
-    if (!context.state) {
-      context.state = this.stateManager.getLiveProxy();
-    }
+    // Inject vars proxy representing unified variables, state, and helpers
+    context.vars = this.stateManager.getVarsProxy(context.vars, context.helpers);
+    
+    // Ensure backwards compatibility properties are maintained inside the proxy logic
+    context.state = context.vars!.state as Record<string, unknown>;
+    context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
 
     // Apply state configuration if present
     if (this._config?.stateConfig) {
@@ -84,15 +87,22 @@ export class RuleEngine extends TriggerEngine {
         data: data,
         vars: vars,
         timestamp: Date.now(),
-        state: this.stateManager.getLiveProxy()
       };
+      
+      context.vars = this.stateManager.getVarsProxy(context.vars, undefined);
+      context.state = context.vars!.state as Record<string, unknown>;
+      context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
+      
       return this.processEvent(context);
     }
 
     const context = contextOrType;
 
-    // Inject state from manager
-    context.state = this.stateManager.getLiveProxy();
+    if (!context.vars || !(context.vars as any)._isProxy) {
+      context.vars = this.stateManager.getVarsProxy(context.vars, context.helpers);
+      context.state = context.vars!.state as Record<string, unknown>;
+      context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
+    }
 
     // Apply state configuration if it exists
     if (this._config?.stateConfig) {
@@ -119,10 +129,10 @@ export class RuleEngine extends TriggerEngine {
   }
 
   /**
-   * Overrides getStateContext to use StateManager
+   * Overrides getStateContext to use StateManager's proxy directly
    */
   protected override getStateContext(): Record<string, any> {
-    return this.stateManager.getLiveProxy();
+    return this.stateManager.getVarsProxy().state;
   }
   
   get ActionRegistry(): ActionRegistry {

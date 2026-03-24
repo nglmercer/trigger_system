@@ -14,7 +14,7 @@ describe('Extended Coverage - StateManager', () => {
     beforeEach(() => {
         stateManager = StateManager.getInstance();
         // Reset state for each test if possible
-        (stateManager as any).state = {};
+        (stateManager as any).vars = { state: {}, helpers: {} };
     });
 
     it('should allow setting a custom persistence adapter', () => {
@@ -98,7 +98,7 @@ describe('Extended Coverage - StateManager', () => {
         await stateManager.set('inventory', { items: [] });
         
         const proxy = stateManager.getLiveProxy();
-        proxy.inventory.items.push('sword');
+        proxy.state.inventory.items.push('sword');
         const inventory = stateManager.get('inventory') as { items?: string[] };
         expect(inventory?.items).toContain('sword');
         expect(mockPersistence.saveState).toHaveBeenCalledWith('inventory', expect.anything());
@@ -129,7 +129,7 @@ describe('Extended Coverage - StateManager', () => {
         };
         stateManager.setPersistence(mockPersistence);
         const proxy = stateManager.getLiveProxy();
-        proxy.test = 123; // Hits set
+        proxy.state.test = 123; // Hits set on vars.state
         expect(stateManager.get('test')).toBe(123);
         expect(mockPersistence.saveState).toHaveBeenCalled();
     });

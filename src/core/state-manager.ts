@@ -1,20 +1,22 @@
 
 import { type PersistenceAdapter, InMemoryPersistence } from "./persistence";
-import type { GlobalStateConfig, StateDefinition } from "../types";
+import type { GlobalStateConfig, StateDefinition, HelperFunction } from "../types";
 
 /**
  * State Manager
- * Handles persistent state across rule executions.
- * Allows for "Stateful Triggers" like counters, sequences, and goals.
- * Now supports nested objects and live proxy for direct manipulation.
+ * Handles persistent state across rule executions and manages the global `vars` proxy.
+ * `vars` acts as the single namespace containing `state`, `helpers`, and variables.
  */
 export class StateManager {
   private static instance: StateManager;
-  private state: Record<string, any>;
+  private vars: Record<string, any>;
   private persistence: PersistenceAdapter;
 
   private constructor() {
-    this.state = {};
+    this.vars = {
+        state: {},
+        helpers: {}
+    };
     this.persistence = new InMemoryPersistence();
   }
 
@@ -39,35 +41,55 @@ export class StateManager {
       const loaded = await this.persistence.loadState();
       // Handle Map if coming from older persistence or standard object
       if (loaded instanceof Map) {
-          this.state = Object.fromEntries(loaded);
+          this.vars.state = Object.fromEntries(loaded);
       } else {
-          this.state = loaded || {};
+          this.vars.state = loaded || {};
       }
-      console.log(`[StateManager] Initialized with ${Object.keys(this.state).length} root keys.`);
+      console.log(`[StateManager] Initialized with ${Object.keys(this.vars.state).length} root state keys.`);
+  }
+
+  /**
+   * Merges objects or function records into the vars space.
+   */
+  mergeElements(elements: Record<string, any>) {
+      if (!elements) return;
+      for (const [key, value] of Object.entries(elements)) {
+          if (typeof value === 'function') {
+              this.vars.helpers[key] = value;
+              this.vars[key] = value;
+          } else if (key === 'state') {
+              Object.assign(this.vars.state, value);
+          } else if (key === 'helpers') {
+              Object.assign(this.vars.helpers, value);
+              Object.assign(this.vars, value);
+          } else {
+              this.vars[key] = value;
+          }
+      }
   }
 
   /**
    * Get a value from the state.
    */
   get(key: string): unknown {
-    return this.state[key];
+    return this.vars.state[key];
   }
 
   /**
    * Set a value in the state and persist it.
    */
   async set(key: string, value: unknown): Promise<void> {
-    this.state[key] = value;
+    this.vars.state[key] = value;
     await this.persistence.saveState(key, value);
   }
 
   /**
-   * Increment a numeric value explicitly.
+   * Increment a numeric value explicitly in state.
    */
   async increment(key: string, amount: number = 1): Promise<number> {
-    const current = this.state[key] || 0;
+    const current = this.vars.state[key] || 0;
     const newVal = Number(current) + amount;
-    this.state[key] = newVal;
+    this.vars.state[key] = newVal;
     await this.persistence.saveState(key, newVal);
     return newVal;
   }
@@ -77,8 +99,8 @@ export class StateManager {
   }
 
   async delete(key: string): Promise<boolean> {
-    if (key in this.state) {
-        delete this.state[key];
+    if (key in this.vars.state) {
+        delete this.vars.state[key];
         await this.persistence.deleteState(key);
         return true;
     }
@@ -86,7 +108,7 @@ export class StateManager {
   }
 
   async clear(): Promise<void> {
-    this.state = {};
+    this.vars.state = {};
     await this.persistence.clearState();
   }
 
@@ -99,13 +121,13 @@ export class StateManager {
       for (const [key, def] of Object.entries(config.state)) {
           // If it's a simple value, set it if not present
           if (typeof def !== 'object' || def === null || !('value' in def)) {
-              if (this.state[key] === undefined) {
+              if (this.vars.state[key] === undefined) {
                   await this.set(key, def);
               }
           } else {
               // It's a StateDefinition
               const stateDef = def as StateDefinition;
-              if (this.state[key] === undefined) {
+              if (this.vars.state[key] === undefined) {
                   await this.set(key, stateDef.value);
               }
 
@@ -139,48 +161,73 @@ export class StateManager {
   }
 
   /**
-   * Export state as a plain object (for Context injection).
+   * Export state as a plain object
    */
   getAll(): Record<string, unknown> {
-    return { ...this.state };
+    return { ...this.vars.state };
   }
 
   /**
-   * Returns a Proxy that automatically persists changes.
-   * Supports nested objects recursively.
+   * Returns a Proxy representing `vars`, which automatically persists changes to `vars.state`.
+   * Also merges initial variables and helpers into vars space.
    */
-  getLiveProxy(): any {
+  getVarsProxy(initialVars?: Record<string, unknown>, helpers?: Record<string, HelperFunction>): any {
+      if (initialVars) this.mergeElements(initialVars);
+      if (helpers) this.mergeElements(helpers);
+
       const self = this;
 
       function createRecursiveProxy(obj: any, path: string[] = []): any {
           return new Proxy(obj, {
               get(target, prop) {
-                  // Standard property access
-                  const val = target[prop as string];
+                  if (prop === '_isProxy') return true;
+                  if (typeof prop !== 'string') return target[prop];
+                  
+                  const val = target[prop];
 
-                  // If it's an object (but not null/array), wrap it in a proxy too
-                  if (val && typeof val === 'object' && !Array.isArray(val)) {
-                      return createRecursiveProxy(val, [...path, prop as string]);
+                  // Bind functions to main target to retain 'this' context if needed
+                  if (typeof val === 'function') {
+                      return val.bind(target);
                   }
 
-                  // Support for auto-creating missing nested objects if someone tries to access them?
-                  // For now, let's keep it simple and just return the value.
+                  // If it's a nested object, proxy it further
+                  if (val && typeof val === 'object' && !Array.isArray(val)) {
+                      return createRecursiveProxy(val, [...path, prop]);
+                  }
+
                   return val;
               },
               set(target, prop, value) {
                   if (typeof prop !== 'string') return false;
                   target[prop] = value;
 
-                  // Find the root key to persist
-                  const rootKey = path.length > 0 ? path[0] : prop;
-                  if (rootKey) {
-                      self.persistence.saveState(rootKey, self.state[rootKey]);
+                  // Find if we are modifying state
+                  // If path is ['state'], we are modifying vars.state direct children
+                  if (path[0] === 'state') {
+                      const rootKey = path.length > 1 ? path[1] : prop;
+                      if (rootKey) {
+                          self.persistence.saveState(rootKey, self.vars.state[rootKey]);
+                      }
+                  } else if (path.length === 0 && prop === 'state') {
+                      // Attempt to replace the whole state? Re-persist fields if any.
+                      const newState = value || {};
+                      for (const [k, v] of Object.entries(newState)) {
+                          self.persistence.saveState(k, v);
+                      }
                   }
+                  
                   return true;
               }
           });
       }
 
-      return createRecursiveProxy(this.state);
+      return createRecursiveProxy(this.vars);
+  }
+
+  /**
+   * Legacy method mapped to proxy vars
+   */
+  getLiveProxy(): any {
+      return this.getVarsProxy();
   }
 }
