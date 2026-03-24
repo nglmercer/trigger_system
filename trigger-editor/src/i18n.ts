@@ -113,7 +113,10 @@ const resources = {
         insertsValues: "Inserts values (1, true, \"foo\")",
         runningTest: "Simulating execution...",
         testSimulationTitle: "Simulate engine with this data payload",
-        runTest: "Test"
+        runTest: "Test",
+        dataSource: "Data Source",
+        usingElements: "Using {{count}} root elements from the payload.",
+        eventName: "Event Name"
       },
       nodeHints: {
         condGroupAndOrHint: "AND: All conditions must match. OR: Any condition can match.",
@@ -303,7 +306,10 @@ const resources = {
         insertsValues: "Inserta valores (1, true, 'foo')",
         runningTest: "Simulando ejecución...",
         testSimulationTitle: "Simular motor con estos datos",
-        runTest: "Testear"
+        runTest: "Testear",
+        dataSource: "Fuente de Datos",
+        usingElements: "Usando {{count}} elementos raíz del payload.",
+        eventName: "Nombre del Evento"
       },
       nodeHints: {
         condGroupAndOrHint: "AND: Todas las condiciones deben cumplirse. OR: Cualquier condición puede cumplirse.",

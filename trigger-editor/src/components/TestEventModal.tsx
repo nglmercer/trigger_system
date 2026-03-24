@@ -17,13 +17,15 @@ export function TestEventModal({ isOpen, onClose, importEntry }: TestEventModalP
   const { success, error } = useAlert();
   const [eventName, setEventName] = useState(importEntry?.alias || '');
   const [loading, setLoading] = useState(false);
-
+  const [count, setCount] = useState(0);
   useEffect(() => {
     if (isOpen && importEntry) {
       if (typeof importEntry.data.event === 'string') {
         setEventName(importEntry.data.event);
+        setCount(Object.keys(importEntry.data).length);
       } else {
-        setEventName(importEntry.alias || 'test_event');
+        setEventName(importEntry.filename || 'test_event');
+        setCount(Object.keys(importEntry.data).length);
       }
     }
   }, [isOpen, importEntry]);
@@ -68,16 +70,16 @@ export function TestEventModal({ isOpen, onClose, importEntry }: TestEventModalP
         
         <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-            Data Source: {importEntry.alias}
+            {t('importList.dataSource', 'Data Source')}: {importEntry.alias}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Using {Object.keys(importEntry.data).length} root elements from the payload.
+            {t('importList.usingElements', 'Using {count} root elements from the payload.', { count: count })}
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-            Event Name
+           {t('importList.eventName', 'Event Name')}
           </label>
           <input
             type="text"
