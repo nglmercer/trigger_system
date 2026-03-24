@@ -115,6 +115,38 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
         title={hasConditionChain ? 'Connect to next condition' : hasDoOutput || hasElseOutput ? 'DO/ELSE path configured' : 'Connect to DO/ELSE node, action, or next condition'}
       />
 
+      {/* Explicit THEN output handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={NodeHandle.THEN_OUTPUT}
+        className="node-output-handle"
+        style={{ 
+          background: 'var(--condition-color)', 
+          border: '2px solid var(--bg-color)', 
+          width: '12px', 
+          height: '12px',
+          top: '30%'
+        }}
+        title="Connect to DO (then) path"
+      />
+
+      {/* Explicit ELSE output handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={NodeHandle.ELSE_OUTPUT}
+        className="node-output-handle"
+        style={{ 
+          background: 'var(--condition-color)', 
+          border: '2px solid var(--bg-color)', 
+          width: '12px', 
+          height: '12px',
+          top: '70%'
+        }}
+        title="Connect to ELSE path"
+      />
+
     </div>
   );
 }

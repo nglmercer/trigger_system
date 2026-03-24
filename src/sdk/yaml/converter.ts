@@ -370,8 +370,8 @@ export function triggerRuleToNodes(
         
         let sourceHandle: string | null = null;
         if (lastCondNode === eventNode.id) sourceHandle = HandleId.EVENT_OUTPUT;
-        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.THEN_OUTPUT;
-        else sourceHandle = HandleId.CONDITION_OUTPUT;
+        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.ELSE_OUTPUT;
+        else sourceHandle = HandleId.ELSE_OUTPUT;
         
         edges.push(buildEdge(lastCondNode, elseNodeId, sourceHandle, HandleId.DO_INPUT, getEdgeId));
 
@@ -630,7 +630,7 @@ function processActions(
         } else if (sourceNodeForCond?.type === NodeType.CONDITION) {
           sourceHandleForCond = HandleId.CONDITION_OUTPUT;
         } else if (sourceNodeForCond?.type === NodeType.DO) {
-          sourceHandleForCond = HandleId.DO_OUTPUT;
+          sourceHandleForCond = HandleId.DO_CONDITION_OUTPUT;
         } else {
           sourceHandleForCond = HandleId.CONDITION_OUTPUT;
         }
@@ -740,9 +740,7 @@ function processActions(
           nodes.push(elseDoNode);
           
           // Connect Condition -> else-DO
-          const doSourceHandle: string = condNodeForPos?.type === NodeType.CONDITION_GROUP
-            ? HandleId.THEN_OUTPUT
-            : HandleId.CONDITION_OUTPUT;
+          const doSourceHandle: string = HandleId.ELSE_OUTPUT;
           edges.push(buildEdge(terminalCondNodeId, elseDoNodeId, doSourceHandle, HandleId.DO_INPUT, getEdgeId));
           
           const elseActions = Array.isArray(elseAction) ? elseAction : [elseAction];

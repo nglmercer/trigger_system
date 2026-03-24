@@ -131,18 +131,6 @@ export function getActionTypeOptions(): ActionTypeOption[] {
       params: ['key: string', 'value: any']
     },
     { 
-      value: 'STATE_OP', 
-      label: 'State Op', 
-      description: 'Performs direct operations on state using a script',
-      params: ['run: string']
-    },
-    { 
-      value: 'EMIT_EVENT', 
-      label: 'Emit Event', 
-      description: 'Emits a custom event that can trigger other rules',
-      params: ['event: string', 'data: object']
-    },
-    { 
       value: 'HTTP_REQUEST', 
       label: 'HTTP Request', 
       description: 'Makes an HTTP request to external service',
@@ -218,7 +206,6 @@ export const FIELD_TOOLTIPS: Record<string, string> = {
   conditions: 'Array of sub-conditions for AND/OR groups',
   type: 'The type of action to perform',
   params: 'Parameters for the action (varies by action type)',
-  run: 'Direct script execution block (JavaScript-like syntax)',
   delay: 'Delay in milliseconds before executing this action',
   probability: 'Probability of executing this action (0.0 to 1.0)',
   mode: 'Execution mode for action groups (ALL, SEQUENCE, EITHER)',

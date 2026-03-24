@@ -362,7 +362,6 @@ const resources = {
           conditions: "Arreglo de sub-condiciones para grupos AND/OR",
           type: "El tipo de acción a realizar",
           params: "Parámetros para la acción",
-          run: "Bloque de ejecución directa de script",
           delay: "Retraso en milisegundos antes de ejecutar",
           mode: "Modo de ejecución para grupos de acciones (ALL, SEQUENCE, EITHER)",
           then: "Acciones a ejecutar cuando la condición es VERDADERA",

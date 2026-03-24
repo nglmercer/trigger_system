@@ -182,7 +182,8 @@ export class ActionRegistry {
         params: arkType({
             url: "string",
             "method?": "'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'",
-            "headers?": "Record<string, string>"
+            "headers?": "Record<string, string>",
+            "body?": "string | Record<string, unknown>",
         }),
         returns: arkType({
             url: "string",
@@ -196,18 +197,44 @@ export class ActionRegistry {
             const url = typeof urlTemplate === 'string' ? ExpressionEngine.interpolate(urlTemplate, context) : String(urlTemplate);
             const method = String(action.params?.method || "POST").toUpperCase();
 
-            // Only send body for methods that support it
             const methodsWithBody = ['POST', 'PUT', 'PATCH'];
             const hasBody = methodsWithBody.includes(method);
+
+            const { bodyContent, defaultContentType } = (() => {
+                if (!hasBody || action.params?.body == null) {
+                    return {
+                        bodyContent: hasBody ? JSON.stringify(context.data) : undefined,
+                        defaultContentType: "application/json",
+                    };
+                }
+
+                const raw = action.params.body;
+
+                if (typeof raw === 'string') {
+                    const interpolated = ExpressionEngine.interpolate(raw, context);
+                    // If the interpolated string looks like JSON, treat it as such
+                    const looksLikeJson = interpolated.trimStart().startsWith('{') || interpolated.trimStart().startsWith('[');
+                    return {
+                        bodyContent: interpolated,
+                        defaultContentType: looksLikeJson ? "application/json" : "text/plain",
+                    };
+                }
+
+                // Object — serialize to JSON
+                return {
+                    bodyContent: JSON.stringify(raw),
+                    defaultContentType: "application/json",
+                };
+            })();
 
             try {
                 const response = await fetch(url, {
                     method,
                     headers: {
-                        "Content-Type": "application/json",
+                        "Content-Type": defaultContentType,
                         ...(typeof action.params?.headers === 'object' && action.params.headers !== null && !Array.isArray(action.params.headers) ? action.params.headers : {}),
                     },
-                    ...(hasBody ? { body: JSON.stringify(context.data) } : {}),
+                    ...(hasBody && bodyContent !== undefined ? { body: bodyContent } : {}),
                 });
                 return {
                     url,
@@ -292,49 +319,6 @@ export class ActionRegistry {
 
             const deleted = await StateManager.getInstance().delete(key);
             return { key, deleted };
-        }
-    });
-
-    this.register(BuiltInAction.EMIT_EVENT, {
-        description: "Emits a new event back into the system",
-        params: arkType({ event: "string", "data?": "object" }),
-        returns: arkType({ event: "string", payload: "object" }),
-        handler: (action, context) => {
-            return { 
-                event: String(action.params?.event || ""), 
-                payload: action.params?.data || {} 
-            };
-        }
-    });
-
-    this.register(BuiltInAction.NOTIFY, {
-        description: "Sends a notification to a specific target",
-        params: arkType({ 
-            "message?": "string", 
-            "content?": "string", 
-            "target?": "string" 
-        }),
-        returns: arkType({ target: "string", message: "string" }),
-        handler: (action, context) => {
-            const message = action.params?.message || action.params?.content || "Notification";
-            const target = action.params?.target || "default";
-            console.log(`[Notification] To: ${target}, Msg: ${message}`);
-            return { target, message };
-        }
-    });
-
-    this.register(BuiltInAction.STATE_OP, {
-        description: "Executes a custom JavaScript block with access to context and state",
-        params: arkType({ run: "string" }),
-        returns: arkType("unknown"),
-        handler: (action, context) => {
-            if (action.params?.run) {
-                return new Function(
-                    "context", "state", "data", "vars", "env", "helpers",
-                    `with(context) { ${action.params.run} }`
-                )(context, context.state, context.data, context.vars, context.env, context.helpers);
-            }
-            return { warning: "Missing 'run' param for STATE_OP" };
         }
     });
   }

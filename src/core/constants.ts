@@ -19,7 +19,6 @@ export const ControlFlow = {
     CONTINUE: "continue",
     MODE: "mode",
     ACTIONS: "actions",
-    RUN: "run",
     DELAY: "delay",
     PROBABILITY: "probability",
     PARAMS: "params",

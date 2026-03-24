@@ -291,15 +291,6 @@ describe("EngineUtils - processSingleActionBase", () => {
         expect(result.normalizedAction.params?.message).toBe("Hello");
     });
 
-    test("should handle run block execution", async () => {
-        const action = { run: "return data.value * 2" } as Action;
-        const result = await EngineUtils.processSingleActionBase(action, context);
-        
-        expect(result.shouldExecute).toBe(false);
-        expect(result.executedAction?.type).toBe("RUN");
-        expect(result.executedAction?.result).toBe(200);
-    });
-
     test("should handle break control flow", async () => {
         const action = { break: true } as Action;
         const result = await EngineUtils.processSingleActionBase(action, context);

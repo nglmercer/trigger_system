@@ -162,12 +162,6 @@ describe('Extended Coverage - TriggerEngine', () => {
         expect(removedListener).toHaveBeenCalled();
     });
 
-    it('should handle run block with error in TriggerEngine', async () => {
-        const engine = new TriggerEngine([{ id: 'r', on: 'e', do: { run: 'throw new Error("fail")' } }]);
-        const results = await engine.processEvent({ event: 'e', data: {}, vars: {}, timestamp: Date.now(), state: {} });
-        expect(results[0]!.executedActions[0]!.error).toBe('Error: fail');
-    });
-
     it('should handle shorthand syntax in TriggerEngine', async () => {
         const engine = new TriggerEngine([{ id: 'r', on: 'e', do: { log: 'hello' } as any }]);
         

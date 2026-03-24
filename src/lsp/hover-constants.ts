@@ -249,10 +249,6 @@ export const ACTION_FIELD_DOCS: Record<string, { description: string; values?: s
         description: 'Parameters for the action (varies by action type)',
         values: 'Object with action-specific parameters'
     },
-    run: {
-        description: 'Direct script execution block (JavaScript-like syntax)',
-        values: 'String block of code'
-    },
     delay: {
         description: 'Delay in milliseconds before executing this action',
         values: 'Non-negative integer (milliseconds)'
@@ -301,9 +297,5 @@ export const ACTION_TYPE_DOCS: Record<string, { description: string; params: str
     STATE_SET: {
         description: 'Updates a value in the global state manager',
         params: ['key: string', 'value: any']
-    },
-    STATE_OP: {
-        description: 'Performs direct operations on state using a script',
-        params: ['run: string']
     }
 };

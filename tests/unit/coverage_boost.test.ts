@@ -79,39 +79,19 @@ describe('Coverage Boost - ActionRegistry', () => {
         });
     });
 
-    it('should execute EMIT_EVENT action', () => {
-        const handler = registry.get('EMIT_EVENT')!;
-        const result = handler({ type: 'EMIT_EVENT', params: { event: 'custom_event', data: { foo: 'bar' } } }, context);
-        expect(result).toEqual({
-            event: 'custom_event',
-            payload: { foo: 'bar' }
-        });
-    });
-
-    it('should execute STATE_OP action', () => {
-        const handler = registry.get('STATE_OP')!;
-        context.env = { x: 5 };
-        const result = handler({ type: 'STATE_OP', params: { run: 'return env.x + 10' } }, context);
-        expect(result).toBe(15);
-    });
-
-    it('should execute notify action', () => {
-        const handler = registry.get('notify')!;
-        const result = handler({ type: 'notify', params: { message: 'hi', target: 'user1' } }, context);
-        expect(result).toEqual({ target: 'user1', message: 'hi' });
-    });
-
     it('should execute execute action (mocked)', async () => {
         const handler = registry.get('execute')!;
         // Mocking Bun.spawn is tricky, let's try a simple command if possible or just mock the global Bun
         const originalSpawn = Bun.spawn;
-        (Bun as any).spawn = () => ({
+        Bun.spawn = () => ({
+            //@ts-ignore
             stdout: new ReadableStream({
                 start(controller) {
                     controller.enqueue(new TextEncoder().encode("output"));
                     controller.close();
                 }
             }),
+            //@ts-ignore
             stderr: new ReadableStream({
                 start(controller) {
                     controller.close();
