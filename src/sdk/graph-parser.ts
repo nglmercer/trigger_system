@@ -86,8 +86,9 @@ function buildInlineConditional(
   const isCond = ctx.options.isCondNode || defaultIsCondNode;
   const isDo = defaultIsDoNode;
   
-  // Find condition connected via DO_CONDITION_OUTPUT
-  const conditionEdge = findEdgesBySource(ctx, doNodeId, [HandleId.DO_CONDITION_OUTPUT])
+  // Smartly find condition connected to DO node (any handle)
+  const conditionEdge = ctx.edges
+    .filter(e => e.source === doNodeId)
     .find(e => {
       const target = ctx.nodes.find(n => n.id === e.target);
       return target && isCond(target);
@@ -125,11 +126,12 @@ function buildInlineConditional(
   // condition connected via do-condition-output, not from sibling DO branches.
   // The rule's else should be handled separately at a higher level.
   
-  // Check for direct do-condition-output to action
-  const directToAction = findEdgesBySource(ctx, doNodeId, [HandleId.DO_CONDITION_OUTPUT])
+  // Smartly find direct actions from DO node (any handle)
+  const directToAction = ctx.edges
+    .filter(e => e.source === doNodeId)
     .find(e => {
       const target = ctx.nodes.find(n => n.id === e.target);
-      return target && (ctx.options.isActNode?.(target) ?? defaultIsActNode(target));
+      return target && (ctx.options.isActNode?.(target) ?? defaultIsActNode(target)) && target.type !== NodeType.DO;
     });
   
   if (directToAction && !elseActionId) {
@@ -164,11 +166,11 @@ export function collectDoActions(
   const isAct = ctx.options.isActNode || defaultIsActNode;
   const actions: (Action | ActionGroup | InlineConditionalAction)[] = [];
   
-  // Find direct actions via do-output
-  const directActionEdges = findEdgesBySource(ctx, doNodeId, HandleFilters.DO_OUTPUT)
+  // Smartly find direct actions from DO node (any handle pointing to non-DO items)
+  const directActionEdges = ctx.edges.filter(e => e.source === doNodeId)
     .filter(e => {
       const target = ctx.nodes.find(n => n.id === e.target);
-      return target && isAct(target);
+      return target && (isAct(target) && target.type !== NodeType.DO && target.type !== NodeType.CONDITION && target.type !== NodeType.CONDITION_GROUP);
     });
   
   for (const edge of directActionEdges) {
@@ -377,7 +379,7 @@ export function parseGraph(
       const actionIdsDirectFromGroup = allOutgoingEdges
         .filter(e => {
           const target = ctx.nodes.find(n => n.id === e.target);
-          return target && isAct(target) && (e.sourceHandle === HandleId.THEN_OUTPUT || e.sourceHandle === 'then-output' || e.sourceHandle === 'output' || e.sourceHandle === HandleId.CONDITION_GROUP_OUTPUT);
+          return target && isAct(target);
         })
         .map(e => e.target);
       

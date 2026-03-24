@@ -31,38 +31,8 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
-  // Check if this DoNode has incoming connection from Condition
-  // Accepts from Condition via output handle
-  const hasConditionInput = edges.some(e => 
-    e.target === id &&
-    (
-      (getNode(e.source)?.type === NodeType.CONDITION && e.sourceHandle === NodeHandle.CONDITION_OUTPUT) ||
-      (getNode(e.source)?.type === NodeType.CONDITION_GROUP) ||
-      (getNode(e.source)?.type === NodeType.ACTION_GROUP) ||
-      (getNode(e.source)?.type === NodeType.EVENT)
-    )
-  );
-  
-  // Check if DoNode has outgoing connections to Actions or ActionGroups
-  const hasActionOutput = edges.some(e => 
-    e.source === id && 
-    (getNode(e.target)?.type === NodeType.ACTION ||
-     getNode(e.target)?.type === NodeType.ACTION_GROUP)
-  );
-  
-  // Check if DoNode has outgoing connection to Condition (for "after do allow conditions")
-  const hasConditionOutput = edges.some(e => 
-    e.source === id && 
-    e.sourceHandle === NodeHandle.DO_CONDITION_OUTPUT &&
-    getNode(e.target)?.type === NodeType.CONDITION
-  );
-  
   // Determine colors based on branch type
   const isElse = data.branchType === BranchType.ELSE;
-  
-  // Show outputs when there's input connection
-  const showOutput = hasConditionInput;
-  const showConditionOutput = hasConditionInput; // Show condition output handle when there's input
   const nodeColor = isElse ? '#ff6b6b' : 'var(--do-color, #9b59b6)';
 
   return (
@@ -81,39 +51,20 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
         title={`Connect from Condition (explicit ${isElse ? 'ELSE' : 'DO'} path)`}
       />
       
-      {showOutput && (
-        <>
-          {/* Action output handle */}
-          <Handle
-            type="source"
-            position={Position.Right}
-            id={NodeHandle.DO_OUTPUT}
-            className="node-output-handle"
-            style={{ 
-              background: nodeColor, 
-              border: '2px solid var(--bg-color)', 
-              width: '12px', 
-              height: '12px'
-            }}
-            title="Connect to Action or ActionGroup"
-          />
-          {/* Condition output handle - for "after do allow conditions" */}
-          <Handle
-            type="source"
-            position={Position.Right}
-            id={NodeHandle.DO_CONDITION_OUTPUT}
-            className="node-output-handle"
-            style={{ 
-              background: 'var(--condition-color)', 
-              border: '2px solid var(--bg-color)', 
-              width: '12px', 
-              height: '12px',
-              top: '60%'
-            }}
-            title={hasConditionOutput ? 'Condition connected' : 'Add condition after DO (inline if/then/else)'}
-          />
-        </>
-      )}
+      {/* Universal output handle for Actions OR Conditions (Smarter Parser) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={NodeHandle.DO_OUTPUT}
+        className="node-output-handle"
+        style={{ 
+          background: nodeColor, 
+          border: '2px solid var(--bg-color)', 
+          width: '12px', 
+          height: '12px'
+        }}
+        title="Connect to Action, ActionGroup or Condition"
+      />
       
       <div className="node-title node-title--do">
         <span className="node-icon">{isElse ? <ElseIcon /> : <DoIcon />}</span> 
@@ -145,11 +96,7 @@ export default function DoNode({ id, data }: { id: string, data: DoNodeData }) {
           />
         </FormField>
         <div className="node-hint" style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
-          {hasConditionInput 
-            ? (hasActionOutput || hasConditionOutput 
-              ? t('nodeHints.doPathConfigured', { branch: isElse ? t('nodeDetails.elseTitle') : t('nodeDetails.doTitle') }) 
-              : t('nodeHints.doConnectPath'))
-            : t('nodeHints.doConnectStart')}
+          {t('nodeHints.doConnectPath')}
         </div>
       </div>
     </div>

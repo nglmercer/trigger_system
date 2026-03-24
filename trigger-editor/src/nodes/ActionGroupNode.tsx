@@ -19,48 +19,8 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
-  // Check if this ActionGroup has incoming connection from Event or Condition
-  // (for the primary input - actions to execute)
-  const hasEventInput = edges.some(e => 
-    e.target === id && getNode(e.source)?.type === NodeType.EVENT
-  );
-  
-  // Check if this ActionGroup has incoming connection from Condition (for inline conditionals)
-  // Also check for ACTION_GROUP_INPUT since condition -> action_group uses 'input' handle
-  const hasConditionInput = edges.some(e => 
-    e.target === id && 
-    (e.targetHandle === NodeHandle.CONDITION_INPUT || e.targetHandle === NodeHandle.ACTION_GROUP_INPUT) &&
-    (getNode(e.source)?.type === NodeType.CONDITION || getNode(e.source)?.type === NodeType.CONDITION_GROUP)
-  );
-  
-  // Check if this ActionGroup has incoming connection from another ActionGroup (chained)
-  const hasActionGroupInput = edges.some(e => 
-    e.target === id && 
-    getNode(e.source)?.type === NodeType.ACTION_GROUP
-  );
-  
-  // Check if this ActionGroup has incoming connection from DO node (explicit DO path)
-  const hasDoInput = edges.some(e => 
-    e.target === id && 
-    getNode(e.source)?.type === NodeType.DO
-  );
-  
-  // Check if this ActionGroup has outgoing connections to Actions (for chaining)
-  const hasActionOutput = edges.some(e => 
-    e.source === id && 
-    e.sourceHandle === NodeHandle.ACTION_GROUP_OUTPUT &&
-    getNode(e.target)?.type === NodeType.ACTION
-  );
-  
-  // Check if this ActionGroup has outgoing connection to a Condition (for inline conditions)
-  const hasConditionOutput = edges.some(e => 
-    e.source === id && 
-    e.sourceHandle === NodeHandle.ACTION_GROUP_CONDITION_OUTPUT &&
-    getNode(e.target)?.type === NodeType.CONDITION
-  );
-  
-  // Show output handles when there's any input connection
-  const showOutputHandles = hasEventInput || hasConditionInput || hasActionOutput || hasConditionOutput || hasDoInput || hasActionGroupInput;
+  // Show output handles
+  const showOutputHandles = true;
 
   return (
     <div className="drawflow-node action-group">
@@ -85,7 +45,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
       {/* Always show output handles so users can connect actions from the start */}
       {showOutputHandles && (
         <>
-          {/* Action_output - for chaining actions within the group */}
+          {/* Action_output - universal handle for actions OR inline conditions (Smart Parser) */}
           <Handle
             type="source"
             position={Position.Right}
@@ -97,23 +57,7 @@ export default function ActionGroupNode({ id, data }: { id: string, data: Action
               width: '12px', 
               height: '12px'
             }}
-            title={hasActionOutput ? 'More actions chained' : 'Connect to next action'}
-          />
-          
-          {/* Condition output - for inline conditionals within action group */}
-          <Handle
-            type="source"
-            position={Position.Right}
-            id={NodeHandle.ACTION_GROUP_CONDITION_OUTPUT}
-            className="node-output-handle"
-            style={{ 
-              background: 'var(--condition-color)', 
-              border: '2px solid var(--bg-color)', 
-              width: '12px', 
-              height: '12px',
-              top: '60%'
-            }}
-            title={hasConditionOutput ? 'Condition connected' : 'Add inline condition (if/then/else)'}
+            title="Connect to Action or Inline Condition"
           />
         </>
       )}

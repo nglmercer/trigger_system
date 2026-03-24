@@ -55,37 +55,6 @@ export default function ConditionGroupNode({ id, data }: { id: string, data: Con
         }}
         title="Connect to condition"
       />
-      {/* Explicit THEN output handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id={NodeHandle.THEN_OUTPUT}
-        className="node-output-handle"
-        style={{ 
-          background: 'var(--condition-group-color)', 
-          border: '2px solid var(--bg-color)', 
-          width: '12px', 
-          height: '12px',
-          top: '30%'
-        }}
-        title="Connect to DO (then) path"
-      />
-
-      {/* Explicit ELSE output handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id={NodeHandle.ELSE_OUTPUT}
-        className="node-output-handle"
-        style={{ 
-          background: 'var(--condition-group-color)', 
-          border: '2px solid var(--bg-color)', 
-          width: '12px', 
-          height: '12px',
-          top: '70%'
-        }}
-        title="Connect to ELSE path"
-      />
       <div className="node-title node-title--condition-group">
         <span className="node-icon"><ConditionGroupIcon /></span> {t('nodeDetails.conditionGroupTitle')}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>

@@ -203,7 +203,13 @@ export function findTerminalConditions(
       if (targetNode.type === NodeType.ACTION || 
           targetNode.type === NodeType.ACTION_GROUP ||
           targetNode.type === NodeType.DO) {
-        if (edge.sourceHandle === HandleId.ELSE_OUTPUT) {
+        
+        // If it's a DO node, use its branchType to decide
+        const isElse = targetNode.type === NodeType.DO 
+          ? (targetNode.data?.branchType === 'else')
+          : (edge.sourceHandle === HandleId.ELSE_OUTPUT);
+
+        if (isElse) {
           elseActionId = edge.target;
         } else {
           thenActionId = edge.target;

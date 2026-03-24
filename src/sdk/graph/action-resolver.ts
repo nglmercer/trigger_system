@@ -134,8 +134,14 @@ export function collectActionsForGroup(
   // Also collect conditions for inline if/then/else within the group
   const conditionEdges = findEdgesBySource(ctx, groupId, [
     HandleId.ACTION_GROUP_CONDITION_OUTPUT,
-    'condition-output'
-  ]);
+    'condition-output',
+    HandleId.ACTION_GROUP_OUTPUT,
+    'action-output',
+    ''
+  ]).filter(e => {
+    const target = ctx.nodes.find(n => n.id === e.target);
+    return target && (target.type === NodeType.CONDITION || target.type === NodeType.CONDITION_GROUP);
+  });
 
   for (const edge of conditionEdges) {
     const action = resolveAction(edge.target, ctx);
@@ -383,8 +389,13 @@ export function categorizeDoNodesByBranch(
     }
     
     // Find DO nodes directly connected to this condition
-    // Include THEN_OUTPUT for condition→do connections (inline conditionals)
-    const doEdges = findEdgesBySource(ctx, condId, [...HandleFilters.CONDITION_OUTPUT, HandleId.THEN_OUTPUT])
+    // Include all possible output handles - smarter than hardcoded THEN_OUTPUT
+    const doEdges = findEdgesBySource(ctx, condId, [
+        ...HandleFilters.CONDITION_CHAIN, 
+        HandleId.DO_OUTPUT, 
+        'output', 
+        ''
+    ])
       .filter(e => {
         const target = ctx.nodes.find(n => n.id === e.target);
         return target && isDo(target);
@@ -397,15 +408,9 @@ export function categorizeDoNodesByBranch(
       const branchType = getDoBranchType(doNode);
       
       if (branchType === BranchType.ELSE) {
-        if (!elseBranches.includes(edge.target)) {
-        //  console.log(`[DEBUG] Found ELSE branch ${edge.target} for condition ${condId}`);
-          elseBranches.push(edge.target);
-        }
+        if (!elseBranches.includes(edge.target)) elseBranches.push(edge.target);
       } else {
-        if (!doBranches.includes(edge.target)) {
-        //  console.log(`[DEBUG] Found DO branch ${edge.target} for condition ${condId}`);
-          doBranches.push(edge.target);
-        }
+        if (!doBranches.includes(edge.target)) doBranches.push(edge.target);
       }
     }
     
