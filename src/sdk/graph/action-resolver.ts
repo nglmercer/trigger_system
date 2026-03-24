@@ -339,8 +339,7 @@ export function categorizeDoNodesByBranch(
   startConditionId: string,
   ctx: ActionResolverContext
 ): DoBranches {
-  const isCond = ctx.options.isActNode ? (n: SDKGraphNode) => n.type === NodeType.CONDITION || n.type === NodeType.CONDITION_GROUP : 
-    ((n: SDKGraphNode) => n.type === NodeType.CONDITION || n.type === NodeType.CONDITION_GROUP);
+  const isCond = (n: SDKGraphNode) => n.type === NodeType.CONDITION || n.type === NodeType.CONDITION_GROUP;
   const isDo = (n: SDKGraphNode) => n.type === NodeType.DO;
   
   const doBranches: string[] = [];
@@ -352,82 +351,49 @@ export function categorizeDoNodesByBranch(
     visited.add(condId);
 
     const currentNode = ctx.nodes.find(n => n.id === condId);
+    if (!currentNode) return;
 
-    // If this is a condition_group, traverse its child conditions first 
-    // using CONDITION_GROUP_OUTPUT, then also look for DO nodes directly connected
-    if (currentNode?.type === NodeType.CONDITION_GROUP) {
-      // DO nodes directly from condition_group
-      const doEdgesDirect = findEdgesBySource(ctx, condId, [
-        HandleId.CONDITION_GROUP_OUTPUT, 
-        HandleId.THEN_OUTPUT,
-        'then-output'
-      ])
-        .filter(e => {
-          const target = ctx.nodes.find(n => n.id === e.target);
-          return target && isDo(target);
-        });
-      for (const edge of doEdgesDirect) {
-        const doNode = ctx.nodes.find(n => n.id === edge.target);
-        if (!doNode) continue;
-        const branchType = getDoBranchType(doNode);
-        if (branchType === BranchType.ELSE) {
-          if (!elseBranches.includes(edge.target)) elseBranches.push(edge.target);
-        } else {
-          if (!doBranches.includes(edge.target)) doBranches.push(edge.target);
+    // Handle Condition Group - traverse children first
+    if (currentNode.type === NodeType.CONDITION_GROUP) {
+      const childEdges = findEdgesBySource(ctx, condId, [HandleId.CONDITION_GROUP_OUTPUT, 'cond-output', 'output', '']);
+      for (const edge of childEdges) {
+        const target = ctx.nodes.find(n => n.id === edge.target);
+        if (target) {
+          if (isDo(target)) {
+            const branchType = getDoBranchType(target);
+            if (branchType === BranchType.ELSE) {
+              if (!elseBranches.includes(target.id)) elseBranches.push(target.id);
+            } else {
+              if (!doBranches.includes(target.id)) doBranches.push(target.id);
+            }
+          } else if (isCond(target)) {
+            traverse(target.id);
+          }
         }
-      }
-      // Traverse child conditions reachable from the group via cond-output
-      const childCondEdges = findEdgesBySource(ctx, condId, [HandleId.CONDITION_GROUP_OUTPUT, 'cond-output'])
-        .filter(e => {
-          const target = ctx.nodes.find(n => n.id === e.target);
-          return target && isCond(target);
-        });
-      for (const edge of childCondEdges) {
-        traverse(edge.target);
       }
       return;
     }
-    
-    // Find DO nodes directly connected to this condition
-    // Include all possible output handles - smarter than hardcoded THEN_OUTPUT
-    const doEdges = findEdgesBySource(ctx, condId, [
-        ...HandleFilters.CONDITION_CHAIN, 
-        HandleId.DO_OUTPUT, 
-        'output', 
-        ''
-    ])
-      .filter(e => {
-        const target = ctx.nodes.find(n => n.id === e.target);
-        return target && isDo(target);
-      });
-    
-    for (const edge of doEdges) {
-      const doNode = ctx.nodes.find(n => n.id === edge.target);
-      if (!doNode) continue;
-      
-      const branchType = getDoBranchType(doNode);
-      
-      if (branchType === BranchType.ELSE) {
-        if (!elseBranches.includes(edge.target)) elseBranches.push(edge.target);
-      } else {
-        if (!doBranches.includes(edge.target)) doBranches.push(edge.target);
+
+    // Handle single Condition - look for DO nodes and chains
+    const outgoingEdges = ctx.edges.filter(e => e.source === condId);
+    for (const edge of outgoingEdges) {
+      const target = ctx.nodes.find(n => n.id === edge.target);
+      if (!target) continue;
+
+      if (isDo(target)) {
+        const branchType = getDoBranchType(target);
+        if (branchType === BranchType.ELSE) {
+          if (!elseBranches.includes(target.id)) elseBranches.push(target.id);
+        } else {
+          if (!doBranches.includes(target.id)) doBranches.push(target.id);
+        }
+      } else if (isCond(target)) {
+        traverse(target.id);
       }
-    }
-    
-    // Follow condition chain edges
-    const chainEdges = findEdgesBySource(ctx, condId, HandleFilters.CONDITION_OUTPUT)
-      .filter(e => {
-        const target = ctx.nodes.find(n => n.id === e.target);
-        return target && isCond(target);
-      });
-    
-    for (const edge of chainEdges) {
-      traverse(edge.target);
     }
   }
   
   traverse(startConditionId);
-  
   return { doBranches, elseBranches };
 }
 

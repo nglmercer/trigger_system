@@ -27,7 +27,7 @@ export function useNodeEdgeState() {
     return nodes.map((node) => {
       // Small optimization: only update if missing or changed.
       // Now using the properly typed _id field from AppNodeData.
-      if (node.data._id === node.id) {
+      if (node.data._id === node.id && typeof node.data.onDuplicate === 'function' && typeof node.data.onChange === 'function') {
          return node;
       }
       return {

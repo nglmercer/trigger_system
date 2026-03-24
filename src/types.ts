@@ -113,7 +113,7 @@ export interface Action {
 }
 
 export type ExecutionMode = 'ALL' | 'EITHER' | 'SEQUENCE';
-
+export type HelperFunction = (...args: unknown[]) => unknown;
 export interface ActionGroup {
   mode: ExecutionMode;
   actions: (Action | ActionGroup)[];
@@ -154,7 +154,7 @@ export interface TriggerContext {
   vars?: Record<string, unknown>;
   state?: Record<string, unknown>;
   env?: Record<string, unknown>; // Dynamic variables for action flow
-  helpers?: Record<string, (...args: unknown[]) => unknown>;
+  helpers?: Record<string, HelperFunction>;
 }
 
 export interface ExecutedAction {
