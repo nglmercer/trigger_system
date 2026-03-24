@@ -4,7 +4,7 @@ import { TextInput, TextAreaInput, SelectInput } from './inputs/FormFields.tsx';
 import { JsonPreview } from './JsonPreview.tsx';
 import type { ParamEntry, JsonValue } from '../utils/getData.ts';
 import { getValueType, stringToValue, valueToString, generateId, parseParams } from '../utils/getData.ts';
-import { TrashIcon, ClearIcon, PlusIcon } from './Icons.tsx';
+import { TrashIcon, ClearIcon, PlusIcon, UploadIcon } from './Icons.tsx';
 import { useTranslation } from 'react-i18next';
 export const openParamsModal = (value: string, onChange: (val: string) => void) => {
   window.dispatchEvent(new CustomEvent('open-params-modal', { detail: { value, onChange } }));
@@ -104,6 +104,28 @@ export function ParamsModal() {
     } catch (e) {
       setJsonError((e as Error).message);
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result;
+      if (typeof result === 'string') {
+        try {
+          const parsed = JSON.parse(result);
+          const jsonStr = JSON.stringify(parsed, null, 2);
+          setLocalJson(jsonStr);
+          setJsonError(null);
+          setEntries(parseParams(jsonStr));
+        } catch (err) {
+          setJsonError("Invalid JSON file");
+        }
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const groupedEntries = React.useMemo(() => {
@@ -239,6 +261,28 @@ export function ParamsModal() {
             >
               {t('paramsModal.jsonView')}
             </button>
+            <label 
+              className="node-btn" 
+              style={{ 
+                flex: 1, 
+                fontSize: '12px', 
+                padding: '8px', 
+                borderRadius: '6px', 
+                cursor: 'pointer', 
+                textAlign: 'center', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '8px',
+                background: 'rgba(88, 166, 255, 0.1)',
+                color: 'var(--accent)',
+                border: '1px solid rgba(88, 166, 255, 0.2)'
+              }}
+              title={t('paramsModal.uploadJsonUrl', 'Upload JSON file')}
+            >
+              <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileUpload} />
+              <UploadIcon size={14} /> {t('paramsModal.uploadJson', 'Upload JSON')}
+            </label>
           </div>
 
           {viewMode === 'builder' ? (

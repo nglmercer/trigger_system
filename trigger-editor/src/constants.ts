@@ -29,6 +29,10 @@ export enum NodeField {
   PARAMS = 'params',
   MODE = 'mode',
   BRANCH_TYPE = 'branchType',
+  DELAY = 'delay',
+  PROBABILITY = 'probability',
+  BREAK = 'break',
+  CONTINUE = 'continue',
 }
 
 // Handle IDs for node connections

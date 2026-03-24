@@ -2,8 +2,8 @@ import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
-import { ClearIcon, ActionIcon, CopyIcon } from '../components/Icons';
-import { TextInput, FormField } from '../components/inputs/FormFields';
+import { ClearIcon, ActionIcon, CopyIcon, ChevronIcon } from '../components/Icons';
+import { TextInput, FormField, SelectInput } from '../components/inputs/FormFields';
 import { ParamsBuilder } from '../components/ParamsBuilder';
 import { useTranslation } from 'react-i18next';
 
@@ -59,6 +59,60 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
             placeholder='{"key": "value"}'
           />
         </FormField>
+        
+        <details className="advanced-settings" style={{ marginTop: '12px' }}>
+          <summary style={{ 
+            fontSize: '12px', 
+            color: 'var(--text-secondary)', 
+            cursor: 'pointer', 
+            userSelect: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px 0'
+          }}>
+            <ChevronIcon size={14} direction="right" /> {t('nodeDetails.advancedSettings', 'Advanced Settings')}
+          </summary>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+            <FormField label={t('nodeDetails.delay', 'Delay (ms)')}>
+              <TextInput
+                type="number"
+                value={data.delay !== undefined ? String(data.delay) : ''}
+                onChange={(val) => data.onChange(val !== '' ? Number(val) : undefined, NodeField.DELAY)}
+                placeholder="0"
+              />
+            </FormField>
+            <FormField label={t('nodeDetails.probability', 'Probability (0-1)')}>
+              <TextInput
+                type="number"
+                value={data.probability !== undefined ? String(data.probability) : ''}
+                onChange={(val) => data.onChange(val !== '' ? Number(val) : undefined, NodeField.PROBABILITY)}
+                placeholder="1.0"
+              />
+            </FormField>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ flex: 1 }}>
+                <FormField label={t('nodeDetails.break', 'Break')}>
+                  <SelectInput
+                    value={data.break ? 'true' : 'false'}
+                    options={[{ value: 'false', label: 'False' }, { value: 'true', label: 'True' }]}
+                    onChange={(val) => data.onChange(val === 'true', NodeField.BREAK)}
+                  />
+                </FormField>
+              </div>
+              <div style={{ flex: 1 }}>
+                <FormField label={t('nodeDetails.continue', 'Continue')}>
+                  <SelectInput
+                    value={data.continue ? 'true' : 'false'}
+                    options={[{ value: 'false', label: 'False' }, { value: 'true', label: 'True' }]}
+                    onChange={(val) => data.onChange(val === 'true', NodeField.CONTINUE)}
+                  />
+                </FormField>
+              </div>
+            </div>
+          </div>
+        </details>
+
       </div>
       <Handle
         type="source"

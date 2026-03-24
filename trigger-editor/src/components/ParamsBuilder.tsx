@@ -2,6 +2,7 @@ import * as React from 'react';
 import { openParamsModal } from './ParamsModal.tsx';
 import { parseParams } from '../utils/getData.ts';
 import { useTranslation } from 'react-i18next';
+import { UploadIcon } from './Icons.tsx';
 
 interface ParamsBuilderProps {
   value: string; // JSON string
@@ -13,7 +14,28 @@ export function ParamsBuilder({ value, onChange }: ParamsBuilderProps) {
   // Read-only external preview to show how many params we have
   const externalParamsCount = React.useMemo(() => parseParams(value).length, [value]);
   const { t } = useTranslation();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result;
+      if (typeof result === 'string') {
+        try {
+          const parsed = JSON.parse(result);
+          onChange(JSON.stringify(parsed, null, 2));
+        } catch (err) {
+          console.error("Invalid JSON file uploaded");
+        }
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
+    <div style={{ display: 'flex', gap: '8px' }}>
     <button 
       type="button" 
       className="node-input" 
@@ -46,6 +68,25 @@ export function ParamsBuilder({ value, onChange }: ParamsBuilderProps) {
         {externalParamsCount}
       </span>
     </button>
+    <label 
+      className="node-btn" 
+      style={{ 
+        cursor: 'pointer', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: '0 12px',
+        background: 'rgba(88, 166, 255, 0.1)',
+        border: '1px solid rgba(88, 166, 255, 0.2)',
+        color: 'var(--accent)',
+        borderRadius: '6px',
+      }}
+      title={t('paramsBuilder.uploadJson', 'Upload JSON file')}
+    >
+      <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileUpload} />
+      <UploadIcon size={16} />
+    </label>
+    </div>
   );
 }
 

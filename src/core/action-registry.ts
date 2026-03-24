@@ -22,8 +22,22 @@ export interface ActionDefinition {
 }
 const fetchFunction = async (action: Action, context: TriggerContext) => {
     const urlTemplate = action.params?.url || "";
-    const url = typeof urlTemplate === 'string' ? ExpressionEngine.interpolate(urlTemplate, context) : String(urlTemplate);
+    let url = typeof urlTemplate === 'string' ? ExpressionEngine.interpolate(urlTemplate, context) : String(urlTemplate);
     const method = String(action.params?.method || "POST").toUpperCase();
+
+    if (action.params?.query && typeof action.params.query === 'object') {
+        const queryParams = new URLSearchParams();
+        for (const [key, value] of Object.entries(action.params.query)) {
+            if (value !== undefined && value !== null) {
+                const strValue = typeof value === 'string' ? ExpressionEngine.interpolate(value, context) : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+                queryParams.append(key, strValue);
+            }
+        }
+        const queryString = queryParams.toString();
+        if (queryString) {
+            url += (url.includes('?') ? '&' : '?') + queryString;
+        }
+    }
 
     const methodsWithBody = ['POST', 'PUT', 'PATCH'];
     const hasBody = methodsWithBody.includes(method);
@@ -84,6 +98,7 @@ const fetchDefinition = {
     params: arkType({
         url: "string",
         "method?": "'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'",
+        "query?": "Record<string, unknown>",
         "headers?": "Record<string, string>",
         "body?": "string | Record<string, unknown>",
     }),

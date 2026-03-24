@@ -169,7 +169,6 @@ export interface RawCondition {
 export interface RawAction {
   type?: string;
   params?: Record<string, unknown>;
-  run?: string;
   delay?: number;
   probability?: number;
   if?: RawCondition | RawCondition[];

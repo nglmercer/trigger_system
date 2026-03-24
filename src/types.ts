@@ -98,7 +98,6 @@ export interface Action {
   name?: string;
   type?: string; // Optional for conditional actions
   params?: ActionParams;
-  run?: string; // Script block for direct operations
   delay?: number;
   probability?: number;
   // --- Control Flow ---
