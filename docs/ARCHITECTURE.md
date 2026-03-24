@@ -35,7 +35,7 @@ The Agnostic Trigger System is built with a modular architecture that separates 
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘       │
 │         │                 │                 │               │
 │  ┌──────┴──────┐  ┌──────┴──────┐  ┌──────┴──────┐       │
-│  │StateManager │  │Dependency   │  │trigger      │       │
+│  │             │  │Dependency   │  │trigger      │       │
 │  │             │  │Analyzer     │  │Emitter      │       │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘       │
 │         │                 │                 │               │
@@ -101,21 +101,11 @@ Singleton registry that maps action types strings (e.g., "send_email") to handle
 - Handler lookup
 - Default handlers
 
-### 5. StateManager
-
-Singleton that holds the current state of the application for stateful rules.
-
-**Capabilities:**
-
-- In-memory state storage
-- Persistence layer integration (load/save)
-- Global state access
-
-### 6. DependencyAnalyzer
+### 5. DependencyAnalyzer
 
 Static analysis tool to detect cycles and dependencies between rules (based on state keys read/written).
 
-### 7. triggerEmitter
+### 6. triggerEmitter
 
 Global Event Emitter for observability. Emits events like `rule:match`, `action:success`, `engine:start`.
 
@@ -164,16 +154,6 @@ Event Fired (processEvent)
 │  - action:done  │
 └─────────────────┘
 ```
-
-## State Management
-
-State is managed via the `StateManager` singleton and accessed in rules.
-
-1. **Initialization**: State loaded from persistence provider.
-2. **Access**: Rules read state via `state.*` paths.
-3. **Modification**: Rules allow `state_set`, `state_increment` actions (or custom logic).
-4. **Persistence**: `FilePersistence` or `BrowserPersistence` saves state changes.
-
 ## Performance Considerations
 
 1. **Rule Indexing**: Rules are sorted by priority.

@@ -1,7 +1,6 @@
 import { type as arkType, type Type } from "arktype";
 import type { TriggerAction, TriggerContext } from "../types";
 import { ExpressionEngine } from "./expression-engine";
-import { StateManager } from "./state-manager";
 
 export type ActionHandler = (action: TriggerAction, context: TriggerContext) => Promise<any> | any;
 
@@ -250,75 +249,6 @@ export class ActionRegistry {
             } catch (error) {
                 return { url, method, error: String(error) };
             }
-        }
-    });
-
-
-    // --- State Actions ---
-
-    this.register(BuiltInAction.STATE_SET, {
-        description: "Sets a value in the persistent state",
-        params: arkType({ key: "string", value: "unknown" }),
-        returns: arkType({ key: "string", value: "unknown" }),
-        handler: async (action, context) => {
-            const key = String(action.params?.key || "");
-            const value = action.params?.value;
-            if (!key) return { error: "Missing key for STATE_SET" };
-            
-            // Evaluate value if it's dynamic
-            let finalValue = value;
-            if (typeof value === 'string' && value.includes('${')) {
-                finalValue = ExpressionEngine.interpolate(value, context);
-            }
-
-            await StateManager.getInstance().set(key, finalValue);
-            return { key, value: finalValue };
-        }
-    });
-
-    this.register(BuiltInAction.STATE_INCREMENT, {
-        description: "Increments a numeric value in the persistent state",
-        params: arkType({ key: "string", "amount?": "number" }),
-        returns: arkType({ key: "string", newValue: "number" }),
-        handler: async (action, context) => {
-            const key = String(action.params?.key || "");
-            const amount = Number(action.params?.amount) || 1;
-            if (!key) return { error: "Missing key for STATE_INCREMENT" };
-
-            const newValue = await StateManager.getInstance().increment(key, amount);
-            return { key, newValue };
-        }
-    });
-
-    this.register(BuiltInAction.STATE_GET, {
-        description: "Reads a value from state and optionally stores it in context.env",
-        params: arkType({ key: "string", "as?": "string" }),
-        returns: arkType({ key: "string", value: "unknown", "storedAs?": "string" }),
-        handler: async (action, context) => {
-            const key = String(action.params?.key || "");
-            const as = String(action.params?.as || key); // Store with this variable name
-            if (!key) return { error: "Missing key for STATE_GET" };
-
-            const value = await StateManager.getInstance().get(key);
-            
-            // Store in context.env for interpolation in subsequent actions
-            if (!context.env) context.env = {};
-            context.env[as] = value;
-            
-            return { key, value, storedAs: as };
-        }
-    });
-
-    this.register(BuiltInAction.STATE_DELETE, {
-        description: "Deletes a key from the persistent state",
-        params: arkType({ key: "string" }),
-        returns: arkType({ key: "string", deleted: "boolean" }),
-        handler: async (action, context) => {
-            const key = String(action.params?.key || "");
-            if (!key) return { error: "Missing key for STATE_DELETE" };
-
-            const deleted = await StateManager.getInstance().delete(key);
-            return { key, deleted };
         }
     });
   }

@@ -17,13 +17,11 @@ import type {
 
 import { TriggerEngine } from "./trigger-engine";
 import { ActionRegistry } from "./action-registry";
-import { StateManager } from "./state-manager";
 import { triggerEmitter, EngineEvent } from "../utils/emitter";
 import { DebugMessages } from "./constants";
 
 export class RuleEngine extends TriggerEngine {
   private actionRegistry: ActionRegistry;
-  private stateManager: StateManager;
 
   constructor(config: RuleEngineConfig) {
     // Call parent constructor with configuration
@@ -31,7 +29,6 @@ export class RuleEngine extends TriggerEngine {
  
     // Initialize additional components and ensure default registrations
     this.actionRegistry = ActionRegistry.getInstance(true);
-    this.stateManager = StateManager.getInstance();
   }
 
   /**
@@ -40,16 +37,10 @@ export class RuleEngine extends TriggerEngine {
    */
   async evaluateContext(context: TriggerContext): Promise<TriggerResult[]> {
     // Inject vars proxy representing unified variables, state, and helpers
-    context.vars = this.stateManager.getVarsProxy(context.vars, context.helpers);
     
     // Ensure backwards compatibility properties are maintained inside the proxy logic
     context.state = context.vars!.state as Record<string, unknown>;
     context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
-
-    // Apply state configuration if present
-    if (this._config?.stateConfig) {
-        await this.stateManager.applyConfig(this._config.stateConfig);
-    }
 
     // Initialize environment if not present
     if (!context.env) {
@@ -89,7 +80,6 @@ export class RuleEngine extends TriggerEngine {
         timestamp: Date.now(),
       };
       
-      context.vars = this.stateManager.getVarsProxy(context.vars, undefined);
       context.state = context.vars!.state as Record<string, unknown>;
       context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
       
@@ -99,14 +89,8 @@ export class RuleEngine extends TriggerEngine {
     const context = contextOrType;
 
     if (!context.vars || !(context.vars as any)._isProxy) {
-      context.vars = this.stateManager.getVarsProxy(context.vars, context.helpers);
       context.state = context.vars!.state as Record<string, unknown>;
       context.helpers = context.vars!.helpers as Record<string, HelperFunction>;
-    }
-
-    // Apply state configuration if it exists
-    if (this._config?.stateConfig) {
-        await this.stateManager.applyConfig(this._config.stateConfig);
     }
 
     // Emit init event
@@ -127,23 +111,9 @@ export class RuleEngine extends TriggerEngine {
 
     return results;
   }
-
-  /**
-   * Overrides getStateContext to use StateManager's proxy directly
-   */
-  protected override getStateContext(): Record<string, any> {
-    return this.stateManager.getVarsProxy().state;
-  }
   
   get ActionRegistry(): ActionRegistry {
     return this.actionRegistry;
-  }
-
-  /**
-   * Get the state manager instance
-   */
-  get StateManager(): StateManager {
-    return this.stateManager;
   }
 }
 

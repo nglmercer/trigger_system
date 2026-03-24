@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'bun:test';
 import { ActionRegistry } from '../../src/core/action-registry';
 import { TriggerEngine } from "../../src";
 import { ExpressionEngine } from '../../src/core/expression-engine';
-import { StateManager } from '../../src/core/state-manager';
 import type { TriggerContext, ComparisonOperator } from '../../src/types';
 
 describe('Coverage Boost - ActionRegistry', () => {
@@ -261,43 +260,5 @@ describe('Coverage Boost - ExpressionEngine', () => {
         context.vars = { val: 10 };
         // We can test interpolation in evaluate
         expect(ExpressionEngine.evaluate('${data.val + 5}', context)).toBe(105);
-    });
-});
-
-describe('Coverage Boost - State Actions', () => {
-    const registry = ActionRegistry.getInstance();
-    const context: TriggerContext = {
-        event: 'test',
-        data: {},
-        vars: {},
-        timestamp: Date.now(),
-        state: {} as any
-    };
-
-    it('should execute STATE_SET', async () => {
-        const handler = registry.get('STATE_SET')!;
-        const result = await handler({ type: 'STATE_SET', params: { key: 'user_count', value: 1 } }, context);
-        expect(result).toEqual({ key: 'user_count', value: 1 });
-        expect(await StateManager.getInstance().get('user_count')).toBe(1);
-    });
-
-    it('should execute STATE_INCREMENT', async () => {
-        const handler = registry.get('STATE_INCREMENT')!;
-        const result = await handler({ type: 'STATE_INCREMENT', params: { key: 'user_count', amount: 5 } }, context);
-        expect(result).toEqual({ key: 'user_count', newValue: 6 });
-    });
-
-    it('should execute STATE_GET', async () => {
-        const handler = registry.get('STATE_GET')!;
-        const result = await handler({ type: 'STATE_GET', params: { key: 'user_count', as: 'current_users' } }, context);
-        expect(result).toEqual({ key: 'user_count', value: 6, storedAs: 'current_users' });
-        expect(context.env?.current_users).toBe(6);
-    });
-
-    it('should execute STATE_DELETE', async () => {
-        const handler = registry.get('STATE_DELETE')!;
-        const result = await handler({ type: 'STATE_DELETE', params: { key: 'user_count' } }, context);
-        expect(result).toEqual({ key: 'user_count', deleted: true });
-        expect(await StateManager.getInstance().get('user_count')).toBeUndefined();
     });
 });
