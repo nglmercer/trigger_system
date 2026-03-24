@@ -350,8 +350,12 @@ export function categorizeDoNodesByBranch(
     // If this is a condition_group, traverse its child conditions first 
     // using CONDITION_GROUP_OUTPUT, then also look for DO nodes directly connected
     if (currentNode?.type === NodeType.CONDITION_GROUP) {
-      // DO nodes directly from condition_group (less common, but possible)
-      const doEdgesDirect = findEdgesBySource(ctx, condId, [HandleId.CONDITION_GROUP_OUTPUT])
+      // DO nodes directly from condition_group
+      const doEdgesDirect = findEdgesBySource(ctx, condId, [
+        HandleId.CONDITION_GROUP_OUTPUT, 
+        HandleId.THEN_OUTPUT,
+        'then-output'
+      ])
         .filter(e => {
           const target = ctx.nodes.find(n => n.id === e.target);
           return target && isDo(target);
@@ -366,8 +370,8 @@ export function categorizeDoNodesByBranch(
           if (!doBranches.includes(edge.target)) doBranches.push(edge.target);
         }
       }
-      // Traverse child conditions reachable from the group
-      const childCondEdges = findEdgesBySource(ctx, condId, [HandleId.CONDITION_GROUP_OUTPUT])
+      // Traverse child conditions reachable from the group via cond-output
+      const childCondEdges = findEdgesBySource(ctx, condId, [HandleId.CONDITION_GROUP_OUTPUT, 'cond-output'])
         .filter(e => {
           const target = ctx.nodes.find(n => n.id === e.target);
           return target && isCond(target);

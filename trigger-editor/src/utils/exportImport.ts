@@ -230,7 +230,7 @@ export function sanitizeEdgesForImport(
       
       if (targetType === NodeType.CONDITION) {
         conn.conditionTargets.push(edge.target);
-      } else if (targetType === NodeType.ACTION_GROUP) {
+      } else if (targetType === NodeType.ACTION_GROUP || targetType === NodeType.ACTION || targetType === NodeType.DO) {
         conn.actionTarget = edge.target;
       }
     }
@@ -333,15 +333,16 @@ export function sanitizeEdgesForImport(
       }
     }
 
-    // Handle condition_group to action_group connection
-    if (sourceType === NodeType.CONDITION_GROUP && targetType === NodeType.ACTION_GROUP) {
+    // Handle condition_group to action/action_group/do connection
+    if (sourceType === NodeType.CONDITION_GROUP && (targetType === NodeType.ACTION_GROUP || targetType === NodeType.ACTION || targetType === NodeType.DO)) {
       // Use then-output for the action path from condition group
-      if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT) {
+      if (!sourceHandle || sourceHandle === NodeHandle.CONDITION_GROUP_OUTPUT || sourceHandle === 'output') {
         sourceHandle = NodeHandle.THEN_OUTPUT;
       }
-      // Ensure target handle is set for action group input
+      // Ensure target handle is set
       if (!targetHandle) {
-        targetHandle = NodeHandle.ACTION_GROUP_INPUT;
+        targetHandle = targetType === NodeType.ACTION_GROUP ? NodeHandle.ACTION_GROUP_INPUT : 
+                       targetType === NodeType.DO ? NodeHandle.DO_INPUT : NodeHandle.ACTION_INPUT;
       }
     }
 

@@ -309,6 +309,7 @@ export function parseGraph(
   const isEvent = options.isEventNode || defaultIsEventNode;
   const isCond = options.isCondNode || defaultIsCondNode;
   const isAct = options.isActNode || defaultIsActNode;
+  const isDo = defaultIsDoNode;
   const extractEvent = options.extractEventData || defaultExtractEventData;
 
   const eventNode = nodes.find(n => isEvent(n));
@@ -363,51 +364,76 @@ export function parseGraph(
       };
       builder.withIf(conditionGroup);
       
-      // Find all conditions in this group that have terminal actions
-      const conditionIdsInGroup = ctx.edges
-        .filter(e => e.source === groupId && e.sourceHandle?.startsWith('cond'))
+      // Separate conditions from actions in the outgoing edges
+      const allOutgoingEdges = edges.filter(e => e.source === groupId);
+      
+      const conditionIdsInGroup = allOutgoingEdges
+        .filter(e => {
+          const target = ctx.nodes.find(n => n.id === e.target);
+          return target && isCond(target) && (e.sourceHandle?.startsWith('cond') || e.sourceHandle === HandleId.CONDITION_GROUP_OUTPUT);
+        })
+        .map(e => e.target);
+
+      const actionIdsDirectFromGroup = allOutgoingEdges
+        .filter(e => {
+          const target = ctx.nodes.find(n => n.id === e.target);
+          return target && isAct(target) && (e.sourceHandle === HandleId.THEN_OUTPUT || e.sourceHandle === 'then-output' || e.sourceHandle === 'output' || e.sourceHandle === HandleId.CONDITION_GROUP_OUTPUT);
+        })
         .map(e => e.target);
       
       let thenAct: Action | ActionGroup | InlineConditionalAction | null = null;
       let elseAct: Action | ActionGroup | InlineConditionalAction | null = null;
       
-      for (const condId of conditionIdsInGroup) {
-        // Find terminal actions via traditional connections
-        const terminal = findTerminalActions(condId, ctx);
-        let currThenAct = terminal.thenActionId ? resolveActionInternal(terminal.thenActionId, ctx) : null;
-        let currElseAct = terminal.elseActionId ? resolveActionInternal(terminal.elseActionId, ctx) : null;
+      // 1. Process actions directly from the group
+      for (const actionId of actionIdsDirectFromGroup) {
+        const targetNode = ctx.nodes.find(n => n.id === actionId);
+        if (!targetNode) continue;
 
-        // Categorize DO nodes by branch type
-        const { doBranches, elseBranches } = categorizeDoNodesByBranch(condId, ctx);
-        
-        // Collect actions from do branches
-        const doActions: (Action | ActionGroup | InlineConditionalAction)[] = [];
-        for (const doNodeId of doBranches) {
-          const actions = collectDoActions(doNodeId, ctx, condId);
-          doActions.push(...actions);
+        if (isDo(targetNode)) {
+          const actions = collectDoActions(targetNode.id, ctx, groupId);
+          const branchType = getDoBranchType(targetNode);
+          if (actions.length > 0) {
+            const resolvedAct = actions.length === 1 ? actions[0]! : { mode: 'ALL' as ExecutionMode, actions: actions as Action[] };
+            if (branchType === BranchType.ELSE) elseAct = resolvedAct;
+            else thenAct = resolvedAct;
+          }
+        } else {
+          const resolvedAct = resolveActionInternal(actionId, ctx);
+          if (resolvedAct) thenAct = resolvedAct;
         }
-        
-        if (doActions.length > 0) {
-          currThenAct = doActions.length === 1 
-            ? doActions[0] as Action | ActionGroup | InlineConditionalAction
-            : { mode: 'ALL' as ExecutionMode, actions: doActions as Action[] };
-        }
-        
-        // Collect actions from else branches
-        const elseActions: (Action | ActionGroup | InlineConditionalAction)[] = [];
-        for (const elseNodeId of elseBranches) {
-          const actions = collectDoActions(elseNodeId, ctx, condId);
-          elseActions.push(...actions);
-        }
-        
-        if (elseActions.length > 0) {
-          currElseAct = elseActions.length === 1 
-            ? elseActions[0] as Action | ActionGroup | InlineConditionalAction
-            : { mode: 'ALL' as ExecutionMode, actions: elseActions as Action[] };
-        }
+      }
 
-        if (currThenAct) thenAct = currThenAct;
-        if (currElseAct) elseAct = currElseAct;
+      // 2. Also check conditions in the group for terminal actions (legacy/distributed support)
+      // Only do this if we haven't found acts directly from the group
+      if (!thenAct || !elseAct) {
+        for (const condId of conditionIdsInGroup) {
+          const terminal = findTerminalActions(condId, ctx);
+          let currThenAct = terminal.thenActionId ? resolveActionInternal(terminal.thenActionId, ctx) : null;
+          let currElseAct = terminal.elseActionId ? resolveActionInternal(terminal.elseActionId, ctx) : null;
+
+          const { doBranches, elseBranches } = categorizeDoNodesByBranch(condId, ctx);
+          
+          const doActions: (Action | ActionGroup | InlineConditionalAction)[] = [];
+          for (const doNodeId of doBranches) {
+            const actions = collectDoActions(doNodeId, ctx, condId);
+            doActions.push(...actions);
+          }
+          if (doActions.length > 0 && !currThenAct) {
+            currThenAct = doActions.length === 1 ? doActions[0]! : { mode: 'ALL' as ExecutionMode, actions: doActions as Action[] };
+          }
+          
+          const elseActions: (Action | ActionGroup | InlineConditionalAction)[] = [];
+          for (const elseNodeId of elseBranches) {
+            const actions = collectDoActions(elseNodeId, ctx, condId);
+            elseActions.push(...actions);
+          }
+          if (elseActions.length > 0 && !currElseAct) {
+            currElseAct = elseActions.length === 1 ? elseActions[0]! : { mode: 'ALL' as ExecutionMode, actions: elseActions as Action[] };
+          }
+
+          if (currThenAct && !thenAct) thenAct = currThenAct;
+          if (currElseAct && !elseAct) elseAct = currElseAct;
+        }
       }
       
       if (thenAct) {

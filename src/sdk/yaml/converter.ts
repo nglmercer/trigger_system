@@ -332,7 +332,7 @@ export function triggerRuleToNodes(
         
         let sourceHandle: string | null = null;
         if (lastCondNode === eventNode.id) sourceHandle = HandleId.EVENT_OUTPUT;
-        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.CONDITION_GROUP_OUTPUT;
+        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.THEN_OUTPUT;
         else sourceHandle = HandleId.CONDITION_OUTPUT;
         
         edges.push(buildEdge(lastCondNode, doNodeId, sourceHandle, HandleId.DO_INPUT, getEdgeId));
@@ -370,7 +370,7 @@ export function triggerRuleToNodes(
         
         let sourceHandle: string | null = null;
         if (lastCondNode === eventNode.id) sourceHandle = HandleId.EVENT_OUTPUT;
-        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.CONDITION_GROUP_OUTPUT;
+        else if (lastCondNode === groupNodeId) sourceHandle = HandleId.THEN_OUTPUT;
         else sourceHandle = HandleId.CONDITION_OUTPUT;
         
         edges.push(buildEdge(lastCondNode, elseNodeId, sourceHandle, HandleId.DO_INPUT, getEdgeId));
@@ -704,7 +704,7 @@ function processActions(
           
           // Connect Condition -> then-DO
           const doSourceHandle: string = condNodeForPos?.type === NodeType.CONDITION_GROUP
-            ? HandleId.CONDITION_GROUP_OUTPUT
+            ? HandleId.THEN_OUTPUT
             : HandleId.CONDITION_OUTPUT;
           edges.push(buildEdge(terminalCondNodeId, thenDoNodeId, doSourceHandle, HandleId.DO_INPUT, getEdgeId));
           
@@ -741,7 +741,7 @@ function processActions(
           
           // Connect Condition -> else-DO
           const doSourceHandle: string = condNodeForPos?.type === NodeType.CONDITION_GROUP
-            ? HandleId.CONDITION_GROUP_OUTPUT
+            ? HandleId.THEN_OUTPUT
             : HandleId.CONDITION_OUTPUT;
           edges.push(buildEdge(terminalCondNodeId, elseDoNodeId, doSourceHandle, HandleId.DO_INPUT, getEdgeId));
           
