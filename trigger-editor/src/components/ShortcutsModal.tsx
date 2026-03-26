@@ -17,6 +17,11 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
     { label: t('shortcuts.zoom'), keys: t('shortcuts.zoomKeys') },
     { label: t('shortcuts.copy'), keys: t('shortcuts.copyKeys') },
     { label: t('shortcuts.paste'), keys: t('shortcuts.pasteKeys') },
+    { label: t('shortcuts.undo'), keys: t('shortcuts.undoKeys') },
+    { label: t('shortcuts.redo'), keys: t('shortcuts.redoKeys') },
+    { label: t('shortcuts.save'), keys: t('shortcuts.saveKeys') },
+    { label: t('shortcuts.clear'), keys: t('shortcuts.clearKeys') },
+    { label: t('shortcuts.addParam'), keys: t('shortcuts.addParamKeys') },
   ];
 
   return (

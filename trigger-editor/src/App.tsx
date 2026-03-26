@@ -28,6 +28,8 @@ const edgeTypes = {
 import { useRuleBuilder, useNodeEdgeState, useImportExport, useConnectionValidation } from './hooks';
 import { NodeType, DRAG_DATA_FORMAT } from './constants.ts';
 import { generateRandomId } from './utils.ts';
+import { useRFStore } from './store/rfStore.ts';
+import { DEFAULT_SHORTCUTS, isShortcut } from './utils/shortcuts.ts';
 import type { AppNode } from './types.ts';
 import { loadImports } from './lsp/engine.ts';
 import type { ImportConfig } from './lsp/types.ts';
@@ -171,11 +173,34 @@ function NodeEditor() {
   // Clipboard for copy/paste nodes
   const clipboard = useRef<AppNode[]>([]);
 
-  // Keyboard shortcuts for copy/paste
+  const undo = useRFStore(s => s.undo);
+  const redo = useRFStore(s => s.redo);
+  const takeSnapshot = useRFStore(s => s.takeSnapshot);
+
+  // Keyboard shortcuts for copy/paste/undo/redo
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Check for Ctrl+C or Cmd+C
-      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+      // Ignore if typing in an input
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName)) {
+        return;
+      }
+
+      // Undo
+      if (isShortcut(event, DEFAULT_SHORTCUTS.UNDO)) {
+        event.preventDefault();
+        undo();
+        return;
+      }
+
+      // Redo
+      if (isShortcut(event, DEFAULT_SHORTCUTS.REDO)) {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      // Copy
+      if (isShortcut(event, DEFAULT_SHORTCUTS.COPY)) {
         const selectedNodes = nodes.filter(n => n.selected);
         if (selectedNodes.length > 0) {
           clipboard.current = selectedNodes.map(node => ({
@@ -184,10 +209,11 @@ function NodeEditor() {
           }));
           // success(t('notifications.nodesCopied', { count: selectedNodes.length }));
         }
+        return;
       }
 
-      // Check for Ctrl+V or Cmd+V
-      if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
+      // Paste
+      if (isShortcut(event, DEFAULT_SHORTCUTS.PASTE)) {
         if (clipboard.current.length > 0) {
           const nodeMap = new Map<string, string>();
           const pastedNodes = clipboard.current.map(node => {
@@ -217,12 +243,29 @@ function NodeEditor() {
           addNodes(pastedNodes as AppNode[]);
           success(t('notifications.nodesPasted', { count: pastedNodes.length }));
         }
+        return;
+      }
+
+      // Export/Save
+      if (isShortcut(event, DEFAULT_SHORTCUTS.EXPORT) || isShortcut(event, DEFAULT_SHORTCUTS.SAVE)) {
+        event.preventDefault();
+        handleHostExport();
+        return;
+      }
+
+      // Clear Canvas
+      if (isShortcut(event, DEFAULT_SHORTCUTS.CLEAR)) {
+        event.preventDefault();
+        if (window.confirm(t('sidebar.resetCanvas') + '?')) {
+           clearAll();
+        }
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nodes, addNodes, onNodeDataChange, setNodes, success, t]);
+  }, [nodes, addNodes, onNodeDataChange, setNodes, success, t, undo, redo, handleHostExport, clearAll]);
 
   // Initialize imports from localStorage on mount
   useEffect(() => {
@@ -338,6 +381,7 @@ function NodeEditor() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onReconnect={onReconnect}
+          onNodeDragStart={() => takeSnapshot()}
           isValidConnection={isValidConnection}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}

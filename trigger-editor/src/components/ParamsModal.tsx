@@ -6,6 +6,8 @@ import type { ParamEntry, JsonValue } from '../utils/getData.ts';
 import { getValueType, stringToValue, valueToString, generateId, parseParams } from '../utils/getData.ts';
 import { TrashIcon, ClearIcon, PlusIcon, UploadIcon } from './Icons.tsx';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_SHORTCUTS, isShortcut } from '../utils/shortcuts.ts';
+
 export const openParamsModal = (value: string, onChange: (val: string) => void) => {
   window.dispatchEvent(new CustomEvent('open-params-modal', { detail: { value, onChange } }));
 };
@@ -18,6 +20,7 @@ export function ParamsModal() {
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [localJson, setLocalJson] = useState('{}');
   const [collapsedPrefixes, setCollapsedPrefixes] = useState<string[]>([]);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const onChangeRef = useRef<((val: string) => void) | null>(null);
 
   const toggleCollapse = (prefix: string) => {
@@ -97,6 +100,46 @@ export function ParamsModal() {
   const addEntry = () => {
     addEntryWithKey(`param_${generateId().substring(0, 4)}`);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      // Add param: Alt+N
+      if (isShortcut(event, DEFAULT_SHORTCUTS.ADD_PARAM)) {
+        event.preventDefault();
+        addEntry();
+        return;
+      }
+
+      // Remove param: Delete
+      if (isShortcut(event, DEFAULT_SHORTCUTS.REMOVE_PARAM)) {
+        // Only if an entry is selected AND we are NOT in an input/textarea
+        if (selectedEntryId && !['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName)) {
+           event.preventDefault();
+           removeEntry(selectedEntryId);
+           setSelectedEntryId(null);
+        }
+        return;
+      }
+
+      // Save: Ctrl+S or Enter (if not in textarea)
+      if (isShortcut(event, DEFAULT_SHORTCUTS.SAVE) || (event.key === 'Enter' && (event.target as HTMLElement).tagName !== 'TEXTAREA')) {
+         event.preventDefault();
+         handleSave();
+         return;
+      }
+
+      // Close: Escape
+      if (event.key === 'Escape') {
+         handleClose();
+         return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedEntryId, entries]);
 
   const updateEntry = (id: string, updates: Partial<ParamEntry>) => {
     setEntries(prevEntries => {
@@ -250,6 +293,11 @@ export function ParamsModal() {
               background: rgba(255, 255, 255, 0.08);
               border-color: rgba(255, 255, 255, 0.15);
             }
+            .params-builder__entry--selected {
+              background: rgba(88, 166, 255, 0.1) !important;
+              border-color: var(--accent) !important;
+              box-shadow: 0 0 0 1px var(--accent);
+            }
             .params-modal-input {
               font-size: 13px !important;
               padding: 10px 14px !important;
@@ -359,9 +407,14 @@ export function ParamsModal() {
                   if (isHidden) return null;
                   
                   const isCollapsed = collapsedPrefixes.includes(dotPrefix);
+                  const isSelected = selectedEntryId === entry.id;
 
                   return (
-                    <div key={entry.id} className="params-builder__entry">
+                    <div
+                      key={entry.id}
+                      className={`params-builder__entry ${isSelected ? 'params-builder__entry--selected' : ''}`}
+                      onClick={() => setSelectedEntryId(entry.id)}
+                    >
                       <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: `${depth * 16}px` }}>
                         {entry.type === 'object' ? (
                           <button 
@@ -448,7 +501,7 @@ export function ParamsModal() {
                         )}
                       </div>
                       
-                      <button type="button" onClick={() => removeEntry(entry.id)} className="node-btn node-btn--danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '6px' }} title={t('paramsModal.remove')}><TrashIcon /></button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); removeEntry(entry.id); }} className="node-btn node-btn--danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '6px' }} title={t('paramsModal.remove')}><TrashIcon /></button>
                     </div>
                   );
                 });
