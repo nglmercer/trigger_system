@@ -34,6 +34,8 @@ const resources = {
         importTitle: "Import Rule Project",
         jsonTitle: "JSON Project",
         jsonDesc: "Load a saved workspace draft (.json) to continue editing.",
+        importNodesTitle: "Import Components",
+        importNodesDesc: "Import nodes from another project and append to this one.",
         yamlTitle: "YAML Rule",
         yamlDesc: "Convert an existing .yaml rule file back into a graph.",
         hostTitle: "Host Application",
@@ -43,6 +45,8 @@ const resources = {
         downloadYamlDesc: "Final production rule configuration bundle.",
         saveJson: "Save JSON Workspace",
         saveJsonDesc: "Full graph state for re-importing later.",
+        exportSelectedNodes: "Export Selected Nodes",
+        exportSelectedNodesDesc: "Save selected nodes as components for re-use.",
         sendHost: "Send to Host",
         sendHostDesc: "Sync current rule directly back to the parent application.",
         shareLink: "Share Link",
@@ -136,7 +140,10 @@ const resources = {
         linkShared: "Link Shared",
         shareLinkCopied: "Share link copied to clipboard!",
         exportComplete: "Export Complete",
-        dataSentToHost: "Data sent to host application!"
+        dataSentToHost: "Data sent to host application!",
+        componentsImported: "Components imported successfully!",
+        nodesPasted: "Pasted {{count}} nodes",
+        nodesCopied: "Copied {{count}} nodes"
       },
       nodeDetails: {
         deleteNode: "Delete node",
@@ -183,6 +190,10 @@ const resources = {
         panKeys: "Space + Whell",
         zoom: "Zoom",
         zoomKeys: "Wheel / Cmd+Wheel",
+        copy: "Copy Selection",
+        copyKeys: "Ctrl + C",
+        paste: "Paste Selection",
+        pasteKeys: "Ctrl + V",
       },
       errors: {
         MISSING_EVENT_NODE: "Missing Event Trigger node",
@@ -227,6 +238,8 @@ const resources = {
         importTitle: "Importar Proyecto de Regla",
         jsonTitle: "Proyecto JSON",
         jsonDesc: "Cargar un borrador guardado (.json) para continuar editando.",
+        importNodesTitle: "Importar Componentes",
+        importNodesDesc: "Importar nodos de otro proyecto y añadirlos a este.",
         yamlTitle: "Regla YAML",
         yamlDesc: "Convertir un archivo YAML existente de vuelta a un grafo.",
         hostTitle: "Aplicación Principal",
@@ -236,6 +249,8 @@ const resources = {
         downloadYamlDesc: "Configuración final del paquete de reglas para producción.",
         saveJson: "Guardar Espacio JSON",
         saveJsonDesc: "Estado completo del grafo para reimportar más tarde.",
+        exportSelectedNodes: "Exportar Nodos Seleccionados",
+        exportSelectedNodesDesc: "Guardar nodos seleccionados como componentes para reutilizar.",
         sendHost: "Enviar al Principal",
         sendHostDesc: "Sincronizar regla directamente a la aplicación padre.",
         shareLink: "Enlace para Compartir",
@@ -329,7 +344,10 @@ const resources = {
         linkShared: "Enlace Compartido",
         shareLinkCopied: "¡Enlace copiado al portapapeles!",
         exportComplete: "Exportación Completa",
-        dataSentToHost: "¡Datos enviados a la aplicación principal!"
+        dataSentToHost: "¡Datos enviados a la aplicación principal!",
+        componentsImported: "¡Componentes importados con éxito!",
+        nodesPasted: "{{count}} nodos pegados",
+        nodesCopied: "{{count}} nodos copiados"
       },
       nodeDetails: {
         deleteNode: "Eliminar nodo",
@@ -437,6 +455,10 @@ const resources = {
         panKeys: "Espacio + rueda",
         zoom: "Zoom",
         zoomKeys: "Rueda / Cmd+Rueda",
+        copy: "Copiar Selección",
+        copyKeys: "Ctrl + C",
+        paste: "Pegar Selección",
+        pasteKeys: "Ctrl + V",
       },
       errors: {
         MISSING_EVENT_NODE: "Falta el nodo de Evento (Trigger)",

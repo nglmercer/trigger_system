@@ -3,9 +3,11 @@ import type { Edge } from '@xyflow/react';
 import type { AppNode } from '../types';
 import { 
   exportToJson, 
+  exportNodesOnly,
   downloadJson, 
   downloadYaml, 
   createImportPicker, 
+  createNodesImportPicker,
   sanitizeNodesForImport,
   sanitizeEdgesForImport,
   generateShareUrl,
@@ -24,7 +26,8 @@ export function useImportExport(
   getYaml: () => string,
   onNodeDataChange: (id: string, value: unknown, field: string) => void,
   setGraph: (nodes: AppNode[], edges: Edge[]) => void,
-  success: (message: string, options?: { title?: string }) => void
+  success: (message: string, options?: { title?: string }) => void,
+  addNodes?: (nodes: AppNode[]) => void
 ) {
   const { t } = useTranslation();
 
@@ -44,6 +47,16 @@ export function useImportExport(
     const filename = `trigger-rule-${Date.now()}.yaml`;
     downloadYaml(yamlValue, filename);
   }, [getYaml]);
+
+  // Export selected nodes only
+  const handleExportSelected = useCallback(() => {
+    const selectedNodes = nodes.filter(n => n.selected);
+    if (selectedNodes.length === 0) return;
+
+    const json = exportNodesOnly(selectedNodes);
+    const filename = `trigger-components-${Date.now()}.json`;
+    downloadJson(json, filename);
+  }, [nodes]);
 
   // Import from JSON
   const handleImport = useCallback(async () => {
@@ -81,6 +94,32 @@ export function useImportExport(
     
     success(t('notifications.yamlImported'), { title: t('notifications.importComplete') });
   }, [onNodeDataChange, setGraph, success, t]);
+
+  // Import nodes only (append to canvas)
+  const handleImportNodesOnly = useCallback(async () => {
+    const importedNodes = await createNodesImportPicker();
+    if (!importedNodes || !addNodes) return;
+
+    // Map IDs to avoid collisions and offset positions
+    const nodeMap = new Map<string, string>();
+    const sanitizedNodes = importedNodes.map(node => {
+      const newId = `node_${Math.random().toString(36).substring(2, 7)}`;
+      nodeMap.set(node.id, newId);
+      return {
+        ...node,
+        id: newId,
+        selected: true,
+        position: {
+          x: node.position.x + 50,
+          y: node.position.y + 50,
+        }
+      };
+    });
+
+    const finalNodes = sanitizeNodesForImport(sanitizedNodes, onNodeDataChange);
+    addNodes(finalNodes);
+    success(t('notifications.componentsImported'), { title: t('notifications.importComplete') });
+  }, [onNodeDataChange, addNodes, success, t]);
 
   // Generate share URL
   const handleShare = useCallback(() => {
@@ -161,8 +200,10 @@ export function useImportExport(
   return {
     handleExportJson,
     handleExportYaml,
+    handleExportSelected,
     handleImport,
     handleImportYaml,
+    handleImportNodesOnly,
     handleShare,
     loadSharedData,
     clearSharedData,

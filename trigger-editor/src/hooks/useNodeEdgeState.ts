@@ -16,6 +16,7 @@ export function useNodeEdgeState() {
   const setEdges = useRFStore((s) => s.setEdges);
   const onNodeDataChange = useRFStore((s) => s.updateNodeData);
   const onDuplicateNode = useRFStore((s) => s.duplicateNode);
+  const addNodes = useRFStore((s) => s.addNodes);
   const clearAll = useRFStore((s) => s.clearAll);
   const setGraph = useRFStore((s) => s.setGraph);
 
@@ -53,6 +54,7 @@ export function useNodeEdgeState() {
     onConnect,
     onReconnect,
     onDuplicateNode,
+    addNodes,
     clearAll,
     setGraph,
   };

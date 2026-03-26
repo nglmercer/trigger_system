@@ -15,6 +15,8 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
     { label: t('shortcuts.multiSelect'), keys: t('shortcuts.multiSelectKeys') },
     { label: t('shortcuts.pan'), keys: t('shortcuts.panKeys') },
     { label: t('shortcuts.zoom'), keys: t('shortcuts.zoomKeys') },
+    { label: t('shortcuts.copy'), keys: t('shortcuts.copyKeys') },
+    { label: t('shortcuts.paste'), keys: t('shortcuts.pasteKeys') },
   ];
 
   return (

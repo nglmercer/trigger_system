@@ -18,15 +18,31 @@ interface SidebarProps {
   onClear: () => void;
   onExportJson: () => void;
   onExportYaml: () => void;
+  onExportSelected: () => void;
   onImport: () => void;
   onImportYaml: () => void;
+  onImportNodesOnly: () => void;
   onShare: () => void;
   onAddNode: (type: string) => void;
   hasNodes: boolean;
+  hasSelectedNodes: boolean;
   handleHostExport: () => void;
 }
 
-export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport, onImportYaml, onShare, onAddNode, hasNodes, handleHostExport }: SidebarProps) {
+export default function Sidebar({
+  onClear,
+  onExportJson,
+  onExportYaml,
+  onExportSelected,
+  onImport,
+  onImportYaml,
+  onImportNodesOnly,
+  onShare,
+  onAddNode,
+  hasNodes,
+  hasSelectedNodes,
+  handleHostExport
+}: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -321,9 +337,12 @@ export default function Sidebar({ onClear, onExportJson, onExportYaml, onImport,
         handleHostExport={handleHostExport}
         onImportJson={onImport}
         onImportYaml={onImportYaml}
+        onImportNodesOnly={onImportNodesOnly}
         onExportJson={onExportJson}
         onExportYaml={onExportYaml}
+        onExportSelected={onExportSelected}
         onShare={onShare}
+        hasSelectedNodes={hasSelectedNodes}
       />
     </>
   );

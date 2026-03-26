@@ -26,6 +26,7 @@ export interface RFState {
   setEdges: (edges: Edge[] | ((eds: Edge[]) => Edge[])) => void;
   updateNodeData: (nodeId: string, value: unknown, field: string) => void;
   duplicateNode: (nodeId: string) => void;
+  addNodes: (nodes: AppNode[]) => void;
   clearAll: () => void;
   setGraph: (nodes: AppNode[], edges: Edge[]) => void;
 }
@@ -166,6 +167,12 @@ export const useRFStore = create<RFState>((set, get) => ({
     };
 
     set({ nodes: [...nodes, newNode] });
+  },
+
+  addNodes: (newNodes: AppNode[]) => {
+    set({
+      nodes: [...get().nodes, ...newNodes],
+    });
   },
 
   clearAll: () => {
