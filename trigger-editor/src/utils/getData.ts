@@ -76,20 +76,37 @@ export interface ParamEntry {
   id: string;
 }
 
-export  const entriesToJson = (ents: ParamEntry[]): string => {
+export const entriesToJson = (ents: ParamEntry[]): string => {
     const result: { [key: string]: JsonValue } = {};
-    for (const entry of ents) {
+    const sortedEnts = [...ents].sort((a, b) => a.key.split('.').length - b.key.split('.').length);
+    for (const entry of sortedEnts) {
       if (!entry.key) continue;
       const keys = entry.key.split('.');
       let current: { [key: string]: JsonValue } = result;
       for (let i = 0; i < keys.length - 1; i++) {
         const k = keys[i];
         if (!k) continue;
-        if (!(k in current)) current[k] = {};
+        if (!(k in current) || typeof current[k] !== 'object' || Array.isArray(current[k]) || current[k] === null) {
+            current[k] = {};
+        }
         current = current[k] as { [key: string]: JsonValue };
       }
       const lastKey = keys[keys.length - 1];
-      if (lastKey) current[lastKey] = entry.value;
+      if (lastKey) {
+        let val = entry.value;
+        if ((entry.type === 'object' || entry.type === 'array') && typeof val === 'string') {
+          try {
+            val = JSON.parse(val);
+          } catch {} // fallback to string if invalid
+        }
+        
+        if (typeof val === 'object' && val !== null && !Array.isArray(val) && 
+            typeof current[lastKey] === 'object' && current[lastKey] !== null && !Array.isArray(current[lastKey])) {
+          current[lastKey] = { ...(current[lastKey] as any), ...val };
+        } else {
+          current[lastKey] = val;
+        }
+      }
     }
     return JSON.stringify(result, null, 2) || '{}';
 };
@@ -98,7 +115,7 @@ export const generateId = () => Math.random().toString(36).substring(2, 9);
 export function parseParams(jsonStr: string): ParamEntry[] {
   try {
     const parsed = JSON.parse(jsonStr || '{}');
-    if (typeof parsed !== 'object' || parsed === null) {
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return [];
     }
     
@@ -107,17 +124,15 @@ export function parseParams(jsonStr: string): ParamEntry[] {
     function flatten(obj: { [key: string]: JsonValue }, prefix = ''): void {
       for (const [key, val] of Object.entries(obj)) {
         const fullKey = prefix ? `${prefix}.${key}` : key;
-        const type = getValueType(val);
+        const type = getValueType(val as JsonValue);
         
-        entries.push({
-          key: fullKey,
-          value: val,
-          type,
-          id: generateId()
-        });
-        
-        if (type === 'object' && val !== null && typeof val === 'object') {
+        if (type === 'object' && val !== null && typeof val === 'object' && Object.keys(val).length > 0) {
+          entries.push({ key: fullKey, value: {}, type: 'object', id: generateId() });
           flatten(val as { [key: string]: JsonValue }, fullKey);
+        } else if (type === 'array' && Array.isArray(val) && val.length > 0) {
+          entries.push({ key: fullKey, value: val as JsonValue, type, id: generateId() });
+        } else {
+          entries.push({ key: fullKey, value: val as JsonValue, type, id: generateId() });
         }
       }
     }
@@ -151,17 +166,8 @@ export function stringToValue(str: string, type: ParamEntry['type']): JsonValue 
     case 'boolean':
       return str === 'true' || str === '1';
     case 'array':
-      try {
-        return JSON.parse(str);
-      } catch {
-        return [];
-      }
     case 'object':
-      try {
-        return JSON.parse(str);
-      } catch {
-        return {};
-      }
+      return str;
     default:
       return str;
   }

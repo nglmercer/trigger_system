@@ -17,14 +17,29 @@ export function ParamsModal() {
   const [viewMode, setViewMode] = useState<'builder' | 'json'>('builder');
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [localJson, setLocalJson] = useState('{}');
+  const [collapsedPrefixes, setCollapsedPrefixes] = useState<string[]>([]);
   const onChangeRef = useRef<((val: string) => void) | null>(null);
+
+  const toggleCollapse = (prefix: string) => {
+    const dotPrefix = prefix + '.';
+    if (collapsedPrefixes.includes(dotPrefix)) {
+      setCollapsedPrefixes(collapsedPrefixes.filter(p => p !== dotPrefix));
+    } else {
+      setCollapsedPrefixes([...collapsedPrefixes, dotPrefix]);
+    }
+  };
 
   useEffect(() => {
     const handleOpen = (e: any) => {
       const { value, onChange } = e.detail;
+      const parsed = parseParams(value || '{}');
       setLocalJson(value || '{}');
-      setEntries(parseParams(value || '{}'));
+      setEntries(parsed);
       setJsonError(null);
+      
+      const objectKeys = parsed.filter(en => en.type === 'object').map(en => en.key + '.');
+      setCollapsedPrefixes(objectKeys);
+      
       onChangeRef.current = onChange;
       setIsOpen(true);
     };
@@ -69,14 +84,18 @@ export function ParamsModal() {
     setJsonError(null);
   };
 
-  const addEntry = () => {
+  const addEntryWithKey = (key: string) => {
     const newEntry: ParamEntry = {
-      key: `param_${generateId().substring(0, 4)}`,
+      key,
       value: '',
       type: 'string',
       id: generateId()
     };
     handleChange([...entries, newEntry]);
+  };
+
+  const addEntry = () => {
+    addEntryWithKey(`param_${generateId().substring(0, 4)}`);
   };
 
   const updateEntry = (id: string, updates: Partial<ParamEntry>) => {
@@ -329,64 +348,111 @@ export function ParamsModal() {
                 <span>{t('paramsModal.valueVariable')}</span>
                 <span></span>
               </div>
-              {entries.map((entry) => (
-                <div key={entry.id} className="params-builder__entry">
-                  <div style={{ minWidth: 0 }}>
-                    <TextInput 
-                      className="params-modal-input"
-                      value={entry.key} 
-                      onChange={(val) => updateEntry(entry.id, { key: String(val) })} 
-                      placeholder="e.g. user.id" 
-                    />
-                  </div>
-                  <SelectInput 
-                    className="params-modal-input" 
-                    value={entry.type} 
-                    options={[
-                      { value: 'string', label: t('paramsModal.types.string') },
-                      { value: 'number', label: t('paramsModal.types.number') },
-                      { value: 'boolean', label: t('paramsModal.types.boolean') },
-                      { value: 'array', label: t('paramsModal.types.array') },
-                      { value: 'object', label: t('paramsModal.types.object') },
-                    ]}
-                    onChange={(newType) => {
-                      const defaultVal = newType === 'string' ? '' : newType === 'number' ? 0 : newType === 'boolean' ? false : newType === 'array' ? [] : newType === 'object' ? {} : null;
-                      updateEntry(entry.id, { type: newType as ParamEntry['type'], value: defaultVal });
-                    }} 
-                  />
+              {(() => {
+                const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
+                
+                return sorted.map((entry) => {
+                  const depth = entry.key.split('.').length - 1;
+                  const dotPrefix = entry.key + '.';
                   
-                  <div style={{ minWidth: 0 }}>
-                    {entry.type === 'boolean' ? (
+                  const isHidden = collapsedPrefixes.some(pref => entry.key.startsWith(pref) && entry.key !== pref.slice(0, -1));
+                  if (isHidden) return null;
+                  
+                  const isCollapsed = collapsedPrefixes.includes(dotPrefix);
+
+                  return (
+                    <div key={entry.id} className="params-builder__entry">
+                      <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: `${depth * 16}px` }}>
+                        {entry.type === 'object' ? (
+                          <button 
+                            type="button"
+                            onClick={() => toggleCollapse(entry.key)}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', width: '16px' }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          </button>
+                        ) : <div style={{width: '16px'}} />}
+                        <div style={{ flex: 1 }}>
+                          <TextInput 
+                            className="params-modal-input"
+                            value={entry.key.split('.').pop() || ''} 
+                            onChange={(val) => {
+                               const newName = String(val).replace(/\./g, '_');
+                               const parts = entry.key.split('.');
+                               parts[parts.length - 1] = newName;
+                               updateEntry(entry.id, { key: parts.join('.') });
+                            }} 
+                            placeholder="name" 
+                          />
+                        </div>
+                      </div>
                       <SelectInput 
                         className="params-modal-input" 
-                        value={String(entry.value)} 
+                        value={entry.type} 
                         options={[
-                          { value: 'true', label: 'true' },
-                          { value: 'false', label: 'false' },
+                          { value: 'string', label: t('paramsModal.types.string') },
+                          { value: 'number', label: t('paramsModal.types.number') },
+                          { value: 'boolean', label: t('paramsModal.types.boolean') },
+                          { value: 'array', label: t('paramsModal.types.array') },
+                          { value: 'object', label: t('paramsModal.types.object') },
                         ]}
-                        onChange={(val) => updateEntry(entry.id, { value: val === 'true' })} 
+                        onChange={(newType) => {
+                          const defaultVal = newType === 'string' ? '' : newType === 'number' ? 0 : newType === 'boolean' ? false : newType === 'array' ? [] : newType === 'object' ? {} : null;
+                          updateEntry(entry.id, { type: newType as ParamEntry['type'], value: defaultVal });
+                        }} 
                       />
-                    ) : entry.type === 'array' || entry.type === 'object' ? (
-                      <TextInput 
-                        className="params-modal-input"
-                        value={typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value)} 
-                        onChange={(val) => updateEntry(entry.id, { value: stringToValue(String(val), entry.type) })} 
-                        placeholder={entry.type === 'array' ? '[...]' : '{...}'} 
-                      />
-                    ) : (
-                      <TextInput 
-                        className="params-modal-input"
-                        type={entry.type === 'number' ? 'number' : 'text'} 
-                        value={valueToString(entry.value)} 
-                        onChange={(val) => updateEntry(entry.id, { value: stringToValue(String(val), entry.type) })} 
-                        placeholder={entry.type === 'number' ? '0' : 'Enter value...'} 
-                      />
-                    )}
-                  </div>
-                  
-                  <button type="button" onClick={() => removeEntry(entry.id)} className="node-btn node-btn--danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '6px' }} title={t('paramsModal.remove')}><TrashIcon /></button>
-                </div>
-              ))}
+                      
+                      <div style={{ minWidth: 0 }}>
+                        {entry.type === 'boolean' ? (
+                          <SelectInput 
+                            className="params-modal-input" 
+                            value={String(entry.value)} 
+                            options={[
+                              { value: 'true', label: 'true' },
+                              { value: 'false', label: 'false' },
+                            ]}
+                            onChange={(val) => updateEntry(entry.id, { value: val === 'true' })} 
+                          />
+                        ) : entry.type === 'object' ? (
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newKey = `${entry.key}.new_param`;
+                              addEntryWithKey(newKey);
+                              if (isCollapsed) toggleCollapse(entry.key);
+                            }}
+                            className="node-btn node-btn--secondary"
+                            style={{ width: '100%', fontSize: '11px', padding: '10px', display: 'flex', justifyContent: 'center', gap: '6px' }}
+                          >
+                            <PlusIcon size={12} /> {t('paramsModal.addProperty', 'Add Property')}
+                          </button>
+                        ) : entry.type === 'array' ? (
+                          <TextAreaInput 
+                            className="params-modal-input"
+                            value={typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value)} 
+                            onChange={(val) => updateEntry(entry.id, { value: stringToValue(String(val), entry.type) })} 
+                            placeholder="[...]" 
+                            rows={1}
+                            style={{ minHeight: '38px', resize: 'vertical' }}
+                          />
+                        ) : (
+                          <TextInput 
+                            className="params-modal-input"
+                            type={entry.type === 'number' ? 'number' : 'text'} 
+                            value={valueToString(entry.value)} 
+                            onChange={(val) => updateEntry(entry.id, { value: stringToValue(String(val), entry.type) })} 
+                            placeholder={entry.type === 'number' ? '0' : 'Enter value...'} 
+                          />
+                        )}
+                      </div>
+                      
+                      <button type="button" onClick={() => removeEntry(entry.id)} className="node-btn node-btn--danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '32px', borderRadius: '6px' }} title={t('paramsModal.remove')}><TrashIcon /></button>
+                    </div>
+                  );
+                });
+              })()}
               {entries.length === 0 && <div className="params-builder__empty" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', fontSize: '13px', border: '1px dashed var(--border)', borderRadius: '8px' }}>{t('paramsModal.noParams')}</div>}
               <button 
                 type="button" 
