@@ -63,6 +63,23 @@ export function exportToJson(nodes: AppNode[], edges: Edge[], yaml?: string): st
 }
 
 /**
+ * Export only nodes as JSON (for components/snippets)
+ */
+export function exportNodesOnly(nodes: AppNode[]): string {
+  const exportData = {
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    type: 'nodes_only',
+    nodes,
+    metadata: {
+      nodeCount: nodes.length,
+    },
+  };
+
+  return JSON.stringify(exportData, null, 2);
+}
+
+/**
  * Download data as a JSON file
  */
 export function downloadJson(data: string, filename: string): void {
@@ -149,6 +166,43 @@ export function createImportPicker(): Promise<ExportData | null> {
       }
     };
     
+    input.click();
+  });
+}
+
+/**
+ * Create a file input for importing ONLY nodes
+ */
+export function createNodesImportPicker(): Promise<AppNode[] | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data && Array.isArray(data.nodes)) {
+          resolve(data.nodes);
+        } else if (Array.isArray(data)) {
+          resolve(data);
+        } else {
+          console.error('Invalid nodes import: missing nodes array');
+          resolve(null);
+        }
+      } catch (err) {
+        console.error('Failed to read file:', err);
+        resolve(null);
+      }
+    };
+
     input.click();
   });
 }

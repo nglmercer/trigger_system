@@ -10,10 +10,13 @@ interface ExchangeModalsProps {
   onCloseExport: () => void;
   onImportJson: () => void;
   onImportYaml: () => void;
+  onImportNodesOnly: () => void;
   onExportJson: () => void;
   onExportYaml: () => void;
+  onExportSelected: () => void;
   onShare: () => void;
   handleHostExport: () => void;
+  hasSelectedNodes?: boolean;
 }
 
 export function ExchangeModals({
@@ -23,10 +26,13 @@ export function ExchangeModals({
   onCloseExport,
   onImportJson,
   onImportYaml,
+  onImportNodesOnly,
   onExportJson,
   onExportYaml,
+  onExportSelected,
   onShare,
-  handleHostExport
+  handleHostExport,
+  hasSelectedNodes
 }: ExchangeModalsProps) {
   const { t } = useTranslation();
   
@@ -69,6 +75,21 @@ export function ExchangeModals({
             </div>
           </div>
 
+          <div
+            onClick={() => { onImportNodesOnly(); onCloseImport(); }}
+            style={{ ...cardStyle, gridColumn: 'span 2' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--condition-color)'; e.currentTarget.style.background = 'rgba(46, 204, 113, 0.05)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+          >
+            <div style={{ ...iconBoxStyle, background: 'rgba(46, 204, 113, 0.1)', color: 'var(--condition-color)' }}>
+              <DownloadIcon size={24} style={{ transform: 'rotate(180deg)' }} />
+            </div>
+            <div>
+              <div style={cardTitleStyle}>{t('exchangeModals.importNodesTitle')}</div>
+              <div style={cardDescStyle}>{t('exchangeModals.importNodesDesc')}</div>
+            </div>
+          </div>
+
         </div>
       </Modal>
 
@@ -100,6 +121,19 @@ export function ExchangeModals({
             <div style={{ textAlign: 'left' }}>
               <div style={buttonTitleStyle}>{t('exchangeModals.saveJson')}</div>
               <div style={buttonDescStyle}>{t('exchangeModals.saveJsonDesc')}</div>
+            </div>
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => { onExportSelected(); onCloseExport(); }}
+            style={{ ...actionButtonStyle, opacity: hasSelectedNodes ? 1 : 0.5 }}
+            disabled={!hasSelectedNodes}
+          >
+            <DownloadIcon size={20} style={{ color: 'var(--condition-color)' }} />
+            <div style={{ textAlign: 'left' }}>
+              <div style={buttonTitleStyle}>{t('exchangeModals.exportSelectedNodes')}</div>
+              <div style={buttonDescStyle}>{t('exchangeModals.exportSelectedNodesDesc')}</div>
             </div>
           </button>
 

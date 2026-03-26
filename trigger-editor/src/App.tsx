@@ -52,6 +52,7 @@ function NodeEditor() {
     onNodeDataChange, 
     onConnect, 
     onReconnect, 
+    addNodes,
     clearAll,
     setGraph
   } = useNodeEdgeState();
@@ -64,8 +65,10 @@ function NodeEditor() {
   const {
     handleExportJson,
     handleExportYaml,
+    handleExportSelected,
     handleImport,
     handleImportYaml,
+    handleImportNodesOnly,
     handleShare,
     loadSharedData,
     clearSharedData,
@@ -78,7 +81,8 @@ function NodeEditor() {
     () => yaml || '',
     onNodeDataChange,
     setGraph,
-    success
+    success,
+    addNodes
   );
 
   const buildRule = useRuleBuilder(nodes, edges);
@@ -163,6 +167,62 @@ function NodeEditor() {
 
   // Connection validation hook
   const { isValidConnection } = useConnectionValidation(nodes, edges);
+
+  // Clipboard for copy/paste nodes
+  const clipboard = useRef<AppNode[]>([]);
+
+  // Keyboard shortcuts for copy/paste
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Ctrl+C or Cmd+C
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+        const selectedNodes = nodes.filter(n => n.selected);
+        if (selectedNodes.length > 0) {
+          clipboard.current = selectedNodes.map(node => ({
+            ...node,
+            selected: false, // Deselect in clipboard
+          }));
+          // success(t('notifications.nodesCopied', { count: selectedNodes.length }));
+        }
+      }
+
+      // Check for Ctrl+V or Cmd+V
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
+        if (clipboard.current.length > 0) {
+          const nodeMap = new Map<string, string>();
+          const pastedNodes = clipboard.current.map(node => {
+            const newId = getId();
+            nodeMap.set(node.id, newId);
+            return {
+              ...node,
+              id: newId,
+              selected: true,
+              position: {
+                x: node.position.x + 40,
+                y: node.position.y + 40,
+              },
+              data: {
+                ...node.data,
+                _id: newId,
+                // These will be properly populated by useNodeEdgeState
+                onChange: (val: unknown, f: string) => onNodeDataChange(newId, val, f),
+                onDuplicate: undefined as any,
+              }
+            };
+          });
+
+          // Deselect current nodes
+          setNodes((nds) => nds.map(n => ({ ...n, selected: false })));
+
+          addNodes(pastedNodes as AppNode[]);
+          success(t('notifications.nodesPasted', { count: pastedNodes.length }));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [nodes, addNodes, onNodeDataChange, setNodes, success, t]);
 
   // Initialize imports from localStorage on mount
   useEffect(() => {
@@ -259,12 +319,15 @@ function NodeEditor() {
         onClear={clearAll} 
         onExportJson={handleExportJson}
         onExportYaml={handleExportYaml}
+        onExportSelected={handleExportSelected}
         onImport={handleImport}
         onImportYaml={handleImportYaml}
+        onImportNodesOnly={handleImportNodesOnly}
         onShare={handleShare}
         onAddNode={addNode}
         handleHostExport={handleHostExport}
         hasNodes={nodes.length > 0}
+        hasSelectedNodes={nodes.some(n => n.selected)}
       />
 
       <main style={{ flexGrow: 1, position: 'relative' }} onDragOver={onDragOver} onDrop={onDrop}>
