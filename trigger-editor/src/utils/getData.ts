@@ -77,38 +77,37 @@ export interface ParamEntry {
 }
 
 export const entriesToJson = (ents: ParamEntry[]): string => {
-    const result: { [key: string]: JsonValue } = {};
-    const sortedEnts = [...ents].sort((a, b) => a.key.split('.').length - b.key.split('.').length);
-    for (const entry of sortedEnts) {
-      if (!entry.key) continue;
-      const keys = entry.key.split('.');
-      let current: { [key: string]: JsonValue } = result;
-      for (let i = 0; i < keys.length - 1; i++) {
-        const k = keys[i];
-        if (!k) continue;
-        if (!(k in current) || typeof current[k] !== 'object' || Array.isArray(current[k]) || current[k] === null) {
-            current[k] = {};
-        }
-        current = current[k] as { [key: string]: JsonValue };
+  const root: any = {};
+  
+  // Ordenar por longitud de key para procesar padres antes que hijos
+  const sorted = [...ents].sort((a, b) => a.key.length - b.key.length);
+
+  for (const entry of sorted) {
+    const keys = entry.key.split('.');
+    let current = root;
+
+    for (let i = 0; i < keys.length - 1; i++) {
+      const k = keys[i];
+      if (!k) continue;
+      // Si no existe o es un valor primitivo, lo convertimos a objeto para poder añadir hijos
+      if (!(k in current) || typeof current[k] !== 'object') {
+        current[k] = {};
       }
-      const lastKey = keys[keys.length - 1];
-      if (lastKey) {
-        let val = entry.value;
-        if ((entry.type === 'object' || entry.type === 'array') && typeof val === 'string') {
-          try {
-            val = JSON.parse(val);
-          } catch {} // fallback to string if invalid
-        }
-        
-        if (typeof val === 'object' && val !== null && !Array.isArray(val) && 
-            typeof current[lastKey] === 'object' && current[lastKey] !== null && !Array.isArray(current[lastKey])) {
-          current[lastKey] = { ...(current[lastKey] as any), ...val };
-        } else {
-          current[lastKey] = val;
-        }
+      current = current[k];
+    }
+
+    const lastKey = keys[keys.length - 1];
+    if (lastKey) {
+      // Evitamos sobrescribir objetos si ya existen con hijos
+      if (entry.type === 'object' && typeof current[lastKey] === 'object') {
+         // Preservar estructura existente
+         current[lastKey] = { ...current[lastKey], ...(entry.value as object) };
+      } else {
+         current[lastKey] = entry.value;
       }
     }
-    return JSON.stringify(result, null, 2) || '{}';
+  }
+  return JSON.stringify(root, null, 2);
 };
 export const generateId = () => Math.random().toString(36).substring(2, 9);
 

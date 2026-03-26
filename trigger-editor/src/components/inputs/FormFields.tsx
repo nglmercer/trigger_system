@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useRef } from 'react';
+import { useState, useRef,useEffect } from 'react';
 import { AutocompletePopup, HoverTooltip } from '../AutocompletePopup.tsx';
 import { findVariableAtOffset, findFirstVariable, getHoverInfo } from '../../lsp/engine.ts';
 
@@ -75,7 +75,7 @@ export function SelectInput({
 
 interface TextInputProps {
   value: string | number;
-  onChange: (value: string | number) => void;
+  onChange?: (value: string | number) => void;
   placeholder?: string;
   type?: 'text' | 'number';
   disabled?: boolean;
@@ -85,8 +85,8 @@ interface TextInputProps {
   /** Show only primitive values (string, number, boolean) in autocomplete */
   primitiveOnly?: boolean;
   autoFocus?: boolean;
-  style?: React.CSSProperties;
-  onBlur?: () => void;
+  style?: React.CSSProperties;  
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 export function TextInput({ 
@@ -110,9 +110,15 @@ export function TextInput({
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [cursorVar, setCursorVar] = useState<string | undefined>(undefined);
   const [cursorOffset, setCursorOffset] = useState<number>(0);
-
+  const [localValue, setLocalValue] = useState(value);
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
   const handleChange = (newVal: string | number) => {
-    onChange(type === 'number' ? (typeof newVal === 'string' ? parseFloat(newVal) || 0 : newVal) : newVal);
+    setLocalValue(newVal);
+    if (onChange) {
+      onChange(type === 'number' ? (typeof newVal === 'string' ? parseFloat(newVal) || 0 : newVal) : newVal);
+    }
   };
 
   // While editing: track which ${...} the caret is inside
@@ -147,7 +153,7 @@ export function TextInput({
       )}
       {type === 'text' && !disabled && autocompleteMode !== 'none' && (
         <AutocompletePopup
-          value={value}
+          value={localValue}
           onSelect={handleChange}
           anchorRef={containerRef}
           isFocused={isFocused}
@@ -161,14 +167,14 @@ export function TextInput({
         type={type}
         className={className}
         placeholder={placeholder}
-        value={value}
+        value={localValue}
         onChange={(e) => handleChange(e.target.value)}
         disabled={disabled}
         autoFocus={autoFocus}
         style={style}
         onFocus={() => setIsFocused(true)}
-        onBlur={() => {
-          if (onBlur) onBlur();
+        onBlur={(e) => {
+          if (onBlur) onBlur(e);
           setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150);
         }}
         onKeyUp={updateCursorVar}
@@ -207,7 +213,10 @@ export function TextAreaInput({
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [cursorVar, setCursorVar] = useState<string | undefined>(undefined);
   const [cursorOffset, setCursorOffset] = useState<number>(0);
-
+  const [localValue, setLocalValue] = useState(value);
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
   const updateCursorVar = () => {
     const pos = textareaRef.current?.selectionStart ?? 0;
     setCursorOffset(pos);
@@ -237,7 +246,7 @@ export function TextAreaInput({
       )}
       {!disabled && (
         <AutocompletePopup
-          value={value}
+          value={localValue}
           onSelect={onChange}
           anchorRef={containerRef}
           isFocused={isFocused}
@@ -248,7 +257,7 @@ export function TextAreaInput({
         ref={textareaRef}
         className={className}
         placeholder={placeholder}
-        value={value}
+        value={localValue}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         rows={rows}

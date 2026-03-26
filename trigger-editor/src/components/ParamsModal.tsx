@@ -100,35 +100,28 @@ export function ParamsModal() {
 
   const updateEntry = (id: string, updates: Partial<ParamEntry>) => {
     setEntries(prevEntries => {
-      let newEntries = [...prevEntries];
-      const index = newEntries.findIndex(e => e.id === id);
-      if (index === -1) return prevEntries;
-      
-      const oldEntry = newEntries[index];
-      if (!oldEntry) return prevEntries;
+      const targetEntry = prevEntries.find(e => e.id === id);
+      if (!targetEntry) return prevEntries;
 
-      // Handle renaming collision (but ONLY if they finished typing or manually edited validly)
-      // For now, let's keep the user's input as is to avoid jumping cursor issues.
-      const updatedEntry = { ...oldEntry, ...updates } as ParamEntry;
-      newEntries[index] = updatedEntry;
+      const oldKey = targetEntry.key;
+      const newKey = updates.key !== undefined ? updates.key : oldKey;
 
-      // Cascade key renaming for children (only if the key actually changed)
-      if (updates.key !== undefined && oldEntry.key && updates.key !== oldEntry.key) {
-        const oldPrefix = oldEntry.key + '.';
-        const newPrefix = updates.key + '.';
-        newEntries = newEntries.map(e => {
-          if (e.id !== id && e.key.startsWith(oldPrefix)) {
-            const childSubKey = e.key.substring(oldPrefix.length);
-            return { ...e, key: newPrefix + childSubKey };
-          }
-          return e;
-        });
-      }
-      
-      // Update local JSON preview without the full parseParams cycle to prevent duplications/ID resets
-      setLocalJson(entriesToJson(newEntries));
-      setJsonError(null);
-      return newEntries;
+      const nextEntries = prevEntries.map(entry => {
+        if (entry.id === id) {
+          return { ...entry, ...updates };
+        }
+        
+        if (oldKey !== newKey && entry.key.startsWith(oldKey + '.')) {
+          const childSubKey = entry.key.substring(oldKey.length);
+          return { ...entry, key: newKey + childSubKey };
+        }
+        
+        return entry;
+      });
+
+      const jsonStr = entriesToJson(nextEntries);
+      setLocalJson(jsonStr);
+      return nextEntries;
     });
   };
 
@@ -378,11 +371,14 @@ export function ParamsModal() {
                           <TextInput 
                             className="params-modal-input"
                             value={entry.key.split('.').pop() || ''} 
-                            onChange={(val) => {
-                               const newName = String(val).replace(/\./g, '_');
-                               const parts = entry.key.split('.');
-                               parts[parts.length - 1] = newName;
-                               updateEntry(entry.id, { key: parts.join('.') });
+                            onBlur={(e) => {
+                                const newFragment = e.target.value.replace(/\./g, '_').trim();
+                                const parts = entry.key.split('.');
+                                
+                                if (newFragment !== parts[parts.length - 1] && newFragment !== "") {
+                                  parts[parts.length - 1] = newFragment;
+                                  updateEntry(entry.id, { key: parts.join('.') });
+                                }
                             }} 
                             placeholder="name" 
                           />
