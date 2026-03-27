@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trigger Alerts Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f0f0f0; min-height: 100vh; padding: 20px; }
+    h1 { margin-bottom: 20px; color: #333; }
+    .controls { margin-bottom: 20px; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 6px; background: #4a5568; color: white; font-size: 14px; }
+    button:hover { background: #2d3748; }
+  </style>
+</head
+>
+<body>
+  <script type="module" src="demo.ts"></script>
+  <h1>Trigger Alerts Demo</h1>
+  <div class="controls">
+    <button onclick="showTextAlert()">Show Text Alert</button>
+    <button onclick="showVideoAlert()">Show Video Alert</button>
+    <button onclick="showAudioAlert()">Show Audio Alert</button>
+  </div>
+
+</body>
+</html>
