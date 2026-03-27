@@ -186,7 +186,10 @@ export class TriggerAlert extends LitElement {
         style="position: fixed; ${positionStyles}"
       >
         ${this.elements.map(el => html`
-          <alert-element .element="${el}"></alert-element>
+          <alert-element 
+            id="${el.id}"
+            .element="${el}"
+          ></alert-element>
         `)}
         ${this.config.dismissible ? html`
           <button 

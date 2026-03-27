@@ -19,13 +19,37 @@ AlertBehaviorRegistry.register('split-bounce', (el) => {
 AlertBehaviorRegistry.register('score-updater', (el, data) => {
   const scoreObj = { val: 0 };
   const target = data?.target || 1000;
+  const textEl = el.querySelector('.text') || el;
   AlertBuilder.animate(scoreObj, {
     val: target,
-    round: 1,
     duration: 2000,
-    update: () => {
-      el.textContent = `+${scoreObj.val} XP`;
+    onUpdate: () => {
+      textEl.textContent = `+${Math.floor(scoreObj.val)} XP`;
     }
+  });
+});
+
+AlertBehaviorRegistry.register('score-count', (el, data) => {
+  const score = { val: 0 };
+  const target = data?.target || 1250;
+  const textEl = el.querySelector('.text') || el;
+  AlertBuilder.animate(score, {
+    val: target,
+    duration: 3000,
+    ease: 'outExpo',
+    onUpdate: () => {
+      textEl.textContent = Math.floor(score.val).toString();
+    }
+  });
+});
+
+AlertBehaviorRegistry.register('gift-reveal', (el, data) => {
+  AlertBuilder.animate(el, {
+    opacity: [0, 1],
+    scale: [0, 1.5, 1],
+    delay: data?.delay || 1500,
+    duration: 1000,
+    ease: 'outElastic(1, .5)'
   });
 });
 interface DemoConfig {
@@ -148,14 +172,15 @@ const demos: DemoConfig[] = [
             ],
             layout: { display: 'flex' as const, alignItems: 'center' as const, margin: '16px 0' },
             onRender: (el: HTMLElement) => {
-              // Now we use the specific IDs since we added them to the DOM
-              const checkWrapper = el.querySelector(`#check-${i} .checkbox-wrapper`) as HTMLElement;
-              const line = el.querySelector(`#line-${i}`) as HTMLElement;
-              const text = el.querySelector(`#task-text-${i}`) as HTMLElement;
-              
               const startDelay = 1200 + (i * 1500);
 
               setTimeout(() => {
+                const checkWrapper = el.querySelector(`#check-${i} .checkbox-wrapper`) as HTMLElement;
+                const line = el.querySelector(`#line-${i}`) as HTMLElement;
+                const text = el.querySelector(`#task-text-${i}`) as HTMLElement;
+                
+                console.log(`Task ${i} elements:`, { checkWrapper, line, text });
+
                 if (!checkWrapper || !line || !text) return;
 
                 // 1. Mark Checkbox
@@ -374,25 +399,66 @@ const demos: DemoConfig[] = [
   },
   {
     id: 'json-export',
-    title: 'JSON Serialization',
-    description: 'Export an alert with behaviors to JSON and re-import it.',
+    title: 'JSON Serialization (Combo Clone)',
+    description: 'Export a complex Combo alert with behaviors to JSON and re-import it.',
     category: 'Advanced',
     handler: () => {
-      // 1. Build an alert using behaviors (NOT functions)
+      // 1. Build an alert USING BEHAVIORS (this allows full re-hydration)
       const alert = new AlertBuilder()
-        .id('json-demo')
-        .text('Serialized Logic!', { behavior: 'split-bounce', style: { fontSize: 32, fontWeight: 800 } })
-        .text('0 XP', { behavior: 'score-updater', behaviorData: { target: 2500 }, style: { color: '#fbbf24', fontSize: 24 } })
+        .id('json-combo-' + Date.now())
+        .container([
+          { 
+            type: 'image', 
+            id: 'pfp', 
+            src: 'https://i.pravatar.cc/150?u=combo',
+            style: { width: '80px', height: '80px', borderRadius: '50%', border: '4px solid #6366f1', overflow: 'hidden' }
+          },
+          { 
+            type: 'container', 
+            id: 'score-container',
+            children: [
+              { 
+                type: 'text', 
+                id: 'score-val', 
+                content: '0', 
+                behavior: 'score-count',
+                behaviorData: { target: 1250 },
+                style: { fontSize: '48px', fontWeight: 900, color: '#f59e0b', margin: '0 0 0 20px' }
+              },
+              {
+                type: 'text',
+                id: 'score-label',
+                content: 'COMBO XP',
+                style: { fontSize: '12px', fontWeight: 700, opacity: 0.6, margin: '8px 0 0 24px' }
+              }
+            ],
+            layout: { display: 'flex', flexDirection: 'column', justifyContent: 'center' }
+          },
+          {
+            type: 'image',
+            id: 'gift',
+            src: 'https://cdn-icons-png.flaticon.com/512/4213/4213554.png',
+            behavior: 'gift-reveal',
+            behaviorData: { delay: 1500 },
+            style: { width: '60px', height: '60px', opacity: 0, marginLeft: '20px' }
+          }
+        ], {
+           layout: { display: 'flex', alignItems: 'center' }
+        })
         .style({
           position: 'center',
           background: 'rgba(15, 23, 42, 0.95)',
-          padding: 40,
-          borderRadius: 24,
-          animation: { type: 'scale', duration: 0.5 }
+          color: '#fff',
+          borderRadius: 32,
+          padding: '24px 40px',
+          boxShadow: '0 0 60px rgba(245, 158, 11, 0.3)',
+          border: '2px solid rgba(245, 158, 11, 0.2)',
+          animation: { type: 'slide', direction: 'up', duration: 0.8 }
         })
+        .duration(7000)
         .build();
 
-      // 2. Export to JSON (callbacks are lost, behaviors are kept!)
+      // 2. Export to JSON
       const json = AlertExporter.toJson(alert);
       console.log('Exported JSON:', json);
 

@@ -27,31 +27,38 @@ import { AlertBehaviorRegistry } from '../registry/BehaviorRegistry';
 export class AlertElementComponent extends LitElement {
   @property({ type: Object }) element!: AlertElement;
   @property({ type: Object }) parentLayout?: AlertElementLayout;
-  @state() private mounted = false;
+
 
   protected createRenderRoot() {
     return this;
   }
 
   firstUpdated() {
-    this.mounted = true;
+
     this.setupAnimations();
     this.setupInteractions();
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.style.display = 'block';
   }
 
   private setupAnimations() {
     const el = this.querySelector('.element') as HTMLElement;
     if (!el) return;
     
-    // Call onRender if defined (direct function call)
-    if (this.element && (this.element as any).onRender) {
-      (this.element as any).onRender(el);
-    }
+    this.updateComplete.then(() => {
+      // Call onRender if defined (direct function call)
+      if (this.element && (this.element as any).onRender) {
+        (this.element as any).onRender(el);
+      }
 
-    // Execute behavior from registry if defined (JSON safe)
-    if (this.element && (this.element as any).behavior) {
-      AlertBehaviorRegistry.execute((this.element as any).behavior, el, (this.element as any).behaviorData);
-    }
+      // Execute behavior from registry if defined (JSON safe)
+      if (this.element && (this.element as any).behavior) {
+        AlertBehaviorRegistry.execute((this.element as any).behavior, el, (this.element as any).behaviorData);
+      }
+    });
 
     const animatableTypes = ['text', 'image', 'video', 'audio', 'button', 'container', 'checkbox'];
     if (!animatableTypes.includes(this.element.type)) return;
@@ -333,7 +340,6 @@ export class AlertElementComponent extends LitElement {
         .spacer { flex-shrink: 0; }
       </style>
       <div 
-        id="${this.element.id}"
         class="element ${this.element.type}"
         style="${combinedStyle}"
       >

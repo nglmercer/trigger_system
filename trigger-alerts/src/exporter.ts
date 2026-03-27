@@ -10,13 +10,36 @@ export interface CleanAlertConfig {
   dismissible?: boolean;
 }
 
+function cleanElement(el: any): any {
+  const cleaned: any = { type: el.type, id: el.id };
+  
+  if (el.content !== undefined) cleaned.content = el.content;
+  if (el.src !== undefined) cleaned.src = el.src;
+  if (el.alt !== undefined) cleaned.alt = el.alt;
+  if (el.markdown !== undefined) cleaned.markdown = el.markdown;
+  if (el.style) cleaned.style = typeof el.style === 'function' ? undefined : el.style;
+  if (el.behavior) cleaned.behavior = el.behavior;
+  if (el.behaviorData) cleaned.behaviorData = el.behaviorData;
+  if (el.layout) cleaned.layout = el.layout;
+  if (el.animation) cleaned.animation = el.animation;
+  if (el.interaction) cleaned.interaction = el.interaction;
+  
+  if (el.children && Array.isArray(el.children)) {
+    cleaned.children = el.children.map(cleanElement);
+  }
+  
+  return cleaned;
+}
+
 function cleanAlert(alert: AlertConfig): CleanAlertConfig {
   const cleaned: CleanAlertConfig = { id: alert.id };
   
   if (alert.name) cleaned.name = alert.name;
-  if (alert.elements && alert.elements.length > 0) cleaned.elements = alert.elements;
-  if (alert.duration !== undefined && alert.duration !== 5000) cleaned.duration = alert.duration;
-  if (alert.dismissible !== undefined && alert.dismissible !== true) cleaned.dismissible = alert.dismissible;
+  if (alert.elements && alert.elements.length > 0) {
+    cleaned.elements = alert.elements.map(cleanElement);
+  }
+  if (alert.duration !== undefined) cleaned.duration = alert.duration;
+  if (alert.dismissible !== undefined) cleaned.dismissible = alert.dismissible;
   if (alert.style) cleaned.style = alert.style as Record<string, any>;
   
   return cleaned;
