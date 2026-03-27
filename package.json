@@ -1,6 +1,12 @@
 {
   "name": "trigger_system",
   "version": "1.3.1",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "alerts",
+    "trigger-editor"
+  ],
   "description": "A powerful rule engine and trigger system for JavaScript/TypeScript applications",
   "main": "dist/node/index.js",
   "browser": "dist/browser/index.browser.js",
@@ -79,7 +85,6 @@
     "lsp": "bun run src/lsp/server.ts --stdio",
     "package": "bun run build:all && cd vscode-extension && vsce package --no-dependencies",
     "editor": "cd trigger-editor && bun run dev",
-    "alerts": "cd alerts && bun run dev",
     "editor:build": "bun install && cd trigger-editor && bun install && bun run build",
     "prepublishOnly": "bun run build"
   },
