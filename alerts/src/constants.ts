@@ -1,4 +1,4 @@
-import type { MediaType, ElementAnimation } from './types';
+import type { MediaType, ElementAnimation, ElementOutputAnimation } from './types';
 
 export const MEDIA_LABELS: Record<MediaType, string> = {
   video: 'Video',
@@ -24,6 +24,17 @@ export const ANIMATIONS: Array<{ value: ElementAnimation; label: string }> = [
   { value: 'scaleIn', label: 'Scale In' },
   { value: 'bounce', label: 'Bounce' },
   { value: 'pulse', label: 'Pulse' },
+];
+
+export const OUTPUT_ANIMATIONS: Array<{ value: ElementOutputAnimation; label: string }> = [
+  { value: 'none', label: 'None' },
+  { value: 'fadeOut', label: 'Fade Out' },
+  { value: 'slideOutLeft', label: 'Slide Left' },
+  { value: 'slideOutRight', label: 'Slide Right' },
+  { value: 'slideOutTop', label: 'Slide Top' },
+  { value: 'slideOutBottom', label: 'Slide Bottom' },
+  { value: 'scaleOut', label: 'Scale Out' },
+  { value: 'zoomOut', label: 'Zoom Out' },
 ];
 
 export const DEFAULT_ALERT_CONFIG = {

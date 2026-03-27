@@ -68,6 +68,9 @@ export function useAlertEditor(): UseAlertEditorReturn {
       animation: 'fade',
       animationDuration: 500,
       animationDelay: 0,
+      outputAnimation: 'fadeOut',
+      outputDuration: 500,
+      outputDelay: 0,
     };
     setElements(prev => [...prev, newElement]);
     setSelectedId(id);

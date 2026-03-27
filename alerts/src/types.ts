@@ -11,6 +11,16 @@ export type ElementAnimation =
   | 'bounce' 
   | 'pulse';
 
+export type ElementOutputAnimation = 
+  | 'none'
+  | 'fadeOut'
+  | 'slideOutLeft'
+  | 'slideOutRight'
+  | 'slideOutTop'
+  | 'slideOutBottom'
+  | 'scaleOut'
+  | 'zoomOut';
+
 export interface CanvasElement {
   id: string;
   type: MediaType;
@@ -29,6 +39,9 @@ export interface CanvasElement {
   animation: ElementAnimation;
   animationDuration: number;
   animationDelay: number;
+  outputAnimation: ElementOutputAnimation;
+  outputDuration: number;
+  outputDelay: number;
 }
 
 export interface AlertConfig {

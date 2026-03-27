@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CanvasElement, MediaType } from '../types';
 import { DRAGGABLE_ITEMS } from '../constants';
+import { Icon } from '../icons';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface SidebarProps {
   onAlertNameChange: (name: string) => void;
   onAlertDurationChange: (duration: number) => void;
   onToggle: () => void;
+  onPreviewAlert?: () => void;
 }
 
 export function Sidebar({
@@ -32,6 +34,7 @@ export function Sidebar({
   onAlertNameChange,
   onAlertDurationChange,
   onToggle,
+  onPreviewAlert,
 }: SidebarProps) {
   const [showConfig, setShowConfig] = useState(false);
 
@@ -42,18 +45,31 @@ export function Sidebar({
     text: '📝',
   };
 
+  const typeIconNames: Record<MediaType, 'video' | 'audio' | 'image' | 'text'> = {
+    video: 'video',
+    audio: 'audio',
+    image: 'image',
+    text: 'text',
+  };
+
   return (
     <>
       {isOpen && (
         <div className="w-64 bg-slate-800 border-r border-slate-700 flex flex-col overflow-hidden">
           <div className="p-4 border-b border-slate-700">
-            <h1 className="text-white font-bold text-lg">Alert Editor</h1>
+            <h1 className="text-white font-bold text-lg flex items-center gap-2">
+              <Icon name="alert" className="text-cyan-400" />
+              Alert Editor
+            </h1>
             <p className="text-slate-400 text-xs mt-1">Del to delete • Esc to deselect</p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
             <div className="mb-4">
-              <label className="text-xs text-slate-400 block mb-2">Add Elements</label>
+              <label className="text-xs text-slate-400 block mb-2 flex items-center gap-1">
+                <Icon name="plus" className="w-3 h-3" />
+                Add Elements
+              </label>
               <div className="grid grid-cols-2 gap-2">
                 {DRAGGABLE_ITEMS.map(item => (
                   <button
@@ -69,7 +85,10 @@ export function Sidebar({
             </div>
 
             <div className="mb-4 pt-3 border-t border-slate-700">
-              <label className="text-xs text-slate-400 block mb-2">Layers / Elements</label>
+              <label className="text-xs text-slate-400 block mb-2 flex items-center gap-1">
+                <Icon name="layers" className="w-3 h-3" />
+                Layers / Elements
+              </label>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {sortedElements.length === 0 ? (
                   <div className="text-slate-500 text-xs text-center py-2">No elements</div>
@@ -83,27 +102,27 @@ export function Sidebar({
                       } ${el.type === 'audio' ? 'opacity-60' : ''}`}
                     >
                       <span className="text-slate-500 text-xs w-4">{idx + 1}</span>
-                      <span>{typeIcons[el.type]}</span>
+                      <Icon name={typeIconNames[el.type]} className="w-4 h-4 text-cyan-400" />
                       <span className="text-white text-xs flex-1 truncate">{el.name}</span>
                       <button
                         onClick={(e) => { e.stopPropagation(); onMoveLayer(el.id, 'up'); }}
                         disabled={idx === sortedElements.length - 1}
                         className="text-slate-400 hover:text-white disabled:opacity-30"
                       >
-                        ▲
+                        <Icon name="chevronUp" className="w-3 h-3" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onMoveLayer(el.id, 'down'); }}
                         disabled={idx === 0}
                         className="text-slate-400 hover:text-white disabled:opacity-30"
                       >
-                        ▼
+                        <Icon name="chevronDown" className="w-3 h-3" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onDeleteElement(el.id); }}
                         className="text-red-400 hover:text-red-300"
                       >
-                        ✕
+                        <Icon name="close" className="w-3 h-3" />
                       </button>
                     </div>
                   ))
@@ -116,7 +135,10 @@ export function Sidebar({
                 onClick={() => setShowConfig(!showConfig)}
                 className="flex items-center justify-between w-full text-xs text-slate-400 mb-2"
               >
-                <span>Alert Settings</span>
+                <span className="flex items-center gap-1">
+                  <Icon name="settings" className="w-3 h-3" />
+                  Alert Settings
+                </span>
                 <span className={showConfig ? 'rotate-180' : ''}>▼</span>
               </button>
               
@@ -153,6 +175,18 @@ export function Sidebar({
                       <span>30s</span>
                     </div>
                   </div>
+                  
+                  {onPreviewAlert && elements.length > 0 && (
+                    <div className="pt-2">
+                      <button
+                        onClick={onPreviewAlert}
+                        className="w-full bg-cyan-500 hover:bg-cyan-400 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                      >
+                        <Icon name="play" className="w-4 h-4" />
+                        Preview in OBS
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -166,7 +200,7 @@ export function Sidebar({
         style={{ left: isOpen ? 256 : 0 }}
       >
         <span className={`text-white transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-          ◀
+          <Icon name="chevronLeft" className="w-4 h-4" />
         </span>
       </button>
     </>

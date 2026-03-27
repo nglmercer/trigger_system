@@ -122,6 +122,9 @@ export default function AlertEditor() {
       animation: 'fade',
       animationDuration: 500,
       animationDelay: 0,
+      outputAnimation: 'fadeOut',
+      outputDuration: 500,
+      outputDelay: 0,
     };
     setElements(prev => [...prev, newElement]);
     setSelectedId(id);
@@ -135,6 +138,39 @@ export default function AlertEditor() {
   const togglePlay = useCallback(() => {
     setIsPlaying(prev => !prev);
   }, [setIsPlaying]);
+
+  const openPreview = useCallback(() => {
+    const exportData = {
+      version: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      alert: alertConfig,
+      elements: elements.map(el => ({
+        id: el.id,
+        type: el.type,
+        name: el.name,
+        mediaUrl: el.mediaUrl,
+        text: el.text,
+        volume: el.volume,
+        loop: el.loop,
+        x: el.x,
+        y: el.y,
+        width: el.width,
+        height: el.height,
+        opacity: el.opacity,
+        scale: el.scale,
+        zIndex: el.zIndex,
+        animation: el.animation,
+        animationDuration: el.animationDuration,
+        animationDelay: el.animationDelay,
+        outputAnimation: el.outputAnimation,
+        outputDuration: el.outputDuration,
+        outputDelay: el.outputDelay,
+      })),
+    };
+    const encoded = btoa(JSON.stringify(exportData));
+    const previewUrl = `${window.location.origin}${window.location.pathname.replace(/\/[^/]*$/, '')}/preview.html?config=${encoded}`;
+    window.open(previewUrl, '_blank');
+  }, [alertConfig, elements]);
 
   const exportJson = useCallback(() => {
     const exportData = {
@@ -182,12 +218,14 @@ export default function AlertEditor() {
         onAlertNameChange={(name) => setAlertConfig(prev => ({ ...prev, name }))}
         onAlertDurationChange={(duration) => setAlertConfig(prev => ({ ...prev, duration }))}
         onToggle={() => setLeftSidebarOpen(prev => !prev)}
+        onPreviewAlert={openPreview}
       />
 
       <div className="flex-1 relative">
         <Canvas
           elements={elements}
           isPlaying={isPlaying}
+          playbackTime={playbackTime}
           selectedId={selectedId}
           onSelectElement={(id) => { if (id !== undefined) setSelectedId(id); }}
           onDragOver={handleDragOver}
@@ -196,6 +234,7 @@ export default function AlertEditor() {
           onUpdateElement={updateElement}
           videoRefs={videoRefs}
           canvasRef={canvasRef}
+          alertConfig={alertConfig}
         />
         
         <PlaybackControls

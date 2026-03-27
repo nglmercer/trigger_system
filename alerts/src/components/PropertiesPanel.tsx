@@ -1,5 +1,6 @@
 import type { CanvasElement, MediaType } from '../types';
-import { ANIMATIONS } from '../constants';
+import { ANIMATIONS, OUTPUT_ANIMATIONS } from '../constants';
+import { Icon } from '../icons';
 
 interface PropertiesPanelProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ export function PropertiesPanel({
           onClick={onClose}
           className="text-slate-400 hover:text-white"
         >
-          ✕
+          <Icon name="close" className="w-4 h-4" />
         </button>
       </div>
 
@@ -121,7 +122,10 @@ export function PropertiesPanel({
         {element.type !== 'audio' && (
           <>
             <div className="pt-3 border-t border-slate-700 mb-4">
-              <label className="text-xs text-slate-400 block mb-2">Animation</label>
+              <label className="text-xs text-slate-400 block mb-2 flex items-center gap-1">
+                <Icon name="arrowIn" className="w-3 h-3 text-cyan-400" />
+                Input Animation
+              </label>
               <div className="grid grid-cols-3 gap-1">
                 {ANIMATIONS.map(anim => (
                   <button
@@ -141,7 +145,7 @@ export function PropertiesPanel({
             
             <div className="mb-4">
               <label className="text-xs text-slate-400 block mb-1">
-                Duration: {element.animationDuration}ms
+                In Duration: {element.animationDuration}ms
               </label>
               <input
                 type="range"
@@ -156,7 +160,7 @@ export function PropertiesPanel({
             
             <div className="mb-4">
               <label className="text-xs text-slate-400 block mb-1">
-                Delay: {element.animationDelay}ms
+                In Delay: {element.animationDelay}ms
               </label>
               <input
                 type="range"
@@ -165,6 +169,58 @@ export function PropertiesPanel({
                 step={100}
                 value={element.animationDelay}
                 onChange={(e) => onUpdateElement({ animationDelay: Number(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-slate-700 mb-4">
+              <label className="text-xs text-slate-400 block mb-2 flex items-center gap-1">
+                <Icon name="arrowOut" className="w-3 h-3 text-orange-400" />
+                Output Animation
+              </label>
+              <div className="grid grid-cols-3 gap-1">
+                {OUTPUT_ANIMATIONS.map(anim => (
+                  <button
+                    key={anim.value}
+                    onClick={() => onUpdateElement({ outputAnimation: anim.value })}
+                    className={`p-2 rounded text-xs text-center transition-colors ${
+                      element.outputAnimation === anim.value
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {anim.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-xs text-slate-400 block mb-1">
+                Out Duration: {element.outputDuration}ms
+              </label>
+              <input
+                type="range"
+                min={100}
+                max={2000}
+                step={50}
+                value={element.outputDuration}
+                onChange={(e) => onUpdateElement({ outputDuration: Number(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="text-xs text-slate-400 block mb-1">
+                Out Delay: {element.outputDelay}ms
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={3000}
+                step={100}
+                value={element.outputDelay}
+                onChange={(e) => onUpdateElement({ outputDelay: Number(e.target.value) })}
                 className="w-full"
               />
             </div>

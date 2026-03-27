@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alert Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: transparent; 
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    #root { 
+      width: 100vw; 
+      height: 100vh; 
+    }
+    .element {
+      position: absolute;
+      background: #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .element-header {
+      height: 24px;
+      background: #334155;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+    }
+    .element-content {
+      flex: 1;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .element-content img, .element-content video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+    .element-content.text {
+      color: white;
+      font-size: 14px;
+      text-align: center;
+    }
+    .element-content.audio {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    const inputAnimations = {
+      none: { from: {}, to: {} },
+      fade: { from: { opacity: 0 }, to: { opacity: 1 } },
+      slideInLeft: { from: { opacity: 0, transform: 'translateX(-150px)' }, to: { opacity: 1, transform: 'translateX(0)' } },
+      slideInRight: { from: { opacity: 0, transform: 'translateX(150px)' }, to: { opacity: 1, transform: 'translateX(0)' } },
+      slideInTop: { from: { opacity: 0, transform: 'translateY(-150px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+      slideInBottom: { from: { opacity: 0, transform: 'translateY(150px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+      scaleIn: { from: { opacity: 0, transform: 'scale(0)' }, to: { opacity: 1, transform: 'scale(1)' } },
+      bounce: { from: { opacity: 0, transform: 'translateY(-50px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+      pulse: { from: { opacity: 0, transform: 'scale(0.8)' }, to: { opacity: 1, transform: 'scale(1)' } },
+    };
+
+    const outputAnimations = {
+      none: { from: {}, to: {} },
+      fadeOut: { from: { opacity: 1 }, to: { opacity: 0 } },
+      slideOutLeft: { from: { opacity: 1, transform: 'translateX(0)' }, to: { opacity: 0, transform: 'translateX(-150px)' } },
+      slideOutRight: { from: { opacity: 1, transform: 'translateX(0)' }, to: { opacity: 0, transform: 'translateX(150px)' } },
+      slideOutTop: { from: { opacity: 1, transform: 'translateY(0)' }, to: { opacity: 0, transform: 'translateY(-150px)' } },
+      slideOutBottom: { from: { opacity: 1, transform: 'translateY(0)' }, to: { opacity: 0, transform: 'translateY(150px)' } },
+      scaleOut: { from: { opacity: 1, transform: 'scale(1)' }, to: { opacity: 0, transform: 'scale(0)' } },
+      zoomOut: { from: { opacity: 1, transform: 'scale(1)' }, to: { opacity: 0, transform: 'scale(2)' } },
+    };
+
+    const typeIcons = {
+      video: '🎬',
+      audio: '🔊',
+      image: '🖼️',
+      text: '📝',
+    };
+
+    function getConfigFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const config = params.get('config');
+      if (config) {
+        try {
+          return JSON.parse(atob(config));
+        } catch (e) {
+          console.error('Failed to parse config:', e);
+        }
+      }
+      return null;
+    }
+
+    function createElement(el, index) {
+      const div = document.createElement('div');
+      div.className = 'element';
+      div.id = el.id;
+      div.style.left = el.x + 'px';
+      div.style.top = el.y + 'px';
+      div.style.width = el.width + 'px';
+      div.style.height = el.height + 'px';
+      div.style.zIndex = el.zIndex;
+      div.style.opacity = el.opacity;
+
+      const header = document.createElement('div');
+      header.className = 'element-header';
+      header.innerHTML = `<span class="text-white text-xs">${el.name}</span>`;
+      
+      const content = document.createElement('div');
+      content.className = 'element-content';
+      
+      if (el.type === 'image' && el.mediaUrl) {
+        const img = document.createElement('img');
+        img.src = el.mediaUrl;
+        content.appendChild(img);
+      } else if (el.type === 'video' && el.mediaUrl) {
+        const video = document.createElement('video');
+        video.src = el.mediaUrl;
+        video.autoplay = true;
+        video.muted = true;
+        video.loop = el.loop;
+        content.appendChild(video);
+      } else if (el.type === 'text') {
+        content.classList.add('text');
+        content.textContent = el.text;
+      } else if (el.type === 'audio') {
+        content.classList.add('audio');
+        content.innerHTML = `<span>🔊 ${el.name}</span>`;
+        if (el.mediaUrl) {
+          const audio = document.createElement('audio');
+          audio.src = el.mediaUrl;
+          audio.volume = el.volume;
+          audio.loop = el.loop;
+          audio.play();
+        }
+      } else {
+        content.innerHTML = `<span class="text-slate-500">${typeIcons[el.type]}</span>`;
+      }
+
+      div.appendChild(header);
+      div.appendChild(content);
+      return div;
+    }
+
+    function animateElement(el, phase, progress, duration) {
+      const element = document.getElementById(el.id);
+      if (!element) return;
+
+      if (phase === 'enter') {
+        const anim = inputAnimations[el.animation] || inputAnimations.fade;
+        const from = anim.from;
+        const to = anim.to;
+        const style = {
+          opacity: from.opacity !== undefined ? from.opacity * (1 - progress) + to.opacity * progress : el.opacity,
+          transform: `${from.transform || ''} ${to.transform || ''}`.trim(),
+        };
+        element.style.opacity = style.opacity;
+        element.style.transform = style.transform;
+        element.style.transition = `all ${duration}ms ease-out`;
+      } else if (phase === 'exit') {
+        const anim = outputAnimations[el.outputAnimation] || outputAnimations.fadeOut;
+        const from = anim.from;
+        const to = anim.to;
+        const style = {
+          opacity: from.opacity !== undefined ? from.opacity * (1 - progress) + to.opacity * progress : el.opacity,
+          transform: `${from.transform || ''} ${to.transform || ''}`.trim(),
+        };
+        element.style.opacity = style.opacity;
+        element.style.transform = style.transform;
+        element.style.transition = `all ${duration}ms ease-out`;
+      } else if (phase === 'visible') {
+        element.style.opacity = el.opacity;
+        element.style.transform = '';
+      }
+    }
+
+    function runAlert(config) {
+      const root = document.getElementById('root');
+      root.innerHTML = '';
+      
+      const elements = [...config.elements].sort((a, b) => a.zIndex - b.zIndex);
+      elements.forEach((el, i) => {
+        root.appendChild(createElement(el, i));
+      });
+
+      const duration = config.alert?.duration || 5000;
+      const startTime = Date.now();
+
+      function update() {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+
+        elements.forEach(el => {
+          const inStart = el.animationDelay || 0;
+          const inEnd = inStart + (el.animationDuration || 500);
+          const outStart = duration - (el.outputDelay || 0) - (el.outputDuration || 500);
+          const outEnd = outStart + (el.outputDuration || 500);
+
+          if (el.type === 'audio') return;
+
+          if (elapsed < inStart) {
+            animateElement(el, 'hidden', 0, 0);
+          } else if (elapsed < inEnd) {
+            const p = (elapsed - inStart) / (inEnd - inStart);
+            animateElement(el, 'enter', p, el.animationDuration || 500);
+          } else if (elapsed >= outStart) {
+            const p = Math.min(1, (elapsed - outStart) / (el.outputDuration || 500));
+            animateElement(el, 'exit', p, el.outputDuration || 500);
+          } else {
+            animateElement(el, 'visible', 1, 0);
+          }
+        });
+
+        if (elapsed < duration) {
+          requestAnimationFrame(update);
+        }
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    const config = getConfigFromUrl();
+    if (config) {
+      runAlert(config);
+    } else {
+      document.getElementById('root').innerHTML = '<div style="color: white; padding: 20px;">No alert config found. Add ?config=BASE64_JSON to URL</div>';
+    }
+  </script>
+</body>
+</html>

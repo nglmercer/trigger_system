@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import type { CanvasElement, ElementAnimation } from '../types';
+import type { CanvasElement, ElementAnimation, ElementOutputAnimation, AlertConfig } from '../types';
+import { Icon } from '../icons';
 
 interface CanvasProps {
   elements: CanvasElement[];
   isPlaying: boolean;
+  playbackTime: number;
+  alertConfig: AlertConfig;
   selectedId: string | null;
   onSelectElement: (id: string | null) => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -14,7 +17,7 @@ interface CanvasProps {
   canvasRef: React.MutableRefObject<HTMLDivElement | null>;
 }
 
-const animationStyles: Record<ElementAnimation, { initial: React.CSSProperties; animate: React.CSSProperties }> = {
+const inputAnimations: Record<ElementAnimation, { initial: React.CSSProperties; animate: React.CSSProperties }> = {
   none: { initial: {}, animate: {} },
   fade: { initial: { opacity: 0 }, animate: { opacity: 1 } },
   slideInLeft: { initial: { opacity: 0, transform: 'translateX(-100px)' }, animate: { opacity: 1, transform: 'translateX(0)' } },
@@ -26,9 +29,22 @@ const animationStyles: Record<ElementAnimation, { initial: React.CSSProperties; 
   pulse: { initial: { opacity: 0, transform: 'scale(0.8)' }, animate: { opacity: 1, transform: 'scale(1)' } },
 };
 
+const outputAnimations: Record<ElementOutputAnimation, { initial: React.CSSProperties; animate: React.CSSProperties }> = {
+  none: { initial: {}, animate: {} },
+  fadeOut: { initial: { opacity: 1 }, animate: { opacity: 0 } },
+  slideOutLeft: { initial: { opacity: 1, transform: 'translateX(0)' }, animate: { opacity: 0, transform: 'translateX(-100px)' } },
+  slideOutRight: { initial: { opacity: 1, transform: 'translateX(0)' }, animate: { opacity: 0, transform: 'translateX(100px)' } },
+  slideOutTop: { initial: { opacity: 1, transform: 'translateY(0)' }, animate: { opacity: 0, transform: 'translateY(-100px)' } },
+  slideOutBottom: { initial: { opacity: 1, transform: 'translateY(0)' }, animate: { opacity: 0, transform: 'translateY(100px)' } },
+  scaleOut: { initial: { opacity: 1, transform: 'scale(1)' }, animate: { opacity: 0, transform: 'scale(0)' } },
+  zoomOut: { initial: { opacity: 1, transform: 'scale(1)' }, animate: { opacity: 0, transform: 'scale(2)' } },
+};
+
 export function Canvas({
   elements,
   isPlaying,
+  playbackTime,
+  alertConfig,
   selectedId,
   onSelectElement,
   onDragOver,
@@ -49,6 +65,18 @@ export function Canvas({
       inputRef.current.select();
     }
   }, [editingTextId]);
+
+  const getElementState = (element: CanvasElement): 'hidden' | 'entering' | 'visible' | 'exiting' => {
+    if (!isPlaying) return 'visible';
+    
+    const endTime = element.animationDelay + element.animationDuration;
+    const outStartTime = alertConfig.duration - element.outputDelay - element.outputDuration;
+    
+    if (playbackTime < element.animationDelay) return 'hidden';
+    if (playbackTime < endTime) return 'entering';
+    if (playbackTime >= outStartTime) return 'exiting';
+    return 'visible';
+  };
 
   const handleTextDoubleClick = (element: CanvasElement) => {
     if (element.type === 'text' && !isPlaying) {
@@ -76,10 +104,10 @@ export function Canvas({
 
   const renderElement = (element: CanvasElement) => {
     const isSelected = selectedId === element.id;
-    const isAnimating = isPlaying && element.animation !== 'none';
-    const anim = animationStyles[element.animation];
+    const state = getElementState(element);
+    const isPlayingMode = isPlaying;
     
-    const containerStyle: React.CSSProperties = {
+    let containerStyle: React.CSSProperties = {
       position: 'absolute',
       left: element.x,
       top: element.y,
@@ -88,9 +116,32 @@ export function Canvas({
       zIndex: element.zIndex,
       opacity: element.opacity,
       transform: element.scale !== 1 ? `scale(${element.scale})` : undefined,
-      ...(isAnimating ? anim.initial : {}),
-      transition: isAnimating ? `all ${element.animationDuration}ms ease-out` : 'none',
     };
+
+    if (isPlayingMode && state === 'entering') {
+      const inputAnim = inputAnimations[element.animation];
+      const progress = Math.min(1, (playbackTime - element.animationDelay) / element.animationDuration);
+      containerStyle = {
+        ...containerStyle,
+        ...inputAnim.initial,
+        opacity: (inputAnim.initial.opacity || 1) * progress + (inputAnim.animate.opacity || 1) * (1 - progress),
+        transform: `${containerStyle.transform || ''} ${inputAnim.initial.transform || ''}`.trim(),
+      };
+      containerStyle.transition = `all ${element.animationDuration}ms ease-out`;
+    } else if (isPlayingMode && state === 'exiting') {
+      const outAnim = outputAnimations[element.outputAnimation];
+      const outStartTime = alertConfig.duration - element.outputDelay - element.outputDuration;
+      const progress = (playbackTime - outStartTime) / element.outputDuration;
+      containerStyle = {
+        ...containerStyle,
+        ...outAnim.animate,
+        opacity: Math.max(0, Math.min(1, 1 - progress)),
+        transform: `${containerStyle.transform || ''} ${outAnim.animate.transform || ''}`.trim(),
+      };
+      containerStyle.transition = `all ${element.outputDuration}ms ease-out`;
+    } else if (isPlayingMode && state === 'hidden') {
+      containerStyle.opacity = 0;
+    }
 
     const handleVideoRef = (node: HTMLVideoElement | null) => {
       if (node && isPlaying) {
@@ -116,7 +167,10 @@ export function Canvas({
           <span className="text-xs text-white truncate flex items-center gap-1">
             {element.name}
             {element.animation !== 'none' && (
-              <span className="text-cyan-400 text-[10px] ml-1">{element.animation}</span>
+              <span className="text-cyan-400 text-[10px] ml-1">in:{element.animation}</span>
+            )}
+            {element.outputAnimation !== 'none' && isPlaying && (
+              <span className="text-orange-400 text-[10px] ml-1">out:{element.outputAnimation}</span>
             )}
           </span>
         </div>
