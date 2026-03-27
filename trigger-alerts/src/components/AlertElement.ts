@@ -11,6 +11,7 @@ import {
   type AlertContainerElement,
   type AlertSpacerElement,
   type AlertElementStyle,
+  type AlertCheckboxElement,
   type AlertElementLayout,
   type AlertElementAnimation,
   type AlertElementInteraction,
@@ -19,7 +20,7 @@ import {
   transformToString,
   filterToString,
 } from '../styles/types';
-import { animateElement, setupElementInteractions } from '../animations';
+import { animateElement, setupElementInteractions, getInitialAnimationStyles } from '../animations';
 
 @customElement('alert-element')
 export class AlertElementComponent extends LitElement {
@@ -46,7 +47,7 @@ export class AlertElementComponent extends LitElement {
       (this.element as any).onRender(el);
     }
 
-    const animatableTypes = ['text', 'image', 'video', 'audio', 'button', 'container'];
+    const animatableTypes = ['text', 'image', 'video', 'audio', 'button', 'container', 'checkbox'];
     if (!animatableTypes.includes(this.element.type)) return;
     if (!('animation' in this.element)) return;
     
@@ -104,6 +105,15 @@ export class AlertElementComponent extends LitElement {
       const size = (this.element as AlertSpacerElement).size;
       style += `; width: ${typeof size === 'number' ? `${size}px` : size}; height: ${typeof size === 'number' ? `${size}px` : size};`;
     }
+
+    // Add initial animation styles to prevent flicker
+    if ('animation' in this.element && this.element.animation) {
+      const initial = getInitialAnimationStyles(this.element.animation);
+      Object.entries(initial).forEach(([key, value]) => {
+        const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        style += `; ${cssKey}: ${value}`;
+      });
+    }
     
     return style;
   }
@@ -141,6 +151,14 @@ export class AlertElementComponent extends LitElement {
     `;
   }
 
+  private renderCheckbox(element: AlertCheckboxElement) {
+    return html`
+      <div class="checkbox-wrapper ${element.checked ? 'checked' : ''}">
+        <div class="checkmark">✓</div>
+      </div>
+    `;
+  }
+
   private renderAudio(element: AlertAudioElement) {
     return html`
       <audio
@@ -172,10 +190,11 @@ export class AlertElementComponent extends LitElement {
 
   private renderContainer(element: AlertContainerElement) {
     return html`
-      <div class="container">
+      <div class="container" style="${elementLayoutToCSS(element.layout || {})}">
         ${element.children.map(child => html`
-          <alert-element
-            .element="${child}"
+          <alert-element 
+            id="${child.id}"
+            .element="${child}" 
             .parentLayout="${element.layout}"
           ></alert-element>
         `)}
@@ -212,6 +231,9 @@ export class AlertElementComponent extends LitElement {
         break;
       case 'spacer':
         content = this.renderSpacer(this.element as AlertSpacerElement);
+        break;
+      case 'checkbox':
+        content = this.renderCheckbox(this.element as AlertCheckboxElement);
         break;
       default:
         content = nothing;
@@ -269,14 +291,43 @@ export class AlertElementComponent extends LitElement {
         }
         
         button.filled { background: #007bff; color: white; }
-        button.filled:hover { background: #0056b3; }
+        button:hover { filter: brightness(1.1); }
+        button:active { transform: scale(0.98); }
         button.outline { background: transparent; border: 2px solid #007bff; color: #007bff; }
         button.outline:hover { background: rgba(0, 123, 255, 0.1); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Checkbox Styles */
+        .checkbox-wrapper {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .checkmark {
+          color: white;
+          opacity: 0;
+          transform: scale(0.5);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .checkbox-wrapper.checked {
+          background-color: #6366f1;
+          border-color: #6366f1;
+        }
+        
+        .checkbox-wrapper.checked .checkmark {
+          opacity: 1;
+          transform: scale(1);
+        }
         
         .spacer { flex-shrink: 0; }
       </style>
       <div 
+        id="${this.element.id}"
         class="element ${this.element.type}"
         style="${combinedStyle}"
       >

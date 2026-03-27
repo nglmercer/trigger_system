@@ -88,6 +88,91 @@ const demos: DemoConfig[] = [
     }
   },
   {
+    id: 'task-checklist',
+    title: 'Milestone Roadmap',
+    description: 'Advanced task completion with progressive strikethrough lines.',
+    category: 'Advanced',
+    handler: () => {
+      const alert = new AlertBuilder()
+        .id('tasks-' + Date.now())
+        .container([
+          { type: 'text' as const, id: 'title', content: '🏗️ Build Pipeline', style: { fontWeight: 900, fontSize: '24px', marginBottom: '28px' } },
+          ...['Initialize Environment', 'Security Scanning', 'Deploy to Production'].map((task, i) => ({
+            type: 'container' as const,
+            id: `task-row-${i}`,
+            children: [
+              { 
+                type: 'checkbox' as const, 
+                id: `check-${i}`, 
+                checked: false,
+                style: { width: '24px', height: '24px', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '6px', marginRight: '16px' }
+              },
+              { 
+                type: 'container' as const,
+                id: `text-container-${i}`,
+                children: [
+                   { type: 'text' as const, id: `task-text-${i}`, content: task, style: { fontSize: '16px', opacity: 0.8 } },
+                   { type: 'spacer' as const, id: `line-${i}`, size: 2, style: { 
+                     position: 'absolute' as const, top: '51%', left: 0, 
+                     width: '0%', background: '#6366f1', opacity: 0.6 
+                   }}
+                ],
+                layout: { position: 'relative' as const }
+              }
+            ],
+            layout: { display: 'flex' as const, alignItems: 'center' as const, margin: '16px 0' },
+            onRender: (el: HTMLElement) => {
+              // Now we use the specific IDs since we added them to the DOM
+              const checkWrapper = el.querySelector(`#check-${i} .checkbox-wrapper`) as HTMLElement;
+              const line = el.querySelector(`#line-${i}`) as HTMLElement;
+              const text = el.querySelector(`#task-text-${i}`) as HTMLElement;
+              
+              const startDelay = 1200 + (i * 1500);
+
+              setTimeout(() => {
+                if (!checkWrapper || !line || !text) return;
+
+                // 1. Mark Checkbox
+                checkWrapper.classList.add('checked');
+
+                // 2. Draw Strikethrough Line
+                AlertBuilder.animate(line, {
+                  width: '100%',
+                  duration: 800,
+                  delay: 200,
+                  ease: 'easeInOutQuad'
+                });
+
+                // 3. Fade Text
+                AlertBuilder.animate(text, {
+                  opacity: 0.4,
+                  duration: 800,
+                  delay: 200
+                });
+              }, startDelay);
+            }
+          }))
+        ])
+        .style({
+          position: 'center',
+          background: 'rgba(15, 23, 42, 0.95)',
+          color: '#fff',
+          borderRadius: 28,
+          padding: '40px',
+          width: 420,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid rgba(255,255,255,0.05)',
+          animation: { type: 'slide', direction: 'up', duration: 0.6 }
+        })
+        .duration(10000)
+        .build();
+
+      const el = document.createElement('trigger-alert') as TriggerAlert;
+      el.config = alert;
+      document.body.appendChild(el);
+    }
+  },
+  {
     id: 'combo-points',
     title: 'Achievement Combo',
     description: 'Dynamic score tracker with gift milestones and number animations.',
@@ -271,15 +356,15 @@ function init() {
   const descEl = document.getElementById('activeDesc');
   const triggerBtn = document.getElementById('triggerBtn');
 
-  if (!listEl || !titleEl || !descEl || !triggerBtn) return;
+  //if (!listEl || !titleEl || !descEl || !triggerBtn) return;
 
   // Clear list first to prevent duplicates
-  listEl.innerHTML = '';
+  if (listEl) listEl.innerHTML = '';
 
   function selectDemo(demo: DemoConfig) {
     activeDemoId = demo.id;
-    titleEl!.textContent = demo.title;
-    descEl!.textContent = demo.description;
+    if (titleEl) titleEl.textContent = demo.title;
+    if (descEl) descEl.textContent = demo.description;
     
     // Update active class
     document.querySelectorAll('.demo-item').forEach(item => {
@@ -296,16 +381,21 @@ function init() {
       <p>${demo.description}</p>
     `;
     item.addEventListener('click', () => selectDemo(demo));
-    listEl.appendChild(item);
+    if (listEl) listEl.appendChild(item);
   });
-
-  triggerBtn.addEventListener('click', () => {
-    const demo = demos.find(d => d.id === activeDemoId);
-    if (demo) demo.handler();
-  });
+  if (triggerBtn) {
+    triggerBtn.addEventListener('click', () => {
+      const demo = demos.find(d => d.id === activeDemoId);
+      if (demo) demo.handler();
+    });
+  }
 
   // Initial selection
-  selectDemo(demos[0]);
+  selectDemo(demos[3]);
+  /*
+   */
+  const demo = demos.find(d => d.id === activeDemoId);
+  if (demo) demo.handler();
 }
 
 document.addEventListener('DOMContentLoaded', init);

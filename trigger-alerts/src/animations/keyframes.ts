@@ -79,3 +79,32 @@ export function getOutKeyframes(
       return { opacity: [1, 0] };
   }
 }
+export function getInitialAnimationStyles(animation: AlertElementAnimation): any {
+  const direction = animation.direction || 'up';
+  const from = animation.from;
+  const distance = from !== undefined ? (typeof from === 'string' ? from : `${from}px`) : '30px';
+
+  switch (animation.type) {
+    case 'fade':
+      return { opacity: 0 };
+    case 'slide':
+      switch (direction) {
+        case 'up': return { transform: `translateY(${distance})`, opacity: 0 };
+        case 'down': return { transform: `translateY(-${distance})`, opacity: 0 };
+        case 'left': return { transform: `translateX(${distance})`, opacity: 0 };
+        case 'right': return { transform: `translateX(-${distance})`, opacity: 0 };
+      }
+      break;
+    case 'scale':
+      return { transform: `scale(${from ?? 0})`, opacity: 0 };
+    case 'rotate':
+      return { transform: `rotate(${from ?? 0}deg)` };
+    case 'bounce':
+      return { transform: `scale(0.5)`, opacity: 0 };
+    case 'pulse':
+      return { transform: `scale(1)`, opacity: 1 };
+    default:
+      return { opacity: 0 };
+  }
+  return {};
+}

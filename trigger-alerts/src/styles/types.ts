@@ -226,6 +226,16 @@ export interface AlertContainerElement {
   onRender?: (element: HTMLElement) => void;
 }
 
+export interface AlertCheckboxElement {
+  type: 'checkbox';
+  id: string;
+  checked?: boolean;
+  style?: AlertElementStyle;
+  animation?: AlertElementAnimation;
+  interaction?: AlertElementInteraction;
+  onRender?: (element: HTMLElement) => void;
+}
+
 export interface AlertSpacerElement {
   type: 'spacer';
   id: string;
@@ -240,6 +250,7 @@ export type AlertElement =
   | AlertAudioElement 
   | AlertButtonElement 
   | AlertContainerElement 
+  | AlertCheckboxElement 
   | AlertSpacerElement;
 
 export interface AlertStyleAnimation {

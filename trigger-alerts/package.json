@@ -18,6 +18,7 @@
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target browser --minify --sourcemap=external",
     "dev": "bun --watch ./demo.html",
+    "preview": "bun --watch ./preview.html",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

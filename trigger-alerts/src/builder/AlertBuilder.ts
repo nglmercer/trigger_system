@@ -7,6 +7,7 @@ import type {
   AlertAudioElement,
   AlertButtonElement,
   AlertContainerElement,
+  AlertCheckboxElement,
   AlertSpacerElement,
   AlertElementStyle,
   AlertElementLayout,
@@ -160,6 +161,25 @@ export class AlertBuilder {
       onRender: options?.onRender,
     };
     this.addElement(btnEl);
+    return this;
+  }
+
+  checkbox(checked?: boolean, options?: {
+    style?: AlertElementStyle;
+    animation?: AlertElementAnimation;
+    interaction?: AlertElementInteraction;
+    onRender?: (el: HTMLElement) => void;
+  }): this {
+    const checkEl: AlertCheckboxElement = {
+      type: 'checkbox',
+      id: generateId(),
+      checked,
+      style: options?.style,
+      animation: options?.animation,
+      interaction: options?.interaction,
+      onRender: options?.onRender,
+    };
+    this.addElement(checkEl);
     return this;
   }
 

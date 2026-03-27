@@ -3,7 +3,8 @@ export * from './keyframes';
 export { animate, stagger, splitText } from 'animejs';
 
 import { runAnimation, runStagger, type AnimationOptions } from './engine';
-import { getAnimationKeyframes, getOutKeyframes } from './keyframes';
+import { getAnimationKeyframes, getOutKeyframes, getInitialAnimationStyles } from './keyframes';
+export { getAnimationKeyframes, getOutKeyframes, getInitialAnimationStyles };
 import type { AlertElementAnimation, AlertElementInteraction } from '../styles/types';
 
 export async function animateElement(
