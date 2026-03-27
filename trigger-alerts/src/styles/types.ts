@@ -33,7 +33,7 @@ export interface AlertStyleAnimation {
 }
 
 export interface AlertStyle {
-  position?: 'top' | 'bottom' | 'center';
+  position?: 'top' | 'bottom' | 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   background?: string;
   color?: string;
   borderRadius?: number | string;

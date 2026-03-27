@@ -76,24 +76,90 @@ export class TriggerAlert extends LitElement {
     return map[dir] || 'Y';
   }
 
+  private getPositionStyles(position: string): string {
+    const positionMap: Record<string, string> = {
+      'top': 'top: 20px; left: 50%; transform: translateX(-50%);',
+      'bottom': 'bottom: 20px; left: 50%; transform: translateX(-50%);',
+      'center': 'top: 50%; left: 50%; transform: translate(-50%, -50%);',
+      'top-left': 'top: 20px; left: 20px;',
+      'top-right': 'top: 20px; right: 20px;',
+      'bottom-left': 'bottom: 20px; left: 20px;',
+      'bottom-right': 'bottom: 20px; right: 20px;'
+    };
+    return positionMap[position] || positionMap['top'];
+  }
+
+  private getAnimationDirection(position: string): string {
+    if (position.includes('top')) return 'down';
+    if (position.includes('bottom')) return 'up';
+    return 'up';
+  }
+
+  private parseEasing(easing?: string): any {
+    if (!easing) return 'ease-out';
+    if (easing.startsWith('spring(')) {
+      const match = easing.match(/spring\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)/);
+      if (match) {
+        const [, stiffness, damping, mass] = match;
+        return { stiffness: Number(stiffness), damping: Number(damping), mass: Number(mass) };
+      }
+    }
+    return easing;
+  }
+
+  private parseMarkdown(text: string): string {
+    let result = text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/\n/g, '<br>');
+    if (result.includes('<li>')) {
+      result = `<ul>${result}</ul>`;
+    }
+    return result;
+  }
+
+  private async animateTextIn(el: HTMLElement) {
+    const textEl = el.querySelector('.text') as HTMLElement;
+    if (!textEl || !textEl.textContent) return;
+    
+    const chars = textEl.textContent.split('');
+    textEl.innerHTML = '';
+    textEl.style.whiteSpace = 'pre-wrap';
+    
+    const span = document.createElement('span');
+    span.style.display = 'inline';
+    textEl.appendChild(span);
+    
+    for (let i = 0; i < chars.length; i++) {
+      span.textContent += chars[i];
+      await new Promise(r => setTimeout(r, 15));
+    }
+  }
+
   private async animateIn() {
     const el = this.shadowRoot?.querySelector('.alert') as HTMLElement;
     if (!el) return;
 
     const animationType = this.config.style?.animation?.type || 'fade';
-    const direction = this.config.style?.animation?.direction || 'up';
+    const direction = this.config.style?.animation?.direction || this.getAnimationDirection(this.config.style?.position || 'top');
     const duration = this.config.style?.animation?.duration || 0.3;
+    const easing = this.config.style?.animation?.easing ? 
+      this.config.style.animation.easing as any : 'ease-out';
 
     const animations: Record<string, any> = {
       fade: { opacity: [0, 1] },
       slide: {
-        transform: [`translate${this.getDirection(direction)}(-20px)`, 'translateY(0)']
+        transform: [`translate${this.getDirection(direction)}(-30px)`, 'translateY(0)']
       },
       scale: { transform: [{ scale: 0.8 }, { scale: 1 }] },
       bounce: { transform: [{ scale: 0.5 }, { scale: 1.1 }, { scale: 1 }] }
     };
 
-    await animate(el, animations[animationType], { duration, easing: 'ease-out' });
+    await animate(el, animations[animationType], { duration, easing });
     this.visible = true;
   }
 
@@ -133,11 +199,12 @@ export class TriggerAlert extends LitElement {
   render() {
     const contents = Array.isArray(this.config.content) ? this.config.content : [this.config.content];
     const position = this.config.style?.position || 'top';
+    const positionStyles = this.getPositionStyles(position);
     
     return html`
       <div 
         class="alert ${position}" 
-        style="position: ${position === 'center' ? 'fixed' : 'fixed'}; ${position === 'top' ? 'top: 10px;' : position === 'bottom' ? 'bottom: 10px;' : 'top: 50%; left: 50%; transform: translate(-50%, -50%);'}"
+        style="position: fixed; ${positionStyles}"
       >
         ${contents.map(c => this.renderContent(c))}
         ${this.config.dismissible ? html`
@@ -147,7 +214,6 @@ export class TriggerAlert extends LitElement {
     `;
   }
 }
-
 declare global {
   interface HTMLElementTagNameMap {
     'trigger-alert': TriggerAlert;

@@ -8,18 +8,59 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f0f0f0; min-height: 100vh; padding: 20px; }
     h1 { margin-bottom: 20px; color: #333; }
-    .controls { margin-bottom: 20px; }
-    button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 6px; background: #4a5568; color: white; font-size: 14px; }
-    button:hover { background: #2d3748; }
+    .controls { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+    button { 
+      padding: 10px 16px; 
+      cursor: pointer; 
+      border: none; 
+      border-radius: 6px; 
+      background: #4a5568; 
+      color: white; 
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    button:hover { background: #2d3748; transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    .section { margin-bottom: 24px; }
+    .section h2 { font-size: 16px; color: #666; margin-bottom: 12px; }
   </style>
+  <script type="module" src="./demo.ts"></script>
 </head>
 <body>
   <h1>Trigger Alerts Demo</h1>
-  <div class="controls">
-    <button id="textBtn">Show Text Alert</button>
-    <button id="videoBtn">Show Video Alert</button>
-    <button id="audioBtn">Show Audio Alert</button>
+  
+  <div class="section">
+    <h2>Basic Alerts</h2>
+    <div class="controls">
+      <button id="textBtn">Text Alert</button>
+      <button id="videoBtn">Video Alert</button>
+      <button id="audioBtn">Audio Alert</button>
+    </div>
   </div>
-  <script type="module" src="./demo.ts"></script>
+
+  <div class="section">
+    <h2>Complex Text & Positions</h2>
+    <div class="controls">
+      <button id="complexTextBtn">Complex Text</button>
+      <button id="multiPosBtn">Multi Position</button>
+      <button id="mdBtn">Markdown</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Advanced Animations</h2>
+    <div class="controls">
+      <button id="staggerBtn">Stagger Animation</button>
+      <button id="springBtn">Spring Bounce</button>
+      <button id="callbackBtn">Callbacks</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Custom Styles</h2>
+    <div class="controls">
+      <button id="styleBtn">Complex Style</button>
+    </div>
+  </div>
 </body>
 </html>
