@@ -12,16 +12,14 @@
     button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 6px; background: #4a5568; color: white; font-size: 14px; }
     button:hover { background: #2d3748; }
   </style>
-</head
->
+</head>
 <body>
-  <script type="module" src="demo.ts"></script>
   <h1>Trigger Alerts Demo</h1>
   <div class="controls">
-    <button onclick="showTextAlert()">Show Text Alert</button>
-    <button onclick="showVideoAlert()">Show Video Alert</button>
-    <button onclick="showAudioAlert()">Show Audio Alert</button>
+    <button id="textBtn">Show Text Alert</button>
+    <button id="videoBtn">Show Video Alert</button>
+    <button id="audioBtn">Show Audio Alert</button>
   </div>
-
+  <script type="module" src="./demo.ts"></script>
 </body>
 </html>

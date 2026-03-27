@@ -1,5 +1,5 @@
-import { AlertBuilder, AlertExporter, TriggerAlert } from './index';
-
+import { AlertBuilder, AlertExporter } from './index';
+import { TriggerAlert } from './src/components/TriggerAlert';
 const alert1 = new AlertBuilder()
   .id('welcome-alert')
   .name('Welcome Message')
@@ -55,5 +55,5 @@ console.log('\n=== YAML Export ===');
 console.log(AlertExporter.toYaml([alert1, alert2, alert3]));
 
 document.body.innerHTML = '<trigger-alert></trigger-alert>';
-const el = document.querySelector('trigger-alert') as any;
+const el = document.querySelector('trigger-alert') as TriggerAlert;
 if (el) el.config = alert1;

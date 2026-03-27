@@ -1,10 +1,10 @@
 import YAML from 'yaml';
-import type { AlertConfig, AlertStyle } from '../styles/types';
+import type { AlertConfig, AlertStyle } from './styles/types';
 
 export interface CleanAlertConfig {
   id: string;
   name?: string;
-  content: any;
+  content?: any;
   style?: Record<string, any>;
   duration?: number;
   dismissible?: boolean;
@@ -33,14 +33,14 @@ export class AlertExporter {
     return JSON.stringify(data, null, pretty ? 2 : 0);
   }
 
-  static toYamlFile(alerts: AlertConfig | AlertConfig[], filePath: string): Promise<void> {
+  static async toYamlFile(alerts: AlertConfig | AlertConfig[], filePath: string): Promise<void> {
     const yaml = this.toYaml(alerts);
-    return Bun.write(filePath, yaml);
+    await Bun.write(filePath, yaml);
   }
 
-  static toJsonFile(alerts: AlertConfig | AlertConfig[], filePath: string): Promise<void> {
+  static async toJsonFile(alerts: AlertConfig | AlertConfig[], filePath: string): Promise<void> {
     const json = this.toJson(alerts);
-    return Bun.write(filePath, json);
+    await Bun.write(filePath, json);
   }
 }
 
