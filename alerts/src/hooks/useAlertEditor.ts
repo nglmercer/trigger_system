@@ -1,7 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { CanvasElement, AlertConfig, MediaType } from '../types';
 import { DEFAULT_ALERT_CONFIG, MEDIA_LABELS } from '../constants';
-import { generateId } from '../utils';
+
+function generateId(prefix: string = 'el'): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
 
 interface UseAlertEditorReturn {
   elements: CanvasElement[];
@@ -13,13 +16,13 @@ interface UseAlertEditorReturn {
   isPlaying: boolean;
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   playbackTime: number;
+  setPlaybackTime: React.Dispatch<React.SetStateAction<number>>;
   updateElement: (id: string, updates: Partial<CanvasElement>) => void;
   addElement: (type: MediaType) => void;
   deleteElement: (id: string) => void;
   moveLayer: (id: string, direction: 'up' | 'down') => void;
   audioRefs: React.MutableRefObject<Map<string, HTMLAudioElement>>;
   videoRefs: React.MutableRefObject<Map<string, HTMLVideoElement>>;
-  playbackRef: React.MutableRefObject<number | null>;
   canvasRef: React.MutableRefObject<HTMLDivElement | null>;
   sortedElements: CanvasElement[];
   maxZIndex: number;
@@ -37,7 +40,6 @@ export function useAlertEditor(): UseAlertEditorReturn {
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
 
-  const selectedElement = elements.find(e => e.id === selectedId);
   const maxZIndex = Math.max(0, ...elements.map(e => e.zIndex));
   const sortedElements = [...elements].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -94,46 +96,81 @@ export function useAlertEditor(): UseAlertEditorReturn {
     });
   }, []);
 
-  useEffect(() => {
-    elements.forEach(el => {
-      if (el.type === 'audio' && el.mediaUrl) {
-        let audio = audioRefs.current.get(el.id);
-        if (!audio) {
-          audio = new Audio(el.mediaUrl);
-          audioRefs.current.set(el.id, audio);
-        }
-        audio.volume = el.volume;
-        audio.loop = el.loop;
-      }
+  const stopPlayback = useCallback(() => {
+    audioRefs.current.forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
     });
-  }, [elements]);
+    videoRefs.current.forEach(video => {
+      video.pause();
+      video.currentTime = 0;
+    });
+  }, []);
+
+  const playElement = useCallback((element: CanvasElement) => {
+    if (element.type === 'audio' && element.mediaUrl) {
+      let audio = audioRefs.current.get(element.id);
+      if (!audio) {
+        audio = new Audio(element.mediaUrl);
+        audio.volume = element.volume;
+        audio.loop = element.loop;
+        audioRefs.current.set(element.id, audio);
+      }
+      audio.currentTime = 0;
+      audio.play().catch(err => console.error('Audio play error:', err));
+    }
+    
+    if (element.type === 'video' && element.mediaUrl) {
+      const videoEl = document.querySelector(`video[data-element-id="${element.id}"]`) as HTMLVideoElement | null;
+      if (videoEl) {
+        videoRefs.current.set(element.id, videoEl);
+        videoEl.currentTime = 0;
+        videoEl.muted = false;
+        videoEl.play().catch(err => console.error('Video play error:', err));
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (isPlaying) {
+      setPlaybackTime(0);
+      
+      elements.forEach(el => {
+        const delay = el.animationDelay;
+        if (delay > 0) {
+          setTimeout(() => {
+            if (isPlaying) playElement(el);
+          }, delay);
+        } else {
+          playElement(el);
+        }
+      });
+
       playbackRef.current = window.setInterval(() => {
         setPlaybackTime(prev => {
           if (prev >= alertConfig.duration) {
+            stopPlayback();
             setIsPlaying(false);
-            audioRefs.current.forEach(audio => {
-              audio.pause();
-              audio.currentTime = 0;
-            });
-            videoRefs.current.forEach(video => {
-              video.pause();
-              video.currentTime = 0;
-            });
             return 0;
           }
           return prev + 100;
         });
       }, 100);
+    } else {
+      if (playbackRef.current) {
+        clearInterval(playbackRef.current);
+        playbackRef.current = null;
+      }
+      stopPlayback();
     }
+
     return () => {
       if (playbackRef.current) {
         clearInterval(playbackRef.current);
       }
+      stopPlayback();
     };
-  }, [isPlaying, alertConfig.duration]);
+  }, [isPlaying, alertConfig.duration, elements, stopPlayback, playElement]);
 
   return {
     elements,
@@ -145,13 +182,13 @@ export function useAlertEditor(): UseAlertEditorReturn {
     isPlaying,
     setIsPlaying,
     playbackTime,
+    setPlaybackTime,
     updateElement,
     addElement,
     deleteElement,
     moveLayer,
     audioRefs,
     videoRefs,
-    playbackRef,
     canvasRef,
     sortedElements,
     maxZIndex,

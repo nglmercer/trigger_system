@@ -1,6 +1,6 @@
 import type { ElementAnimation } from './types';
 import type { Easing } from 'framer-motion';
-
+import { RuleBuilder,RuleExporter,type ActionParams } from '../../src/index';
 interface AnimationVariant {
   initial: { opacity?: number; x?: number; y?: number; scale?: number };
   animate: { opacity?: number; x?: number; y?: number; scale?: number };
@@ -82,4 +82,42 @@ export function getAnimationVariant(animation: ElementAnimation, duration: numbe
 
 export function generateId(prefix: string = 'el'): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+export function buildRule(action: string, params: ActionParams) {
+  const rule = new RuleBuilder()
+    .withId('alert_' + generateId())
+    .withName('Alert Rule')
+    .withDescription('Alert Rule Description')
+    .on('ALERT_TRIGGER')
+    .do(action, params as ActionParams)
+    .build();
+  const yaml = RuleExporter.toYaml(rule);
+  return {rule, yaml};
+}
+/*
+    const blob = new Blob([yamlOutput], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trigger-alert-${alertConfig.name.toLowerCase().replace(/\s+/g, '-')}.yaml`;
+    a.click();
+    URL.revokeObjectURL(url);
+*/
+export function downloadYaml(yaml: string, filename: string) {
+    const blob = new Blob([yaml], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+export function downloadJson(json: string, filename: string) {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 }

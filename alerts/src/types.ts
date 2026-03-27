@@ -9,8 +9,7 @@ export type ElementAnimation =
   | 'slideInBottom' 
   | 'scaleIn' 
   | 'bounce' 
-  | 'pulse' 
-  | 'shake';
+  | 'pulse';
 
 export interface CanvasElement {
   id: string;
@@ -35,27 +34,11 @@ export interface CanvasElement {
 export interface AlertConfig {
   name: string;
   duration: number;
-  transition?: string;
 }
 
 export interface AlertExport {
   version: string;
   exportedAt: string;
   alert: AlertConfig;
-  elements: Array<{
-    id: string;
-    type: MediaType;
-    name: string;
-    mediaUrl: string;
-    text: string;
-    volume: number;
-    loop: boolean;
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-    style: { opacity: number; scale: number; zIndex: number };
-    animation: { type: ElementAnimation; duration: number; delay: number };
-  }>;
+  elements: CanvasElement[];
 }
-
-export type AnimationDirection = 'up' | 'down';
-export type DragMode = 'drag' | 'resize';

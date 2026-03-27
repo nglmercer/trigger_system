@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 import { Icon } from '../components';
 import { DRAGGABLE_ITEMS } from '../constants';
 import type { CanvasElement, MediaType } from '../types';
@@ -20,6 +21,8 @@ interface LeftSidebarProps {
   onDownloadJson: () => void;
   onExportToTrigger: () => void;
   onToggle: () => void;
+  onTogglePlay?: () => void;
+  isPlaying?: boolean;
 }
 
 export function LeftSidebar({
@@ -39,7 +42,10 @@ export function LeftSidebar({
   onDownloadJson,
   onExportToTrigger,
   onToggle,
+  onTogglePlay,
+  isPlaying,
 }: LeftSidebarProps) {
+  const [showConfig, setShowConfig] = useState(false);
   return (
     <>
       <AnimatePresence>
@@ -127,31 +133,97 @@ export function LeftSidebar({
               </div>
 
               <div className="pt-3 border-t border-slate-700">
-                <label className="text-xs text-slate-400 block mb-2 flex items-center gap-1">
-                  <Icon name="settings" className="w-3 h-3" />
-                  Alert Settings
-                </label>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={alertName}
-                    onChange={(e) => onAlertNameChange(e.target.value)}
-                    className="w-full bg-slate-700 text-white text-sm px-3 py-2 rounded outline-none focus:ring-1 focus:ring-cyan-400"
-                    placeholder="Alert name"
-                  />
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Duration: {alertDuration}ms</label>
-                    <input
-                      type="range"
-                      min={1000}
-                      max={30000}
-                      step={500}
-                      value={alertDuration}
-                      onChange={(e) => onAlertDurationChange(Number(e.target.value))}
-                      className="w-full"
-                    />
+                <button
+                  onClick={() => setShowConfig(!showConfig)}
+                  className="flex items-center justify-between w-full text-xs text-slate-400 mb-2"
+                >
+                  <span className="flex items-center gap-1">
+                    <Icon name="settings" className="w-3 h-3" />
+                    Alert Settings
+                  </span>
+                  <span className={showConfig ? 'rotate-180' : ''}>▼</span>
+                </button>
+                
+                {showConfig && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-slate-500 block mb-1">Alert Name</label>
+                      <input
+                        type="text"
+                        value={alertName}
+                        onChange={(e) => onAlertNameChange(e.target.value)}
+                        className="w-full bg-slate-700 text-white text-sm px-3 py-2 rounded outline-none focus:ring-1 focus:ring-cyan-400"
+                        placeholder="My Alert"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs text-slate-500 block mb-1">
+                        Duration: <span className="text-cyan-400">{alertDuration}ms</span>
+                        <span className="text-slate-600 ml-1">({(alertDuration / 1000).toFixed(1)}s)</span>
+                      </label>
+                      <input
+                        type="range"
+                        min={1000}
+                        max={30000}
+                        step={500}
+                        value={alertDuration}
+                        onChange={(e) => onAlertDurationChange(Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+                        <span>1s</span>
+                        <span>5s</span>
+                        <span>10s</span>
+                        <span>15s</span>
+                        <span>30s</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs text-slate-500 block mb-1">Quick Duration</label>
+                      <div className="flex gap-1">
+                        {[2000, 5000, 10000, 15000].map(dur => (
+                          <button
+                            key={dur}
+                            onClick={() => onAlertDurationChange(dur)}
+                            className={`flex-1 py-1 text-xs rounded ${
+                              alertDuration === dur 
+                                ? 'bg-cyan-500 text-white' 
+                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                            }`}
+                          >
+                            {dur / 1000}s
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="pt-2 border-t border-slate-700">
+                      <label className="text-xs text-slate-500 block mb-1">Quick Actions</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={onTogglePlay}
+                          className={`py-2 rounded text-xs font-medium flex items-center justify-center gap-1 ${
+                            isPlaying 
+                              ? 'bg-red-500 hover:bg-red-400 text-white' 
+                              : 'bg-emerald-500 hover:bg-emerald-400 text-white'
+                          }`}
+                        >
+                          <Icon name={isPlaying ? 'pause' : 'play'} className="w-3 h-3" />
+                          {isPlaying ? 'Stop' : 'Preview'}
+                        </button>
+                        <button
+                          onClick={onDownloadJson}
+                          className="bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs font-medium flex items-center justify-center gap-1"
+                        >
+                          <Icon name="download" className="w-3 h-3" />
+                          JSON
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

@@ -1,6 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useAlertEditor, useDrag, useMessageListener, useMediaPlayback } from './hooks';
-import { Canvas, LeftSidebar, RightSidebar, PlaybackControls, Icon } from './components';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useAlertEditor } from './hooks/useAlertEditor';
+import { Canvas } from './components/Canvas';
+import { Sidebar } from './components/Sidebar';
+import { PropertiesPanel } from './components/PropertiesPanel';
+import { PlaybackControls } from './components/PlaybackControls';
 
 export default function AlertEditor() {
   const {
@@ -24,32 +27,8 @@ export default function AlertEditor() {
   } = useAlertEditor();
 
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
-  const [showAnimations, setShowAnimations] = useState(false);
-
-  const { dragging, resizing, handleElementMouseDown } = useDrag({
-    elements,
-    updateElement,
-    canvasRef,
-  });
-
-  useMediaPlayback({
-    isPlaying,
-    elements,
-    audioRefs,
-    videoRefs,
-  });
-
-  useMessageListener({
-    setIsPlaying,
-    setPlaybackTime: () => {},
-    setAlertConfig,
-    setElements,
-    audioRefs,
-    videoRefs,
-    alertConfig,
-    elements,
-  });
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const dragStateRef = useRef<{ id: string; mode: 'drag' | 'resize'; startX: number; startY: number; startPos: { x: number; y: number; width: number; height: number } } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -61,17 +40,54 @@ export default function AlertEditor() {
       if (e.key === 'Escape') {
         setSelectedId(null);
       }
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 's') {
-          e.preventDefault();
-          downloadJson();
-        }
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, deleteElement]);
+  }, [selectedId, deleteElement, setSelectedId]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStateRef.current || !canvasRef.current) return;
+      const { id, mode, startX, startY, startPos } = dragStateRef.current;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (mode === 'drag') {
+        updateElement(id, { x: startPos.x + dx, y: startPos.y + dy });
+      } else if (mode === 'resize') {
+        updateElement(id, { 
+          width: Math.max(50, startPos.width + dx), 
+          height: Math.max(40, startPos.height + dy) 
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      dragStateRef.current = null;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [canvasRef, updateElement]);
+
+  const handleElementMouseDown = useCallback((e: React.MouseEvent, id: string, mode: 'drag' | 'resize') => {
+    e.stopPropagation();
+    const element = elements.find(el => el.id === id);
+    if (!element) return;
+    
+    dragStateRef.current = {
+      id,
+      mode,
+      startX: e.clientX,
+      startY: e.clientY,
+      startPos: { x: element.x, y: element.y, width: element.width, height: element.height },
+    };
+  }, [elements]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -91,7 +107,7 @@ export default function AlertEditor() {
     const newElement: any = {
       id,
       type,
-      name: `New ${type}`,
+      name: `New ${type === 'video' ? 'Video' : type === 'audio' ? 'Audio' : type === 'image' ? 'Image' : 'Text'}`,
       mediaUrl: '',
       text: type === 'text' ? 'Enter text here' : '',
       volume: 1,
@@ -118,7 +134,7 @@ export default function AlertEditor() {
 
   const togglePlay = useCallback(() => {
     setIsPlaying(prev => !prev);
-  }, []);
+  }, [setIsPlaying]);
 
   const exportJson = useCallback(() => {
     const exportData = {
@@ -139,52 +155,11 @@ export default function AlertEditor() {
         animation: { type: el.animation, duration: el.animationDuration, delay: el.animationDelay },
       })),
     };
-    return JSON.stringify(exportData, null, 2);
-  }, [alertConfig, elements]);
-
-  const downloadJson = useCallback(() => {
-    const json = exportJson();
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'alerts-config.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [exportJson]);
-
-  const exportToTriggerRule = useCallback(() => {
-    const yamlOutput = `- id: "alert_${Date.now()}"
-  on: "ALERT_TRIGGER"
-  if:
-    field: "alert.name"
-    operator: "EQ"
-    value: "${alertConfig.name}"
-  do:
-    type: "show_alert"
-    params:
-      duration: ${alertConfig.duration}
-      elements:
-${elements.map(el => `        - type: "${el.type}"
-          name: "${el.name}"
-          mediaUrl: "${el.mediaUrl}"
-          text: "${el.text}"
-          volume: ${el.volume}
-          loop: ${el.loop}
-          x: ${el.x}
-          y: ${el.y}
-          width: ${el.width}
-          height: ${el.height}
-          opacity: ${el.opacity}
-          animation: "${el.animation}"
-          animationDuration: ${el.animationDuration}
-          animationDelay: ${el.animationDelay}`).join('\n')}`;
-    
-    const blob = new Blob([yamlOutput], { type: 'text/yaml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `trigger-alert-${alertConfig.name.toLowerCase().replace(/\s+/g, '-')}.yaml`;
+    a.download = `alerts-config.json`;
     a.click();
     URL.revokeObjectURL(url);
   }, [alertConfig, elements]);
@@ -193,7 +168,7 @@ ${elements.map(el => `        - type: "${el.type}"
 
   return (
     <div className="w-screen h-screen bg-slate-900 flex">
-      <LeftSidebar
+      <Sidebar
         isOpen={leftSidebarOpen}
         elements={elements}
         sortedElements={sortedElements}
@@ -201,14 +176,11 @@ ${elements.map(el => `        - type: "${el.type}"
         alertName={alertConfig.name}
         alertDuration={alertConfig.duration}
         onAddElement={addElement}
-        onDragStart={handleDragStart}
         onSelectElement={(id) => { setSelectedId(id); setRightSidebarOpen(true); }}
         onMoveLayer={moveLayer}
         onDeleteElement={deleteElement}
         onAlertNameChange={(name) => setAlertConfig(prev => ({ ...prev, name }))}
         onAlertDurationChange={(duration) => setAlertConfig(prev => ({ ...prev, duration }))}
-        onDownloadJson={downloadJson}
-        onExportToTrigger={exportToTriggerRule}
         onToggle={() => setLeftSidebarOpen(prev => !prev)}
       />
 
@@ -217,10 +189,11 @@ ${elements.map(el => `        - type: "${el.type}"
           elements={elements}
           isPlaying={isPlaying}
           selectedId={selectedId}
-          onSelectElement={(id) => { if (id) setSelectedId(id); }}
+          onSelectElement={(id) => { if (id !== undefined) setSelectedId(id); }}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onElementMouseDown={handleElementMouseDown}
+          onUpdateElement={updateElement}
           videoRefs={videoRefs}
           canvasRef={canvasRef}
         />
@@ -233,26 +206,21 @@ ${elements.map(el => `        - type: "${el.type}"
           onTogglePlay={togglePlay}
         />
 
-        {rightSidebarOpen && (
+        {rightSidebarOpen && selectedElement && (
           <button
             onClick={() => setRightSidebarOpen(false)}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-slate-700 hover:bg-slate-600 p-2 rounded-l-lg"
-            style={{ right: 300 }}
           >
-            <span className="text-white">
-              <Icon name="chevronRight" className="w-4 h-4" />
-            </span>
+            <span className="text-white">▶</span>
           </button>
         )}
       </div>
 
-      <RightSidebar
+      <PropertiesPanel
         isOpen={rightSidebarOpen}
         element={selectedElement}
-        showAnimations={showAnimations}
         onClose={() => setRightSidebarOpen(false)}
         onUpdateElement={(updates) => selectedId && updateElement(selectedId, updates)}
-        onToggleAnimations={() => setShowAnimations(prev => !prev)}
       />
     </div>
   );
