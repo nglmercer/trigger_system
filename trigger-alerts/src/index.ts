@@ -1,6 +1,7 @@
 export { AlertBuilder, createAlert } from './builder/AlertBuilder';
 export { TriggerAlert } from './components/TriggerAlert';
 export { AlertElementComponent } from './components/AlertElement';
+export { AlertBehaviorRegistry } from './registry/BehaviorRegistry';
 export { AlertExporter, AlertStyleExporter } from './exporter';
 export { 
   animateElement, 

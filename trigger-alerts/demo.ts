@@ -1,7 +1,33 @@
-import { AlertBuilder } from './src/builder/AlertBuilder';
-import { TriggerAlert } from './src/components/TriggerAlert';
-import { registerOrReplace } from './src/components/TriggerAlert';
+import { AlertBuilder, AlertBehaviorRegistry, AlertExporter } from './src';
+import { TriggerAlert, registerOrReplace } from './src/components/TriggerAlert';
 registerOrReplace('trigger-alert', TriggerAlert);
+
+// 1. Register behaviors that can be "re-hydrated" from JSON
+AlertBehaviorRegistry.register('split-bounce', (el) => {
+  const textChild = el.querySelector('.text') as HTMLElement;
+  if (!textChild) return;
+  const { chars } = AlertBuilder.splitText(textChild, { chars: true });
+  AlertBuilder.animate(chars, {
+    y: [-50, 0],
+    rotate: [180, 0],
+    opacity: [0, 1],
+    delay: AlertBuilder.stagger(40, { from: 'center' }),
+    easing: 'easeOutElastic(1, .6)'
+  });
+});
+
+AlertBehaviorRegistry.register('score-updater', (el, data) => {
+  const scoreObj = { val: 0 };
+  const target = data?.target || 1000;
+  AlertBuilder.animate(scoreObj, {
+    val: target,
+    round: 1,
+    duration: 2000,
+    update: () => {
+      el.textContent = `+${scoreObj.val} XP`;
+    }
+  });
+});
 interface DemoConfig {
   id: string;
   title: string;
@@ -345,6 +371,37 @@ const demos: DemoConfig[] = [
        el.config = alert;
        document.body.appendChild(el);
      }
+  },
+  {
+    id: 'json-export',
+    title: 'JSON Serialization',
+    description: 'Export an alert with behaviors to JSON and re-import it.',
+    category: 'Advanced',
+    handler: () => {
+      // 1. Build an alert using behaviors (NOT functions)
+      const alert = new AlertBuilder()
+        .id('json-demo')
+        .text('Serialized Logic!', { behavior: 'split-bounce', style: { fontSize: 32, fontWeight: 800 } })
+        .text('0 XP', { behavior: 'score-updater', behaviorData: { target: 2500 }, style: { color: '#fbbf24', fontSize: 24 } })
+        .style({
+          position: 'center',
+          background: 'rgba(15, 23, 42, 0.95)',
+          padding: 40,
+          borderRadius: 24,
+          animation: { type: 'scale', duration: 0.5 }
+        })
+        .build();
+
+      // 2. Export to JSON (callbacks are lost, behaviors are kept!)
+      const json = AlertExporter.toJson(alert);
+      console.log('Exported JSON:', json);
+
+      // 3. Re-import and trigger
+      const importedConfig = JSON.parse(json);
+      const el = document.createElement('trigger-alert') as TriggerAlert;
+      el.config = importedConfig;
+      document.body.appendChild(el);
+    }
   }
 ];
 

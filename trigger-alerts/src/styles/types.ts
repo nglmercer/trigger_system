@@ -160,6 +160,8 @@ export interface AlertTextElement {
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
   onRender?: (element: HTMLElement) => void;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export interface AlertImageElement {
@@ -171,6 +173,8 @@ export interface AlertImageElement {
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
   onRender?: (element: HTMLElement) => void;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export interface AlertVideoElement {
@@ -186,6 +190,8 @@ export interface AlertVideoElement {
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
   onRender?: (element: HTMLElement) => void;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export interface AlertAudioElement {
@@ -200,6 +206,8 @@ export interface AlertAudioElement {
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
   onRender?: (element: HTMLElement) => void;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export interface AlertButtonElement {
@@ -213,6 +221,8 @@ export interface AlertButtonElement {
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
   onRender?: (element: HTMLElement) => void;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export interface AlertContainerElement {
@@ -224,6 +234,8 @@ export interface AlertContainerElement {
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
   onRender?: (element: HTMLElement) => void;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export interface AlertCheckboxElement {
@@ -234,6 +246,8 @@ export interface AlertCheckboxElement {
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
   onRender?: (element: HTMLElement) => void;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export interface AlertSpacerElement {
@@ -241,6 +255,8 @@ export interface AlertSpacerElement {
   id: string;
   size: number | string;
   style?: AlertElementStyle;
+  behavior?: string;
+  behaviorData?: any;
 }
 
 export type AlertElement = 

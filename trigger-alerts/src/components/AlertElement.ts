@@ -21,6 +21,7 @@ import {
   filterToString,
 } from '../styles/types';
 import { animateElement, setupElementInteractions, getInitialAnimationStyles } from '../animations';
+import { AlertBehaviorRegistry } from '../registry/BehaviorRegistry';
 
 @customElement('alert-element')
 export class AlertElementComponent extends LitElement {
@@ -42,9 +43,14 @@ export class AlertElementComponent extends LitElement {
     const el = this.querySelector('.element') as HTMLElement;
     if (!el) return;
     
-    // Call onRender if defined
+    // Call onRender if defined (direct function call)
     if (this.element && (this.element as any).onRender) {
       (this.element as any).onRender(el);
+    }
+
+    // Execute behavior from registry if defined (JSON safe)
+    if (this.element && (this.element as any).behavior) {
+      AlertBehaviorRegistry.execute((this.element as any).behavior, el, (this.element as any).behaviorData);
     }
 
     const animatableTypes = ['text', 'image', 'video', 'audio', 'button', 'container', 'checkbox'];

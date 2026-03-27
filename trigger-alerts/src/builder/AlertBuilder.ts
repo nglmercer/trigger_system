@@ -44,47 +44,59 @@ export class AlertBuilder {
   }
 
   text(content: string, options?: {
+    id?: string;
     markdown?: boolean;
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
     onRender?: (el: HTMLElement) => void;
+    behavior?: string;
+    behaviorData?: any;
   }): this {
     const textEl: AlertTextElement = {
       type: 'text',
-      id: generateId(),
+      id: options?.id || generateId(),
       content,
       markdown: options?.markdown,
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
       onRender: options?.onRender,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(textEl);
     return this;
   }
 
-  image(src: string, alt?: string, options?: {
+  image(src: string, options?: {
+    id?: string;
+    alt?: string;
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
     onRender?: (el: HTMLElement) => void;
+    behavior?: string;
+    behaviorData?: any;
   }): this {
     const imgEl: AlertImageElement = {
       type: 'image',
-      id: generateId(),
+      id: options?.id || generateId(),
       src,
-      alt,
+      alt: options?.alt,
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
       onRender: options?.onRender,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(imgEl);
     return this;
   }
 
   video(src: string, options?: {
+    id?: string;
     autoplay?: boolean;
     loop?: boolean;
     muted?: boolean;
@@ -94,26 +106,31 @@ export class AlertBuilder {
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
     onRender?: (el: HTMLElement) => void;
+    behavior?: string;
+    behaviorData?: any;
   }): this {
     const videoEl: AlertVideoElement = {
       type: 'video',
-      id: generateId(),
+      id: options?.id || generateId(),
       src,
-      autoplay: options?.autoplay ?? true,
-      loop: options?.loop ?? false,
-      muted: options?.muted ?? true,
+      autoplay: options?.autoplay,
+      loop: options?.loop,
+      muted: options?.muted,
       poster: options?.poster,
       preload: options?.preload,
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
       onRender: options?.onRender,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(videoEl);
     return this;
   }
 
   audio(src: string, options?: {
+    id?: string;
     autoplay?: boolean;
     loop?: boolean;
     volume?: number;
@@ -122,19 +139,23 @@ export class AlertBuilder {
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
     onRender?: (el: HTMLElement) => void;
+    behavior?: string;
+    behaviorData?: any;
   }): this {
     const audioEl: AlertAudioElement = {
       type: 'audio',
-      id: generateId(),
+      id: options?.id || generateId(),
       src,
-      autoplay: options?.autoplay ?? true,
-      loop: options?.loop ?? false,
-      volume: options?.volume ?? 1,
+      autoplay: options?.autoplay,
+      loop: options?.loop,
+      volume: options?.volume,
       controls: options?.controls,
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
       onRender: options?.onRender,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(audioEl);
     return this;
@@ -147,6 +168,8 @@ export class AlertBuilder {
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
     onRender?: (el: HTMLElement) => void;
+    behavior?: string;
+    behaviorData?: any;
   }): this {
     const btnEl: AlertButtonElement = {
       type: 'button',
@@ -159,6 +182,8 @@ export class AlertBuilder {
       animation: options?.animation,
       interaction: options?.interaction,
       onRender: options?.onRender,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(btnEl);
     return this;
@@ -169,6 +194,8 @@ export class AlertBuilder {
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
     onRender?: (el: HTMLElement) => void;
+    behavior?: string;
+    behaviorData?: any;
   }): this {
     const checkEl: AlertCheckboxElement = {
       type: 'checkbox',
@@ -178,6 +205,8 @@ export class AlertBuilder {
       animation: options?.animation,
       interaction: options?.interaction,
       onRender: options?.onRender,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(checkEl);
     return this;
@@ -189,6 +218,8 @@ export class AlertBuilder {
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
     onRender?: (el: HTMLElement) => void;
+    behavior?: string;
+    behaviorData?: any;
   }): this {
     const containerEl: AlertContainerElement = {
       type: 'container',
@@ -199,17 +230,25 @@ export class AlertBuilder {
       animation: options?.animation,
       interaction: options?.interaction,
       onRender: options?.onRender,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(containerEl);
     return this;
   }
 
-  spacer(size: number | string, style?: AlertElementStyle): this {
+  spacer(size: number | string, options?: {
+    style?: AlertElementStyle;
+    behavior?: string;
+    behaviorData?: any;
+  }): this {
     const spacerEl: AlertSpacerElement = {
       type: 'spacer',
       id: generateId(),
       size,
-      style,
+      style: options?.style,
+      behavior: options?.behavior,
+      behaviorData: options?.behaviorData,
     };
     this.addElement(spacerEl);
     return this;
