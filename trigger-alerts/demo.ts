@@ -51,17 +51,17 @@ function addListeners() {
 }
 addListeners();
 
-function showTextAlert() {
+  function showTextAlert() {
   const alert = new AlertBuilder()
     .id('text-' + Date.now())
-    .text('This is a text alert with animation!', false)
+    .text('This is a text alert with animation!')
     .style({
       position: 'top',
       background: '#1a1a2e',
       color: '#ffffff',
       borderRadius: 12,
       padding: '20px',
-      animation: { type: 'slide', direction: 'down', duration: 0.4 }
+      animation: { type: 'slide', direction: 'down', duration: 0.4, animateText: true }
     })
     .duration(5000)
     .dismissible(true)
@@ -114,7 +114,7 @@ function showAudioAlert() {
 function showComplexText() {
   const alert = new AlertBuilder()
     .id('complex-text-' + Date.now())
-    .text('🎉 Welcome to Trigger System! This alert showcases advanced text animations with custom styling.', false)
+    .text('🎉 Welcome to Trigger System! This alert showcases advanced text animations with custom styling.')
     .style({
       position: 'top-right',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -149,7 +149,7 @@ function showMultiPosition() {
   positions.forEach((p, i) => {
     const alert = new AlertBuilder()
       .id(`pos-${i}-${Date.now()}`)
-      .text(`Position: ${p.pos.toUpperCase()}`, false)
+      .text(`Position: ${p.pos.toUpperCase()}`)
       .style({
         position: p.pos as any,
         background: p.bg,
@@ -171,7 +171,7 @@ function showMultiPosition() {
 function showStaggerAnimation() {
   const alert = new AlertBuilder()
     .id('stagger-' + Date.now())
-    .text('Step 1: Initialize...', false)
+    .text('Step 1: Initialize...')
     .style({
       position: 'center',
       background: '#1e293b',
@@ -183,7 +183,7 @@ function showStaggerAnimation() {
       fontSize: '18px',
       fontWeight: 600,
       textAlign: 'center',
-      animation: { type: 'scale', duration: 0.6, easing: 'spring(1, 80, 10, 0)' }
+      animation: { type: 'scale', duration: 0.6, easing: 'ease-out' }
     })
     .duration(3000)
     .dismissible(true)
@@ -191,7 +191,7 @@ function showStaggerAnimation() {
       setTimeout(() => {
         const alert2 = new AlertBuilder()
           .id('stagger-2-' + Date.now())
-          .text('Step 2: Processing data...', false)
+          .text('Step 2: Processing data...')
           .style({
             position: 'center',
             background: '#0f172a',
@@ -203,7 +203,7 @@ function showStaggerAnimation() {
             fontSize: '18px',
             fontWeight: 600,
             textAlign: 'center',
-            animation: { type: 'scale', duration: 0.5, easing: 'spring(1, 80, 10, 0)' }
+            animation: { type: 'scale', duration: 0.5, easing: 'ease-out' }
           })
           .duration(3000)
           .dismissible(true)
@@ -224,7 +224,7 @@ function showStaggerAnimation() {
 function showSpringBounce() {
   const alert = new AlertBuilder()
     .id('spring-' + Date.now())
-    .text('🎯 BOUNCE!', false)
+    .text('🎯 BOUNCE!')
     .style({
       position: 'center',
       background: 'linear-gradient(180deg, #f472b6 0%, #db2777 100%)',
@@ -250,7 +250,7 @@ function showSpringBounce() {
 function showComplexStyle() {
   const alert = new AlertBuilder()
     .id('complex-style-' + Date.now())
-    .text('✨ Premium Alert\n\nThis is a fully styled alert with:\n• Custom fonts\n• Gradient background\n• Glow effects\n• Custom border', false)
+    .text('✨ Premium Alert\n\nThis is a fully styled alert with:\n• Custom fonts\n• Gradient background\n• Glow effects\n• Custom border')
     .style({
       position: 'bottom',
       background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 50%, #1b263b 100%)',
@@ -264,7 +264,6 @@ function showComplexStyle() {
       fontSize: '14px',
       fontFamily: '"Inter", "Segoe UI", sans-serif',
       fontWeight: 500,
-      lineHeight: 1.6,
       textAlign: 'left',
       zIndex: 9999,
       animation: { type: 'slide', direction: 'up', duration: 0.5, easing: 'ease-out' }
@@ -284,7 +283,7 @@ function showCallbackDemo() {
 
   const alert = new AlertBuilder()
     .id('callback-' + Date.now())
-    .text('👋 Check console for callbacks!\n\nClick dismiss to see onDismiss.\nAuto-dismiss triggers onComplete.', false)
+    .text('👋 Check console for callbacks!\n\nClick dismiss to see onDismiss.\nAuto-dismiss triggers onComplete.')
     .style({
       position: 'center',
       background: '#1e1e2e',
@@ -317,7 +316,7 @@ function showCallbackDemo() {
 function showMarkdown() {
   const alert = new AlertBuilder()
     .id('markdown-' + Date.now())
-    .text('**Bold Text** and *italic* and `code`\n\n- Item 1\n- Item 2\n\n> Blockquote\n\n[Link](https://example.com)', true)
+    .text('**Bold Text** and *italic* and `code`\n\n- Item 1\n- Item 2\n\n> Blockquote\n\n[Link](https://example.com)', { markdown: true })
     .style({
       position: 'top',
       background: '#fef3c7',

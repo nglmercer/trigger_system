@@ -1,7 +1,33 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { styleToVariables, type AlertConfig, type AlertContent } from '../styles/types';
-import { animate } from 'motion';
+import { animate } from 'animejs';
+import type { 
+  AlertConfig, 
+  AlertElement,
+  AlertStyle,
+  AlertElementLayout,
+  AlertElementAnimation,
+  AlertElementStyle,
+  AlertTextElement,
+  AlertImageElement,
+  AlertVideoElement,
+  AlertAudioElement,
+  AlertButtonElement,
+  AlertContainerElement,
+  AlertSpacerElement,
+} from '../styles/types';
+import { 
+  elementStyleToCSS, 
+  elementLayoutToCSS,
+  styleToVariables 
+} from '../styles/types';
+import { 
+  animateElement, 
+  animateElementOut, 
+  animateStagger,
+  setupElementInteractions 
+} from '../utils/animations';
+import './AlertElement';
 
 @customElement('trigger-alert')
 export class TriggerAlert extends LitElement {
@@ -24,36 +50,16 @@ export class TriggerAlert extends LitElement {
       box-shadow: var(--alert-box-shadow, 0 4px 12px rgba(0,0,0,0.15));
       border: var(--alert-border, none);
     }
-
-    .alert.text {
-      font-size: var(--alert-font-size, 16px);
-      font-weight: var(--alert-font-weight, 400);
-      text-align: var(--alert-text-align, left);
-    }
-
-    .dismiss-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 18px;
-      color: inherit;
-      opacity: 0.6;
-    }
-
-    .dismiss-btn:hover {
-      opacity: 1;
-    }
   `;
 
   @property({ type: Object }) config!: AlertConfig;
   @state() private visible = false;
+  @state() private elements: AlertElement[] = [];
 
   connectedCallback() {
     super.connectedCallback();
     this.style.cssText = this.getCSSVars();
+    this.elements = this.config.elements || [];
   }
 
   private getCSSVars(): string {
@@ -71,12 +77,7 @@ export class TriggerAlert extends LitElement {
     }
   }
 
-  private getDirection(dir: string): string {
-    const map: Record<string, string> = { up: 'Y', down: 'Y', left: 'X', right: 'X' };
-    return map[dir] || 'Y';
-  }
-
-  private getPositionStyles(position: string): string {
+  private getPositionStyles(position?: string): string {
     const positionMap: Record<string, string> = {
       'top': 'top: 20px; left: 50%; transform: translateX(-50%);',
       'bottom': 'bottom: 20px; left: 50%; transform: translateX(-50%);',
@@ -86,10 +87,11 @@ export class TriggerAlert extends LitElement {
       'bottom-left': 'bottom: 20px; left: 20px;',
       'bottom-right': 'bottom: 20px; right: 20px;'
     };
-    return positionMap[position] || positionMap['top'];
+    return positionMap[position || 'top'] || positionMap['top'];
   }
 
-  private getAnimationDirection(position: string): string {
+  private getAnimationDirection(position?: string): string {
+    if (!position) return 'up';
     if (position.includes('top')) return 'down';
     if (position.includes('bottom')) return 'up';
     return 'up';
@@ -107,97 +109,59 @@ export class TriggerAlert extends LitElement {
     return easing;
   }
 
-  private parseMarkdown(text: string): string {
-    let result = text
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code>$1</code>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
-      .replace(/\n/g, '<br>');
-    if (result.includes('<li>')) {
-      result = `<ul>${result}</ul>`;
-    }
-    return result;
-  }
-
-  private async animateTextIn(el: HTMLElement) {
-    const textEl = el.querySelector('.text') as HTMLElement;
-    if (!textEl || !textEl.textContent) return;
-    
-    const chars = textEl.textContent.split('');
-    textEl.innerHTML = '';
-    textEl.style.whiteSpace = 'pre-wrap';
-    
-    const span = document.createElement('span');
-    span.style.display = 'inline';
-    textEl.appendChild(span);
-    
-    for (let i = 0; i < chars.length; i++) {
-      span.textContent += chars[i];
-      await new Promise(r => setTimeout(r, 15));
-    }
-  }
-
   private async animateIn() {
-    const el = this.shadowRoot?.querySelector('.alert') as HTMLElement;
-    if (!el) return;
+    const alertEl = this.shadowRoot?.querySelector('.alert') as HTMLElement;
+    if (!alertEl) return;
 
-    const animationType = this.config.style?.animation?.type || 'fade';
-    const direction = this.config.style?.animation?.direction || this.getAnimationDirection(this.config.style?.position || 'top');
-    const duration = this.config.style?.animation?.duration || 0.3;
-    const easing = this.config.style?.animation?.easing ? 
-      this.config.style.animation.easing as any : 'ease-out';
+    const animation = this.config.style?.animation;
+    const animationType = animation?.type || 'fade';
+    const direction = animation?.direction || this.getAnimationDirection(this.config.style?.position);
+    const duration = animation?.duration || 0.3;
+    const easing = this.parseEasing(animation?.easing);
 
     const animations: Record<string, any> = {
       fade: { opacity: [0, 1] },
       slide: {
-        transform: [`translate${this.getDirection(direction)}(-30px)`, 'translateY(0)']
+        transform: [this.getSlideTransform(direction, -30), 'translateY(0)']
       },
       scale: { transform: [{ scale: 0.8 }, { scale: 1 }] },
       bounce: { transform: [{ scale: 0.5 }, { scale: 1.1 }, { scale: 1 }] }
     };
 
-    await animate(el, animations[animationType], { duration, easing });
+    //await animate(alertEl, animations[animationType], { duration, easing });
+    
+    const elementEls = this.shadowRoot?.querySelectorAll('alert-element');
+    if (elementEls && elementEls.length > 0) {
+      const elements = Array.from(elementEls) as HTMLElement[];
+      await animateStagger(elements, { type: 'fade', duration: 0.2 }, 0.05);
+    }
+    
+    await this.updateComplete;
     this.visible = true;
+  }
+
+  private getSlideTransform(direction: string, from: number): string {
+    switch (direction) {
+      case 'up': return `translateY(${from}px)`;
+      case 'down': return `translateY(${-from}px)`;
+      case 'left': return `translateX(${from}px)`;
+      case 'right': return `translateX(${-from}px)`;
+      default: return `translateY(${from}px)`;
+    }
   }
 
   async dismiss() {
     const el = this.shadowRoot?.querySelector('.alert') as HTMLElement;
     if (el) {
-      await animate(el, { opacity: 0, transform: 'translateY(-10px)' }, { duration: 0.2 });
+      const animationType = this.config.style?.animation?.type || 'fade';
+      const direction = this.config.style?.animation?.direction;
+      await animateElementOut(el, animationType, direction as any, 0.2);
     }
     this.config.onComplete?.();
     this.remove();
   }
 
-  private renderContent(content: AlertContent) {
-    switch (content.type) {
-      case 'text':
-        return content.markdown ? html`<div class="text markdown">${content.content}</div>` 
-                                : html`<div class="text">${content.content}</div>`;
-      case 'video':
-        return html`
-          <video 
-            src="${content.src}" 
-            ?autoplay="${content.autoplay}" 
-            ?loop="${content.loop}" 
-            ?muted="${content.muted}"
-            poster="${content.poster || ''}"
-          ></video>`;
-      case 'audio':
-        return html`
-          <audio 
-            src="${content.src}" 
-            ?autoplay="${content.autoplay}" 
-            ?loop="${content.loop}"
-          ></audio>`;
-    }
-  }
-
   render() {
-    const contents = Array.isArray(this.config.content) ? this.config.content : [this.config.content];
     const position = this.config.style?.position || 'top';
     const positionStyles = this.getPositionStyles(position);
     
@@ -206,14 +170,21 @@ export class TriggerAlert extends LitElement {
         class="alert ${position}" 
         style="position: fixed; ${positionStyles}"
       >
-        ${contents.map(c => this.renderContent(c))}
+        ${this.elements.map(el => html`
+          <alert-element .element="${el}"></alert-element>
+        `)}
         ${this.config.dismissible ? html`
-          <button class="dismiss-btn" @click="${this.dismiss}">×</button>
+          <button 
+            class="dismiss-btn" 
+            style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; cursor: pointer; font-size: 18px; color: inherit; opacity: 0.6;"
+            @click="${this.dismiss}"
+          >×</button>
         ` : ''}
       </div>
     `;
   }
 }
+
 declare global {
   interface HTMLElementTagNameMap {
     'trigger-alert': TriggerAlert;

@@ -4,7 +4,7 @@ import type { AlertConfig, AlertStyle } from './styles/types';
 export interface CleanAlertConfig {
   id: string;
   name?: string;
-  content?: any;
+  elements?: any[];
   style?: Record<string, any>;
   duration?: number;
   dismissible?: boolean;
@@ -14,7 +14,7 @@ function cleanAlert(alert: AlertConfig): CleanAlertConfig {
   const cleaned: CleanAlertConfig = { id: alert.id };
   
   if (alert.name) cleaned.name = alert.name;
-  if (alert.content) cleaned.content = alert.content;
+  if (alert.elements && alert.elements.length > 0) cleaned.elements = alert.elements;
   if (alert.duration !== undefined && alert.duration !== 5000) cleaned.duration = alert.duration;
   if (alert.dismissible !== undefined && alert.dismissible !== true) cleaned.dismissible = alert.dismissible;
   if (alert.style) cleaned.style = alert.style as Record<string, any>;
