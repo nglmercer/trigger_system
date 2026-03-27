@@ -1,4 +1,4 @@
-import type { AnimationOptions, ScrollOffset } from 'motion';
+// Removed motion import
 
 export type AlertElementType = 'text' | 'image' | 'video' | 'audio' | 'button' | 'container' | 'spacer';
 
@@ -67,6 +67,20 @@ export interface AlertElementStyle {
   zIndex?: number;
   transform?: AlertElementTransform;
   filter?: AlertElementFilter;
+  marginTop?: number | string;
+  marginRight?: number | string;
+  marginBottom?: number | string;
+  marginLeft?: number | string;
+  paddingTop?: number | string;
+  paddingRight?: number | string;
+  paddingBottom?: number | string;
+  paddingLeft?: number | string;
+  backdropFilter?: string;
+  position?: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+  top?: number | string;
+  right?: number | string;
+  bottom?: number | string;
+  left?: number | string;
   flex?: number | string;
   flexGrow?: number;
   flexShrink?: number;
@@ -145,6 +159,7 @@ export interface AlertTextElement {
   style?: AlertElementStyle;
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
+  onRender?: (element: HTMLElement) => void;
 }
 
 export interface AlertImageElement {
@@ -155,6 +170,7 @@ export interface AlertImageElement {
   style?: AlertElementStyle;
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
+  onRender?: (element: HTMLElement) => void;
 }
 
 export interface AlertVideoElement {
@@ -169,6 +185,7 @@ export interface AlertVideoElement {
   style?: AlertElementStyle;
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
+  onRender?: (element: HTMLElement) => void;
 }
 
 export interface AlertAudioElement {
@@ -182,6 +199,7 @@ export interface AlertAudioElement {
   style?: AlertElementStyle;
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
+  onRender?: (element: HTMLElement) => void;
 }
 
 export interface AlertButtonElement {
@@ -194,6 +212,7 @@ export interface AlertButtonElement {
   style?: AlertElementStyle;
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
+  onRender?: (element: HTMLElement) => void;
 }
 
 export interface AlertContainerElement {
@@ -204,6 +223,7 @@ export interface AlertContainerElement {
   style?: AlertElementStyle;
   animation?: AlertElementAnimation;
   interaction?: AlertElementInteraction;
+  onRender?: (element: HTMLElement) => void;
 }
 
 export interface AlertSpacerElement {
@@ -248,6 +268,7 @@ export interface AlertStyle {
   zIndex?: number;
   animation?: AlertStyleAnimation;
   overlay?: boolean;
+  backdropFilter?: string;
 }
 
 export interface AlertConfig {
@@ -276,6 +297,7 @@ export interface AlertStyleVariables {
   '--alert-box-shadow'?: string;
   '--alert-border'?: string;
   '--alert-z-index'?: string;
+  '--alert-backdrop-filter'?: string;
 }
 
 export function styleToVariables(style: AlertStyle): AlertStyleVariables {
@@ -295,6 +317,7 @@ export function styleToVariables(style: AlertStyle): AlertStyleVariables {
   if (style.boxShadow) vars['--alert-box-shadow'] = style.boxShadow;
   if (style.border) vars['--alert-border'] = style.border;
   if (style.zIndex !== undefined) vars['--alert-z-index'] = String(style.zIndex);
+  if (style.backdropFilter) vars['--alert-backdrop-filter'] = style.backdropFilter;
   
   return vars;
 }
@@ -367,6 +390,20 @@ export function elementStyleToCSS(style: AlertElementStyle): string {
   if (style.flexGrow !== undefined) css.push(`flex-grow: ${style.flexGrow}`);
   if (style.flexShrink !== undefined) css.push(`flex-shrink: ${style.flexShrink}`);
   if (style.flexBasis !== undefined) css.push(`flex-basis: ${String(style.flexBasis)}`);
+  if (style.marginTop !== undefined) css.push(`margin-top: ${String(style.marginTop)}`);
+  if (style.marginRight !== undefined) css.push(`margin-right: ${String(style.marginRight)}`);
+  if (style.marginBottom !== undefined) css.push(`margin-bottom: ${String(style.marginBottom)}`);
+  if (style.marginLeft !== undefined) css.push(`margin-left: ${String(style.marginLeft)}`);
+  if (style.paddingTop !== undefined) css.push(`padding-top: ${String(style.paddingTop)}`);
+  if (style.paddingRight !== undefined) css.push(`padding-right: ${String(style.paddingRight)}`);
+  if (style.paddingBottom !== undefined) css.push(`padding-bottom: ${String(style.paddingBottom)}`);
+  if (style.paddingLeft !== undefined) css.push(`padding-left: ${String(style.paddingLeft)}`);
+  if (style.backdropFilter) css.push(`backdrop-filter: ${style.backdropFilter}`);
+  if (style.position) css.push(`position: ${style.position}`);
+  if (style.top !== undefined) css.push(`top: ${String(style.top)}`);
+  if (style.right !== undefined) css.push(`right: ${String(style.right)}`);
+  if (style.bottom !== undefined) css.push(`bottom: ${String(style.bottom)}`);
+  if (style.left !== undefined) css.push(`left: ${String(style.left)}`);
   if (style.alignSelf) css.push(`align-self: ${style.alignSelf}`);
   
   if (style.transform) {

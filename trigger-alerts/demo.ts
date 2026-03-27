@@ -1,351 +1,311 @@
 import { AlertBuilder } from './src/builder/AlertBuilder';
 import { TriggerAlert } from './src/components/TriggerAlert';
-declare global {
-  interface Window {
-  showTextAlert: () => void;
-  showVideoAlert: () => void;
-  showAudioAlert: () => void;
-  showComplexText: () => void;
-  showMultiPosition: () => void;
-  showStaggerAnimation: () => void;
-  showSpringBounce: () => void;
-  showComplexStyle: () => void;
-  showCallbackDemo: () => void;
-  showMarkdown: () => void;
-}
-}
-const textBtn = document.getElementById('textBtn');
-const videoBtn = document.getElementById('videoBtn');
-const audioBtn = document.getElementById('audioBtn');
-const complexTextBtn = document.getElementById('complexTextBtn');
-const multiPosBtn = document.getElementById('multiPosBtn');
-const staggerBtn = document.getElementById('staggerBtn');
-const springBtn = document.getElementById('springBtn');
-const styleBtn = document.getElementById('styleBtn');
-const callbackBtn = document.getElementById('callbackBtn');
-const mdBtn = document.getElementById('mdBtn');
-
-function addListeners() {
-  textBtn?.addEventListener('click', showTextAlert);
-  videoBtn?.addEventListener('click', showVideoAlert);
-  audioBtn?.addEventListener('click', showAudioAlert);
-  complexTextBtn?.addEventListener('click', showComplexText);
-  multiPosBtn?.addEventListener('click', showMultiPosition);
-  staggerBtn?.addEventListener('click', showStaggerAnimation);
-  springBtn?.addEventListener('click', showSpringBounce);
-  styleBtn?.addEventListener('click', showComplexStyle);
-  callbackBtn?.addEventListener('click', showCallbackDemo);
-  mdBtn?.addEventListener('click', showMarkdown);
-  console.log('Listeners added',{
-    textBtn,
-    videoBtn,
-    audioBtn,
-    complexTextBtn,
-    multiPosBtn,
-    staggerBtn,
-    springBtn,
-    styleBtn,
-    callbackBtn,
-    mdBtn
-  },TriggerAlert);
-}
-addListeners();
-
-  function showTextAlert() {
-  const alert = new AlertBuilder()
-    .id('text-' + Date.now())
-    .text('This is a text alert with animation!')
-    .style({
-      position: 'top',
-      background: '#1a1a2e',
-      color: '#ffffff',
-      borderRadius: 12,
-      padding: '20px',
-      animation: { type: 'slide', direction: 'down', duration: 0.4, animateText: true }
-    })
-    .duration(5000)
-    .dismissible(true)
-    .build();
-
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
+import { registerOrReplace } from './src/components/TriggerAlert';
+registerOrReplace('trigger-alert', TriggerAlert);
+interface DemoConfig {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  handler: () => void;
 }
 
-function showVideoAlert() {
-  const alert = new AlertBuilder()
-    .id('video-' + Date.now())
-    .video('https://www.w3schools.com/html/mov_bbb.mp4', { autoplay: true, loop: true, muted: true })
-    .style({
-      position: 'center',
-      background: '#000000',
-      borderRadius: 16,
-      width: 500,
-      animation: { type: 'scale', duration: 0.5 }
-    })
-    .duration(10000)
-    .build();
+const demos: DemoConfig[] = [
+  {
+    id: 'basic-text',
+    title: 'Modern Text Alert',
+    description: 'Slide-down dark themed alert with text animation.',
+    category: 'Basic',
+    handler: async () => {
+      const alert = new AlertBuilder()
+        .id('text-' + Date.now())
+        .text('🚀 Welcome to the new Anime.js powered Alerts!', {
+          onRender: (textEl) => {
+            const { chars } = AlertBuilder.splitText(textEl, { words: false, chars: true });
+            
+            AlertBuilder.animate(chars, {
+              y: [
+                { to: '-1.5rem', ease: 'outExpo', duration: 600 },
+                { to: 0, ease: 'outBounce', duration: 800, delay: 100 }
+              ],
+              rotate: {
+                from: '-0.5turn',
+                delay: 0
+              },
+              opacity: {
+                from: 0,
+                to: 1,
+                duration: 600
+              },
+              delay: AlertBuilder.stagger(40),
+              ease: 'inOutCirc'
+            });
+          }
+        })
+        .style({
+          position: 'top',
+          background: 'rgba(15, 23, 42, 0.9)',
+          color: '#e2e8f0',
+          borderRadius: '16px',
+          padding: '24px 32px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          animation: { type: 'slide', direction: 'down', duration: 0.6 }
+        })
+        .duration(8000)
+        .dismissible(true)
+        .build();
 
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
+      const el = document.createElement('trigger-alert') as TriggerAlert;
+      el.config = alert;
+      document.body.appendChild(el);
+    }
+  },
+  {
+    id: 'glass-video',
+    title: 'Glass Video Portal',
+    description: 'Video alert with backdrop blur and scale-in animation.',
+    category: 'Media',
+    handler: () => {
+      const alert = new AlertBuilder()
+        .id('video-' + Date.now())
+        .video('https://www.w3schools.com/html/mov_bbb.mp4', { autoplay: true, loop: true, muted: true })
+        .style({
+          position: 'center',
+          background: 'rgba(0,0,0,0.5)',
+          borderRadius: 24,
+          padding: 8,
+          width: 500,
+          boxShadow: '0 0 100px rgba(99, 102, 241, 0.4)',
+          animation: { type: 'scale', duration: 0.8, easing: 'easeOutElastic(1, .5)' }
+        })
+        .duration(10000)
+        .build();
 
-function showAudioAlert() {
-  const alert = new AlertBuilder()
-    .id('audio-' + Date.now())
-    .text('🔔 Audio alert playing!')
-    .audio('https://www.w3schools.com/html/horse.mp3', { autoplay: true, volume: 0.5 })
-    .style({
-      position: 'bottom',
-      background: '#4a5568',
-      color: '#fff',
-      borderRadius: 8,
-      animation: { type: 'fade', duration: 0.3 }
-    })
-    .duration(3000)
-    .build();
+      const el = document.createElement('trigger-alert') as TriggerAlert;
+      el.config = alert;
+      document.body.appendChild(el);
+    }
+  },
+  {
+    id: 'combo-points',
+    title: 'Achievement Combo',
+    description: 'Dynamic score tracker with gift milestones and number animations.',
+    category: 'Advanced',
+    handler: () => {
+      const alert = new AlertBuilder()
+        .id('combo-' + Date.now())
+        .container([
+          { 
+            type: 'image', 
+            id: 'pfp', 
+            src: 'https://i.pravatar.cc/150?u=combo',
+            style: { width: '80px', height: '80px', borderRadius: '50%', border: '4px solid #6366f1', overflow: 'hidden' }
+          },
+          { 
+            type: 'container', 
+            id: 'score-container',
+            children: [
+              { 
+                type: 'text', 
+                id: 'score-val', 
+                content: '0', 
+                style: { fontSize: '48px', fontWeight: 900, color: '#f59e0b', margin: '0 0 0 20px' },
+                onRender: (el) => {
+                  const score = { val: 0 };
+                  AlertBuilder.animate(score, {
+                    val: 1250,
+                    duration: 3000,
+                    ease: 'outExpo',
+                    onUpdate: () => {
+                      el.textContent = Math.floor(score.val).toString();
+                    }
+                  });
+                }
+              },
+              {
+                type: 'text',
+                id: 'score-label',
+                content: 'COMBO XP',
+                style: { fontSize: '12px', fontWeight: 700, opacity: 0.6, margin: '8px 0 0 24px' }
+              }
+            ],
+            layout: { display: 'flex', flexDirection: 'column', justifyContent: 'center' }
+          },
+          {
+            type: 'image',
+            id: 'gift',
+            src: 'https://cdn-icons-png.flaticon.com/512/4213/4213554.png',
+            style: { width: '60px', height: '60px', opacity: 0, marginLeft: '20px' },
+            onRender: (el) => {
+              AlertBuilder.animate(el, {
+                opacity: [0, 1],
+                scale: [0, 1.5, 1],
+                delay: 1500,
+                duration: 1000,
+                ease: 'outElastic(1, .5)'
+              });
+            }
+          }
+        ], {
+           layout: { display: 'flex', alignItems: 'center' }
+        })
+        .style({
+          position: 'center',
+          background: 'rgba(15, 23, 42, 0.95)',
+          color: '#fff',
+          borderRadius: 32,
+          padding: '24px 40px',
+          boxShadow: '0 0 60px rgba(245, 158, 11, 0.3)',
+          border: '2px solid rgba(245, 158, 11, 0.2)',
+          animation: { type: 'slide', direction: 'up', duration: 0.8 }
+        })
+        .duration(7000)
+        .build();
 
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
+      const el = document.createElement('trigger-alert') as TriggerAlert;
+      el.config = alert;
+      document.body.appendChild(el);
+    }
+  },
+  {
+    id: 'sequential-avatar',
+    title: 'Evolutionary Profile',
+    description: 'Avatar with a secondary badge appearing in sequence.',
+    category: 'Advanced',
+    handler: () => {
+      const alert = new AlertBuilder()
+        .id('avatar-' + Date.now())
+        .container([
+          { 
+            type: 'image', 
+            id: 'avatar', 
+            src: 'https://i.pravatar.cc/150?u=antigravity',
+            style: { width: '100px', height: '100px', borderRadius: '50%', border: '4px solid #fff', opacity: 0, overflow: 'hidden' },
+            onRender: (el) => {
+              AlertBuilder.animate(el, {
+                scale: [0, 1.2, 1],
+                opacity: [0, 1],
+                duration: 1200,
+                ease: 'outBack(1.7)'
+              });
+            }
+          },
+          { 
+            type: 'image', 
+            id: 'badge', 
+            src: 'https://cdn-icons-png.flaticon.com/512/10629/10629607.png',
+            style: { 
+              width: '40px', height: '40px', position: 'absolute', 
+              bottom: '0', right: '0', background: '#3b82f6', 
+              borderRadius: '50%', padding: '5px', opacity: 0 
+            },
+            onRender: (el) => {
+              AlertBuilder.animate(el, {
+                scale: [0, 1.5, 1],
+                opacity: [0, 1],
+                rotate: '1turn',
+                delay: 1000,
+                duration: 800,
+                ease: 'outElastic(1, .5)'
+              });
+            }
+          }
+        ], {
+           layout: { position: 'relative', display: 'flex' },
+           style: { overflow: 'visible' }
+        })
+        .style({
+          position: 'center',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          padding: '40px',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+          animation: { type: 'fade', duration: 0.5 }
+        })
+        .duration(6000)
+        .build();
 
-function showComplexText() {
-  const alert = new AlertBuilder()
-    .id('complex-text-' + Date.now())
-    .text('🎉 Welcome to Trigger System! This alert showcases advanced text animations with custom styling.')
-    .style({
-      position: 'top-right',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: '#ffffff',
-      borderRadius: 16,
-      padding: '24px',
-      width: 380,
-      boxShadow: '0 10px 40px rgba(102, 126, 234, 0.5)',
-      border: '1px solid rgba(255,255,255,0.2)',
-      fontSize: '15px',
-      fontFamily: '"Segoe UI", system-ui, sans-serif',
-      textAlign: 'left',
-      animation: { type: 'slide', direction: 'right', duration: 0.5, easing: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)' }
-    })
-    .duration(6000)
-    .dismissible(true)
-    .build();
+      const el = document.createElement('trigger-alert') as TriggerAlert;
+      el.config = alert;
+      document.body.appendChild(el);
+    }
+  },
+  {
+     id: 'premium-md',
+     title: 'Glass Markdown',
+     description: 'Formatted markdown content in a premium glass container.',
+     category: 'Basic',
+     handler: () => {
+       const alert = new AlertBuilder()
+         .id('md-' + Date.now())
+         .text('# Premium Core\n\n*   **Performance**: 100ms response\n*   **Architecture**: Modular Atoms\n*   **Graphics**: Anime.js v4\n\n> "The future of UI is motion."', { markdown: true })
+         .style({
+           position: 'top-right',
+           background: 'rgba(30, 41, 59, 0.7)',
+           backdropFilter: 'blur(10px)',
+           color: '#f1f5f9',
+           borderRadius: 24,
+           padding: '28px',
+           width: 360,
+           border: '1px solid rgba(255,255,255,0.1)',
+           animation: { type: 'slide', direction: 'right', duration: 0.6 }
+         })
+         .duration(8000)
+         .dismissible(true)
+         .build();
 
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
+       const el = document.createElement('trigger-alert') as TriggerAlert;
+       el.config = alert;
+       document.body.appendChild(el);
+     }
+  }
+];
 
-function showMultiPosition() {
-  const positions = [
-    { pos: 'top-left', bg: '#ef4444', x: 20, y: 20 },
-    { pos: 'top-right', bg: '#f59e0b', x: -20, y: 20 },
-    { pos: 'bottom-left', bg: '#10b981', x: 20, y: -20 },
-    { pos: 'bottom-right', bg: '#3b82f6', x: -20, y: -20 }
-  ] as const;
+let activeDemoId = demos[0].id;
 
-  positions.forEach((p, i) => {
-    const alert = new AlertBuilder()
-      .id(`pos-${i}-${Date.now()}`)
-      .text(`Position: ${p.pos.toUpperCase()}`)
-      .style({
-        position: p.pos as any,
-        background: p.bg,
-        color: '#ffffff',
-        borderRadius: 12,
-        padding: '16px 24px',
-        animation: { type: 'slide', direction: p.pos.includes('top') ? 'down' : 'up', duration: 0.4 }
-      })
-      .duration(4000)
-      .dismissible(true)
-      .build();
+function init() {
+  const listEl = document.getElementById('demoList');
+  const titleEl = document.getElementById('activeTitle');
+  const descEl = document.getElementById('activeDesc');
+  const triggerBtn = document.getElementById('triggerBtn');
 
-    const el = document.createElement('trigger-alert') as TriggerAlert;
-    el.config = alert;
-    document.body.appendChild(el);
+  if (!listEl || !titleEl || !descEl || !triggerBtn) return;
+
+  // Clear list first to prevent duplicates
+  listEl.innerHTML = '';
+
+  function selectDemo(demo: DemoConfig) {
+    activeDemoId = demo.id;
+    titleEl!.textContent = demo.title;
+    descEl!.textContent = demo.description;
+    
+    // Update active class
+    document.querySelectorAll('.demo-item').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-id') === demo.id);
+    });
+  }
+
+  demos.forEach(demo => {
+    const item = document.createElement('div');
+    item.className = `demo-item ${demo.id === activeDemoId ? 'active' : ''}`;
+    item.setAttribute('data-id', demo.id);
+    item.innerHTML = `
+      <h3>${demo.title}</h3>
+      <p>${demo.description}</p>
+    `;
+    item.addEventListener('click', () => selectDemo(demo));
+    listEl.appendChild(item);
   });
+
+  triggerBtn.addEventListener('click', () => {
+    const demo = demos.find(d => d.id === activeDemoId);
+    if (demo) demo.handler();
+  });
+
+  // Initial selection
+  selectDemo(demos[0]);
 }
 
-function showStaggerAnimation() {
-  const alert = new AlertBuilder()
-    .id('stagger-' + Date.now())
-    .text('Step 1: Initialize...')
-    .style({
-      position: 'center',
-      background: '#1e293b',
-      color: '#e2e8f0',
-      borderRadius: 20,
-      padding: '32px 48px',
-      width: 450,
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-      fontSize: '18px',
-      fontWeight: 600,
-      textAlign: 'center',
-      animation: { type: 'scale', duration: 0.6, easing: 'ease-out' }
-    })
-    .duration(3000)
-    .dismissible(true)
-    .onComplete(() => {
-      setTimeout(() => {
-        const alert2 = new AlertBuilder()
-          .id('stagger-2-' + Date.now())
-          .text('Step 2: Processing data...')
-          .style({
-            position: 'center',
-            background: '#0f172a',
-            color: '#60a5fa',
-            borderRadius: 20,
-            padding: '32px 48px',
-            width: 450,
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            fontSize: '18px',
-            fontWeight: 600,
-            textAlign: 'center',
-            animation: { type: 'scale', duration: 0.5, easing: 'ease-out' }
-          })
-          .duration(3000)
-          .dismissible(true)
-          .build();
-
-        const el2 = document.createElement('trigger-alert') as TriggerAlert;
-        el2.config = alert2;
-        document.body.appendChild(el2);
-      }, 500);
-    })
-    .build();
-
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
-
-function showSpringBounce() {
-  const alert = new AlertBuilder()
-    .id('spring-' + Date.now())
-    .text('🎯 BOUNCE!')
-    .style({
-      position: 'center',
-      background: 'linear-gradient(180deg, #f472b6 0%, #db2777 100%)',
-      color: '#ffffff',
-      borderRadius: '50%',
-      padding: '40px 60px',
-      width: 200,
-      boxShadow: '0 20px 60px rgba(219, 39, 119, 0.6)',
-      fontSize: '24px',
-      fontWeight: 800,
-      textAlign: 'center',
-      animation: { type: 'bounce', duration: 0.8 }
-    })
-    .duration(4000)
-    .dismissible(true)
-    .build();
-
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
-
-function showComplexStyle() {
-  const alert = new AlertBuilder()
-    .id('complex-style-' + Date.now())
-    .text('✨ Premium Alert\n\nThis is a fully styled alert with:\n• Custom fonts\n• Gradient background\n• Glow effects\n• Custom border')
-    .style({
-      position: 'bottom',
-      background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 50%, #1b263b 100%)',
-      color: '#e0e7ff',
-      borderRadius: 24,
-      padding: '28px 36px',
-      width: 420,
-      maxWidth: '90vw',
-      boxShadow: '0 0 60px rgba(99, 102, 241, 0.4), 0 20px 40px rgba(0, 0, 0, 0.3)',
-      border: '2px solid rgba(99, 102, 241, 0.5)',
-      fontSize: '14px',
-      fontFamily: '"Inter", "Segoe UI", sans-serif',
-      fontWeight: 500,
-      textAlign: 'left',
-      zIndex: 9999,
-      animation: { type: 'slide', direction: 'up', duration: 0.5, easing: 'ease-out' }
-    })
-    .duration(8000)
-    .dismissible(true)
-    .build();
-
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
-
-function showCallbackDemo() {
-  let dismissCount = 0;
-  let completeCount = 0;
-
-  const alert = new AlertBuilder()
-    .id('callback-' + Date.now())
-    .text('👋 Check console for callbacks!\n\nClick dismiss to see onDismiss.\nAuto-dismiss triggers onComplete.')
-    .style({
-      position: 'center',
-      background: '#1e1e2e',
-      color: '#cdd6f4',
-      borderRadius: 16,
-      padding: '24px 32px',
-      width: 400,
-      boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
-      fontSize: '14px',
-      textAlign: 'left',
-      animation: { type: 'scale', duration: 0.4 }
-    })
-    .duration(10000)
-    .dismissible(true)
-    .onDismiss(() => {
-      dismissCount++;
-      console.log(`[Alert] onDismiss called! Count: ${dismissCount}`);
-    })
-    .onComplete(() => {
-      completeCount++;
-      console.log(`[Alert] onComplete called! Count: ${completeCount}`);
-    })
-    .build();
-
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
-
-function showMarkdown() {
-  const alert = new AlertBuilder()
-    .id('markdown-' + Date.now())
-    .text('**Bold Text** and *italic* and `code`\n\n- Item 1\n- Item 2\n\n> Blockquote\n\n[Link](https://example.com)', { markdown: true })
-    .style({
-      position: 'top',
-      background: '#fef3c7',
-      color: '#92400e',
-      borderRadius: 12,
-      padding: '20px 28px',
-      width: 380,
-      boxShadow: '0 8px 24px rgba(245, 158, 11, 0.3)',
-      fontSize: '14px',
-      fontFamily: 'monospace',
-      textAlign: 'left',
-      animation: { type: 'slide', direction: 'down', duration: 0.4 }
-    })
-    .duration(7000)
-    .dismissible(true)
-    .build();
-
-  const el = document.createElement('trigger-alert') as TriggerAlert;
-  el.config = alert;
-  document.body.appendChild(el);
-}
-
-window.showTextAlert = showTextAlert;
-window.showVideoAlert = showVideoAlert;
-window.showAudioAlert = showAudioAlert;
-window.showComplexText = showComplexText;
-window.showMultiPosition = showMultiPosition;
-window.showStaggerAnimation = showStaggerAnimation;
-window.showSpringBounce = showSpringBounce;
-window.showComplexStyle = showComplexStyle;
-window.showCallbackDemo = showCallbackDemo;
-window.showMarkdown = showMarkdown;
+document.addEventListener('DOMContentLoaded', init);

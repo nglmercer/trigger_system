@@ -7,14 +7,7 @@ export {
   animateElementOut, 
   animateStagger,
   setupElementInteractions,
-  easeInOut,
-  easeOut,
-  easeIn,
-  spring,
-  staggerFn,
-  wrap,
-  shuffle 
-} from './utils/animations';
+} from './animations';
 export type { 
   AlertConfig, 
   AlertElement,

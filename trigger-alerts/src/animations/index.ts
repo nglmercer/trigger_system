@@ -1,5 +1,6 @@
 export * from './engine';
 export * from './keyframes';
+export { animate, stagger, splitText } from 'animejs';
 
 import { runAnimation, runStagger, type AnimationOptions } from './engine';
 import { getAnimationKeyframes, getOutKeyframes } from './keyframes';

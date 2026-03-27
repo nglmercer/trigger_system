@@ -19,129 +19,17 @@ import {
   transformToString,
   filterToString,
 } from '../styles/types';
-import { animateElement, setupElementInteractions } from '../utils/animations';
+import { animateElement, setupElementInteractions } from '../animations';
 
 @customElement('alert-element')
 export class AlertElementComponent extends LitElement {
-  static styles = css`
-    :host {
-      display: block;
-    }
-    
-    .element {
-      box-sizing: border-box;
-    }
-    
-    .text {
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    
-    .text.markdown strong {
-      font-weight: 700;
-    }
-    
-    .text.markdown em {
-      font-style: italic;
-    }
-    
-    .text.markdown code {
-      background: rgba(0,0,0,0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
-    }
-    
-    .text.markdown ul, .text.markdown ol {
-      margin: 8px 0;
-      padding-left: 20px;
-    }
-    
-    .text.markdown li {
-      margin: 4px 0;
-    }
-    
-    .text.markdown blockquote {
-      border-left: 3px solid currentColor;
-      padding-left: 12px;
-      margin: 8px 0;
-      opacity: 0.8;
-    }
-    
-    .text.markdown a {
-      color: inherit;
-      text-decoration: underline;
-    }
-    
-    .text.markdown h1, .text.markdown h2, .text.markdown h3 {
-      margin: 12px 0 8px;
-    }
-    
-    .text.markdown p {
-      margin: 8px 0;
-    }
-    
-    img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-    
-    video, audio {
-      max-width: 100%;
-      width: 100%;
-    }
-    
-    button {
-      border: none;
-      cursor: pointer;
-      padding: 10px 20px;
-      font-size: inherit;
-      font-family: inherit;
-      transition: all 0.2s ease;
-    }
-    
-    button.filled {
-      background: #007bff;
-      color: white;
-    }
-    
-    button.filled:hover {
-      background: #0056b3;
-    }
-    
-    button.outline {
-      background: transparent;
-      border: 2px solid #007bff;
-      color: #007bff;
-    }
-    
-    button.outline:hover {
-      background: rgba(0, 123, 255, 0.1);
-    }
-    
-    button.ghost {
-      background: transparent;
-      color: #007bff;
-    }
-    
-    button.ghost:hover {
-      background: rgba(0, 123, 255, 0.1);
-    }
-    
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    .spacer {
-      flex-shrink: 0;
-    }
-  `;
-
   @property({ type: Object }) element!: AlertElement;
   @property({ type: Object }) parentLayout?: AlertElementLayout;
   @state() private mounted = false;
+
+  protected createRenderRoot() {
+    return this;
+  }
 
   firstUpdated() {
     this.mounted = true;
@@ -150,9 +38,14 @@ export class AlertElementComponent extends LitElement {
   }
 
   private setupAnimations() {
-    const el = this.shadowRoot?.querySelector('.element') as HTMLElement;
+    const el = this.querySelector('.element') as HTMLElement;
     if (!el) return;
     
+    // Call onRender if defined
+    if (this.element && (this.element as any).onRender) {
+      (this.element as any).onRender(el);
+    }
+
     const animatableTypes = ['text', 'image', 'video', 'audio', 'button', 'container'];
     if (!animatableTypes.includes(this.element.type)) return;
     if (!('animation' in this.element)) return;
@@ -166,7 +59,7 @@ export class AlertElementComponent extends LitElement {
   }
 
   private setupInteractions() {
-    const el = this.shadowRoot?.querySelector('.element') as HTMLElement;
+    const el = this.querySelector('.element') as HTMLElement;
     if (!el) return;
     
     const interactiveTypes = ['text', 'image', 'video', 'audio', 'button', 'container'];
@@ -329,6 +222,60 @@ export class AlertElementComponent extends LitElement {
     const combinedStyle = [layoutStyle, elementStyle].filter(Boolean).join('; ');
 
     return html`
+      <style>
+        .element {
+          box-sizing: border-box;
+        }
+        
+        .text {
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        
+        .text.markdown strong { font-weight: 700; }
+        .text.markdown em { font-style: italic; }
+        .text.markdown code {
+          background: rgba(0,0,0,0.1);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: monospace;
+        }
+        .text.markdown ul, .text.markdown ol { margin: 8px 0; padding-left: 20px; }
+        .text.markdown li { margin: 4px 0; }
+        .text.markdown blockquote {
+          border-left: 3px solid currentColor;
+          padding-left: 12px;
+          margin: 8px 0;
+          opacity: 0.8;
+        }
+        .text.markdown a { color: inherit; text-decoration: underline; }
+        
+        img { 
+          max-width: 100%; 
+          width: 100%;
+          height: 100%;
+          display: block; 
+          object-fit: cover;
+        }
+        video, audio { max-width: 100%; width: 100%; }
+        
+        button {
+          border: none;
+          cursor: pointer;
+          padding: 10px 20px;
+          font-size: inherit;
+          font-family: inherit;
+          transition: all 0.2s ease;
+        }
+        
+        button.filled { background: #007bff; color: white; }
+        button.filled:hover { background: #0056b3; }
+        button.outline { background: transparent; border: 2px solid #007bff; color: #007bff; }
+        button.outline:hover { background: rgba(0, 123, 255, 0.1); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .spacer { flex-shrink: 0; }
+      </style>
       <div 
         class="element ${this.element.type}"
         style="${combinedStyle}"

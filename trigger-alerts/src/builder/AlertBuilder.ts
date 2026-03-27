@@ -14,6 +14,7 @@ import type {
   AlertElementInteraction,
   AlertStyle,
 } from '../styles/types';
+import { animate, stagger, splitText } from '../animations';
 
 let elementIdCounter = 0;
 function generateId(): string {
@@ -21,6 +22,10 @@ function generateId(): string {
 }
 
 export class AlertBuilder {
+  static animate = animate;
+  static stagger = stagger;
+  static splitText = splitText;
+
   private config: Partial<AlertConfig> = {
     dismissible: true,
     duration: 5000,
@@ -42,6 +47,7 @@ export class AlertBuilder {
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
+    onRender?: (el: HTMLElement) => void;
   }): this {
     const textEl: AlertTextElement = {
       type: 'text',
@@ -51,6 +57,7 @@ export class AlertBuilder {
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
+      onRender: options?.onRender,
     };
     this.addElement(textEl);
     return this;
@@ -60,6 +67,7 @@ export class AlertBuilder {
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
+    onRender?: (el: HTMLElement) => void;
   }): this {
     const imgEl: AlertImageElement = {
       type: 'image',
@@ -69,6 +77,7 @@ export class AlertBuilder {
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
+      onRender: options?.onRender,
     };
     this.addElement(imgEl);
     return this;
@@ -83,6 +92,7 @@ export class AlertBuilder {
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
+    onRender?: (el: HTMLElement) => void;
   }): this {
     const videoEl: AlertVideoElement = {
       type: 'video',
@@ -96,6 +106,7 @@ export class AlertBuilder {
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
+      onRender: options?.onRender,
     };
     this.addElement(videoEl);
     return this;
@@ -109,6 +120,7 @@ export class AlertBuilder {
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
+    onRender?: (el: HTMLElement) => void;
   }): this {
     const audioEl: AlertAudioElement = {
       type: 'audio',
@@ -121,6 +133,7 @@ export class AlertBuilder {
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
+      onRender: options?.onRender,
     };
     this.addElement(audioEl);
     return this;
@@ -132,6 +145,7 @@ export class AlertBuilder {
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
+    onRender?: (el: HTMLElement) => void;
   }): this {
     const btnEl: AlertButtonElement = {
       type: 'button',
@@ -143,6 +157,7 @@ export class AlertBuilder {
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
+      onRender: options?.onRender,
     };
     this.addElement(btnEl);
     return this;
@@ -153,6 +168,7 @@ export class AlertBuilder {
     style?: AlertElementStyle;
     animation?: AlertElementAnimation;
     interaction?: AlertElementInteraction;
+    onRender?: (el: HTMLElement) => void;
   }): this {
     const containerEl: AlertContainerElement = {
       type: 'container',
@@ -162,6 +178,7 @@ export class AlertBuilder {
       style: options?.style,
       animation: options?.animation,
       interaction: options?.interaction,
+      onRender: options?.onRender,
     };
     this.addElement(containerEl);
     return this;

@@ -1,65 +1,93 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { animate } from 'animejs';
-import type { 
+import { 
   AlertConfig, 
   AlertElement,
-  AlertStyle,
-  AlertElementLayout,
   AlertElementAnimation,
-  AlertElementStyle,
-  AlertTextElement,
-  AlertImageElement,
-  AlertVideoElement,
-  AlertAudioElement,
-  AlertButtonElement,
-  AlertContainerElement,
-  AlertSpacerElement,
 } from '../styles/types';
 import { 
-  elementStyleToCSS, 
-  elementLayoutToCSS,
   styleToVariables 
 } from '../styles/types';
 import { 
   animateElement, 
   animateElementOut, 
   animateStagger,
-  setupElementInteractions 
-} from '../utils/animations';
+} from '../animations';
 import './AlertElement';
+export const registerOrReplace = (tagName: string, newClass: any): void => {
+  const existing = customElements.get(tagName) as any; // Cast to any here
 
-@customElement('trigger-alert')
+  if (existing) {
+    console.log(`[HMR] Patching <${tagName}>...`);
+
+    try {
+      const newProto = newClass.prototype;
+      const existingProto = existing.prototype;
+
+      // Copy prototype methods
+      Object.getOwnPropertyNames(newProto).forEach((name) => {
+        if (name !== 'constructor') {
+          const descriptor = Object.getOwnPropertyDescriptor(newProto, name);
+          if (descriptor) {
+            Object.defineProperty(existingProto, name, descriptor);
+          }
+        }
+      });
+
+      // FIX: Use an explicit cast to access static members by string index
+      const staticProps = ['styles', 'properties', 'elementProperties', 'shadowRootOptions'];
+      
+      staticProps.forEach((prop) => {
+        // We cast 'existing' and 'newClass' to 'Record<string, any>' 
+        // to allow string-based indexing
+        const source = newClass as Record<string, any>;
+        const target = existing as Record<string, any>;
+
+        if (source[prop]) {
+          target[prop] = source[prop];
+        }
+      });
+
+      // Re-finalize Lit's internal metadata
+      if (typeof existing.finalize === 'function') {
+        existing.enabledWarnings = []; 
+        existing.finalize();
+      }
+
+      // Request update for all live elements
+      document.querySelectorAll(tagName).forEach((el: any) => {
+        if (el.requestUpdate) el.requestUpdate();
+      });
+      
+    } catch (e) {
+      console.error(`[HMR] Patching failed for ${tagName}:`, e);
+      window.location.reload(); 
+    }
+  } else {
+    customElements.define(tagName, newClass);
+  }
+};
 export class TriggerAlert extends LitElement {
-  static styles = css`
-    :host {
-      display: block;
-      position: fixed;
-      z-index: 1000;
-      font-family: var(--alert-font-family, system-ui, sans-serif);
-    }
-
-    .alert {
-      background: var(--alert-bg, #fff);
-      color: var(--alert-color, #000);
-      border-radius: var(--alert-radius, 8px);
-      padding: var(--alert-padding, 16px);
-      margin: var(--alert-margin, 8px);
-      width: var(--alert-width, auto);
-      max-width: var(--alert-max-width, 400px);
-      box-shadow: var(--alert-box-shadow, 0 4px 12px rgba(0,0,0,0.15));
-      border: var(--alert-border, none);
-    }
-  `;
-
   @property({ type: Object }) config!: AlertConfig;
   @state() private visible = false;
   @state() private elements: AlertElement[] = [];
+
+  protected createRenderRoot() {
+    return this;
+  }
 
   connectedCallback() {
     super.connectedCallback();
     this.style.cssText = this.getCSSVars();
     this.elements = this.config.elements || [];
+    
+    // Add host styles manually since we are in light DOM
+    this.style.display = 'block';
+    this.style.position = 'fixed';
+    this.style.zIndex = '1000';
+    if (this.config.style?.fontFamily) {
+      this.style.fontFamily = this.config.style.fontFamily;
+    }
   }
 
   private getCSSVars(): string {
@@ -97,65 +125,37 @@ export class TriggerAlert extends LitElement {
     return 'up';
   }
 
-  private parseEasing(easing?: string): any {
-    if (!easing) return 'ease-out';
-    if (easing.startsWith('spring(')) {
-      const match = easing.match(/spring\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)/);
-      if (match) {
-        const [, stiffness, damping, mass] = match;
-        return { stiffness: Number(stiffness), damping: Number(damping), mass: Number(mass) };
-      }
-    }
-    return easing;
-  }
-
   private async animateIn() {
-    const alertEl = this.shadowRoot?.querySelector('.alert') as HTMLElement;
+    const alertEl = this.querySelector('.alert') as HTMLElement;
     if (!alertEl) return;
 
     const animation = this.config.style?.animation;
     const animationType = animation?.type || 'fade';
     const direction = animation?.direction || this.getAnimationDirection(this.config.style?.position);
-    const duration = animation?.duration || 0.3;
-    const easing = this.parseEasing(animation?.easing);
-
-    const animations: Record<string, any> = {
-      fade: { opacity: [0, 1] },
-      slide: {
-        transform: [this.getSlideTransform(direction, -30), 'translateY(0)']
-      },
-      scale: { transform: [{ scale: 0.8 }, { scale: 1 }] },
-      bounce: { transform: [{ scale: 0.5 }, { scale: 1.1 }, { scale: 1 }] }
-    };
-
-    //await animate(alertEl, animations[animationType], { duration, easing });
     
-    const elementEls = this.shadowRoot?.querySelectorAll('alert-element');
+    await animateElement(alertEl, {
+      type: animationType as any,
+      direction: direction as any,
+      duration: animation?.duration || 0.4,
+      easing: animation?.easing
+    });
+    
+    const elementEls = this.querySelectorAll('alert-element');
     if (elementEls && elementEls.length > 0) {
       const elements = Array.from(elementEls) as HTMLElement[];
-      await animateStagger(elements, { type: 'fade', duration: 0.2 }, 0.05);
+      await animateStagger(elements, { type: 'fade', duration: 0.3 }, 0.05);
     }
     
     await this.updateComplete;
     this.visible = true;
   }
 
-  private getSlideTransform(direction: string, from: number): string {
-    switch (direction) {
-      case 'up': return `translateY(${from}px)`;
-      case 'down': return `translateY(${-from}px)`;
-      case 'left': return `translateX(${from}px)`;
-      case 'right': return `translateX(${-from}px)`;
-      default: return `translateY(${from}px)`;
-    }
-  }
-
   async dismiss() {
-    const el = this.shadowRoot?.querySelector('.alert') as HTMLElement;
+    const el = this.querySelector('.alert') as HTMLElement;
     if (el) {
       const animationType = this.config.style?.animation?.type || 'fade';
       const direction = this.config.style?.animation?.direction;
-      await animateElementOut(el, animationType, direction as any, 0.2);
+      await animateElementOut(el, animationType as any, direction as any, 0.3);
     }
     this.config.onComplete?.();
     this.remove();
@@ -166,6 +166,21 @@ export class TriggerAlert extends LitElement {
     const positionStyles = this.getPositionStyles(position);
     
     return html`
+      <style>
+        .alert {
+          background: var(--alert-bg, #fff);
+          color: var(--alert-color, #000);
+          border-radius: var(--alert-radius, 8px);
+          padding: var(--alert-padding, 16px);
+          margin: var(--alert-margin, 8px);
+          width: var(--alert-width, auto);
+          max-width: var(--alert-max-width, 400px);
+          box-shadow: var(--alert-box-shadow, 0 4px 12px rgba(0,0,0,0.15));
+          border: var(--alert-border, none);
+          backdrop-filter: var(--alert-backdrop-filter, none);
+          pointer-events: auto;
+        }
+      </style>
       <div 
         class="alert ${position}" 
         style="position: fixed; ${positionStyles}"
@@ -184,6 +199,7 @@ export class TriggerAlert extends LitElement {
     `;
   }
 }
+registerOrReplace('trigger-alert', TriggerAlert);
 
 declare global {
   interface HTMLElementTagNameMap {
