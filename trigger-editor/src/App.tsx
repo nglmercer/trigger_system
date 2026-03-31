@@ -203,20 +203,38 @@ function NodeEditor() {
       if (isShortcut(event, DEFAULT_SHORTCUTS.COPY)) {
         const selectedNodes = nodes.filter(n => n.selected);
         if (selectedNodes.length > 0) {
-          clipboard.current = selectedNodes.map(node => ({
-            ...node,
-            selected: false, // Deselect in clipboard
-          }));
-          // success(t('notifications.nodesCopied', { count: selectedNodes.length }));
+          const selectedNodeIds = new Set(selectedNodes.map(n => n.id));
+          const selectedEdges = edges.filter(e => selectedNodeIds.has(e.source) && selectedNodeIds.has(e.target));
+          
+          const nodesToCopy = selectedNodes.map(node => {
+            const { onChange, onDuplicate, ...cleanData } = (node.data || {}) as any;
+            return {
+              ...node,
+              selected: false,
+              data: cleanData
+            };
+          });
+          
+          clipboard.current = nodesToCopy as AppNode[];
+          
+          try {
+            const clipboardData = { nodes: nodesToCopy, edges: selectedEdges };
+            navigator.clipboard.writeText(JSON.stringify(clipboardData));
+          } catch (e) {
+            console.error('Clipboard copy failed:', e);
+          }
+          success(t('notifications.nodesCopied', { count: selectedNodes.length }));
         }
         return;
       }
 
       // Paste
       if (isShortcut(event, DEFAULT_SHORTCUTS.PASTE)) {
-        if (clipboard.current.length > 0) {
+        const handlePasteData = (nodesToPaste: any[], edgesToPaste: any[] = []) => {
+          if (!nodesToPaste || nodesToPaste.length === 0) return;
+
           const nodeMap = new Map<string, string>();
-          const pastedNodes = clipboard.current.map(node => {
+          const pastedNodes = nodesToPaste.map(node => {
             const newId = getId();
             nodeMap.set(node.id, newId);
             return {
@@ -230,19 +248,52 @@ function NodeEditor() {
               data: {
                 ...node.data,
                 _id: newId,
-                // These will be properly populated by useNodeEdgeState
-                onChange: (val: unknown, f: string) => onNodeDataChange(newId, val, f),
-                onDuplicate: undefined as any,
               }
             };
           });
 
-          // Deselect current nodes
+          const validEdges = (edgesToPaste || []).map(edge => ({
+            ...edge,
+            id: `edge-${getId()}`,
+            source: nodeMap.get(edge.source),
+            target: nodeMap.get(edge.target),
+            selected: true,
+          })).filter(e => e.source && e.target);
+
+          // Deselect current nodes and edges
           setNodes((nds) => nds.map(n => ({ ...n, selected: false })));
+          setEdges((eds) => eds.map(e => ({ ...e, selected: false })));
 
           addNodes(pastedNodes as AppNode[]);
+          if (validEdges.length > 0) {
+            setEdges((eds) => [...eds, ...(validEdges as Edge[])]);
+          }
           success(t('notifications.nodesPasted', { count: pastedNodes.length }));
-        }
+        };
+
+        const tryPasteFromJson = async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
+              handlePasteData(parsed);
+              return true;
+            } else if (parsed && Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {
+              handlePasteData(parsed.nodes, parsed.edges);
+              return true;
+            }
+          } catch (e) {
+            // Not JSON or permission denied
+          }
+          return false;
+        };
+
+        tryPasteFromJson().then(wasPasted => {
+          if (!wasPasted && clipboard.current.length > 0) {
+            handlePasteData(clipboard.current, []);
+          }
+        });
+        
         return;
       }
 
