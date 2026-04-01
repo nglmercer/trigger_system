@@ -62,24 +62,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
   }, []);
 
   // Expose autocomplete methods to window (delegating to ImportManager)
-  useEffect(() => {
-    window.triggerEditor = window.triggerEditor || {};
 
-    window.triggerEditor.addAutocompleteData = (alias: string, data: any, mode: ImportMode = 'path') => {
-      ImportManager.setImportByAlias(alias, data, mode, 'External API');
-    };
-
-    window.triggerEditor.removeAutocompleteData = (alias: string) => {
-      ImportManager.removeImportByAlias(alias);
-    };
-
-    return () => {
-      if (window.triggerEditor) {
-        delete window.triggerEditor.addAutocompleteData;
-        delete window.triggerEditor.removeAutocompleteData;
-      }
-    };
-  }, []);
   
   // Add new import
   const addImport = () => {

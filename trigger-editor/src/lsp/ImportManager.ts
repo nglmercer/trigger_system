@@ -187,3 +187,17 @@ export const ImportManager = new ImportManagerImpl();
 
 // Inicializar automáticamente al importar el módulo
 ImportManager.init();
+window.triggerEditor = window.triggerEditor || {};
+
+window.triggerEditor.addAutocompleteData = (alias: string, data: any, mode: ImportMode = 'path') => {
+  ImportManager.setImportByAlias(alias, data, mode, 'External API');
+};
+
+window.triggerEditor.removeAutocompleteData = (alias: string) => {
+  ImportManager.removeImportByAlias(alias);
+};
+
+/* if (window.triggerEditor) {
+  delete window.triggerEditor.addAutocompleteData;
+  delete window.triggerEditor.removeAutocompleteData;
+} */
