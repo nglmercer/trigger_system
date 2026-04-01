@@ -21,6 +21,7 @@ interface SelectInputProps {
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  error?: boolean;
 }
 
 export function SelectInput({ 
@@ -30,7 +31,8 @@ export function SelectInput({
   placeholder = 'Select...', 
   disabled = false,
   className = 'node-input',
-  style
+  style,
+  error
 }: SelectInputProps) {
   return (
     <div style={{ position: 'relative', width: style?.width || '100%' }}>
@@ -45,17 +47,17 @@ export function SelectInput({
           WebkitAppearance: 'none',
           paddingRight: '30px',
           background: 'rgba(13, 17, 23, 0.8)',
-          border: '1px solid var(--border)',
+          border: `1px solid ${error ? 'var(--error, #f85149)' : 'var(--border)'}`,
           borderRadius: '8px',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
         onFocus={(e) => {
-          e.currentTarget.style.borderColor = 'var(--accent)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88, 166, 255, 0.15)';
+          e.currentTarget.style.borderColor = error ? 'var(--error, #f85149)' : 'var(--accent)';
+          e.currentTarget.style.boxShadow = error ? '0 0 0 3px rgba(248, 81, 73, 0.15)' : '0 0 0 3px rgba(88, 166, 255, 0.15)';
           e.currentTarget.style.background = 'rgba(13, 17, 23, 0.95)';
         }}
         onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.borderColor = error ? 'var(--error, #f85149)' : 'var(--border)';
           e.currentTarget.style.boxShadow = 'none';
           e.currentTarget.style.background = 'rgba(13, 17, 23, 0.8)';
         }}
@@ -103,6 +105,7 @@ interface TextInputProps {
   autoFocus?: boolean;
   style?: React.CSSProperties;  
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  error?: boolean;
 }
 
 export function TextInput({ 
@@ -116,7 +119,8 @@ export function TextInput({
   primitiveOnly = false,
   autoFocus = false,
   style,
-  onBlur
+  onBlur,
+  error
 }: TextInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -191,18 +195,18 @@ export function TextInput({
           ...style,
           borderRadius: '8px',
           background: 'rgba(13, 17, 23, 0.8)',
-          border: '1px solid var(--border)',
+          border: `1px solid ${error ? 'var(--error, #f85149)' : 'var(--border)'}`,
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
         onFocus={(e) => {
           setIsFocused(true);
-          e.currentTarget.style.borderColor = 'var(--accent)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88, 166, 255, 0.15)';
+          e.currentTarget.style.borderColor = error ? 'var(--error, #f85149)' : 'var(--accent)';
+          e.currentTarget.style.boxShadow = error ? '0 0 0 3px rgba(248, 81, 73, 0.15)' : '0 0 0 3px rgba(88, 166, 255, 0.15)';
           e.currentTarget.style.background = 'rgba(13, 17, 23, 0.95)';
         }}
         onBlur={(e) => {
           if (onBlur) onBlur(e);
-          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.borderColor = error ? 'var(--error, #f85149)' : 'var(--border)';
           e.currentTarget.style.boxShadow = 'none';
           e.currentTarget.style.background = 'rgba(13, 17, 23, 0.8)';
           setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150);
@@ -225,6 +229,7 @@ interface TextAreaInputProps {
   rows?: number;
   className?: string;
   style?: React.CSSProperties;
+  error?: boolean;
 }
 
 export function TextAreaInput({ 
@@ -234,7 +239,8 @@ export function TextAreaInput({
   disabled = false,
   rows = 3,
   className = 'node-textarea',
-  style
+  style,
+  error
 }: TextAreaInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -295,17 +301,17 @@ export function TextAreaInput({
           ...style,
           borderRadius: '8px',
           background: 'rgba(13, 17, 23, 0.8)',
-          border: '1px solid var(--border)',
+          border: `1px solid ${error ? 'var(--error, #f85149)' : 'var(--border)'}`,
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
         onFocus={(e) => {
           setIsFocused(true);
-          e.currentTarget.style.borderColor = 'var(--accent)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88, 166, 255, 0.15)';
+          e.currentTarget.style.borderColor = error ? 'var(--error, #f85149)' : 'var(--accent)';
+          e.currentTarget.style.boxShadow = error ? '0 0 0 3px rgba(248, 81, 73, 0.15)' : '0 0 0 3px rgba(88, 166, 255, 0.15)';
           e.currentTarget.style.background = 'rgba(13, 17, 23, 0.95)';
         }}
         onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.borderColor = error ? 'var(--error, #f85149)' : 'var(--border)';
           e.currentTarget.style.boxShadow = 'none';
           e.currentTarget.style.background = 'rgba(13, 17, 23, 0.8)';
           setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150);

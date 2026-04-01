@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
+import { useRFStore } from '../store/rfStore';
 import type { ActionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
 import { ClearIcon, ActionIcon, CopyIcon, ChevronIcon } from '../components/Icons';
@@ -12,6 +13,15 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
   
+  const errors = useRFStore(s => s.errors);
+  const nodeErrors = React.useMemo(() => 
+    errors.filter((e): e is import('../../../src/sdk/graph-parser').GraphParserError => 
+      typeof e === 'object' && e !== null && 'eventId' in e && e.eventId === id
+    ), [errors, id]);
+
+  const hasError = (field: string) => nodeErrors.some(e => e.field === field);
+  const hasAnyError = nodeErrors.length > 0;
+  
   // Show output handle for connecting to ActionGroup or chaining actions
   const isConnectedToActionGroup = edges.some(e => 
     (e.target === id && getNode(e.source)?.type === NodeType.ACTION_GROUP) ||
@@ -19,7 +29,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
   );
 
   return (
-    <div className="drawflow-node action">
+    <div className={`drawflow-node action ${hasAnyError ? 'node-error' : ''}`}>
       <Handle
         type="target"
         position={Position.Left}
@@ -50,6 +60,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
             onChange={(val) => data.onChange(val as string, NodeField.TYPE)}
             placeholder={t('nodeDetails.actionTypePlaceholder')}
             autocompleteMode="variable"
+            error={hasError('type')}
           />
         </FormField>
         <FormField label={t('nodeDetails.params')}>

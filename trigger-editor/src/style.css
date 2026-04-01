@@ -332,7 +332,7 @@ body {
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
-  width: 300px;
+  width: 18rem;
   box-shadow: var(--node-shadow);
   transition:
     border-color 0.2s,
@@ -409,6 +409,21 @@ body {
   background: linear-gradient(135deg, var(--do-color-dark), var(--do-color));
   border-bottom: 2px solid rgba(0, 0, 0, 0.2);
   box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
+}
+
+.node-error {
+  border-color: #cf222e !important;
+  box-shadow: 0 0 0 1px #cf222e, var(--node-shadow) !important;
+}
+
+.node-error .node-title {
+  background: linear-gradient(135deg, #a40e26, #cf222e) !important;
+  box-shadow: 0 2px 8px rgba(207, 34, 46, 0.4) !important;
+}
+
+.node-error .node-body {
+  border-left-color: #cf222e !important;
+  background: linear-gradient(90deg, rgba(207, 34, 46, 0.05), transparent) !important;
 }
 
 .node-delete {

@@ -34,6 +34,8 @@ export interface RFState {
   undo: () => void;
   redo: () => void;
   takeSnapshot: () => void;
+  errors: (string | import('../../../src/sdk/graph-parser').GraphParserError)[];
+  setErrors: (errors: (string | import('../../../src/sdk/graph-parser').GraphParserError)[]) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -43,6 +45,7 @@ export const useRFStore = create<RFState>((set, get) => ({
   edges: [],
   past: [],
   future: [],
+  errors: [],
 
   takeSnapshot: () => {
     const { nodes, edges, past } = get();
@@ -252,4 +255,6 @@ export const useRFStore = create<RFState>((set, get) => ({
       edges: newEdges.map(e => ({ ...e, type: 'deletable' })),
     });
   },
+
+  setErrors: (errors) => set({ errors }),
 }));

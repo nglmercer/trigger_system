@@ -61,6 +61,7 @@ function NodeEditor() {
   const { t } = useTranslation();
 
   const { success } = useAlert();
+  const setErrors = useRFStore(s => s.setErrors);
 
   // Import/Export hook
   const {
@@ -88,6 +89,11 @@ function NodeEditor() {
 
   const buildRule = useRuleBuilder(nodes, edges);
   const { rules, yaml, errors } = useMemo(() => buildRule(), [buildRule]);
+
+  // Sync errors to store for node highlighting
+  useEffect(() => {
+    setErrors(errors);
+  }, [errors, setErrors]);
 
   // Maintain a live ref to the rules for testing decoupled from UI re-renders
   const currentRules = useRef(rules);

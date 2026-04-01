@@ -49,12 +49,14 @@ export enum GraphParserErrorCode {
 export class GraphParserError extends Error {
   public code: GraphParserErrorCode;
   public eventId?: string;
+  public field?: string;
 
-  constructor(message: string, code: GraphParserErrorCode, eventId?: string) {
+  constructor(message: string, code: GraphParserErrorCode, eventId?: string, field?: string) {
     super(message);
     this.name = 'GraphParserError';
     this.code = code;
     this.eventId = eventId;
+    this.field = field;
   }
 }
 
@@ -340,8 +342,11 @@ export function parseGraph(
   if (!eventNode) throw new GraphParserError("Missing Event Trigger node", GraphParserErrorCode.MISSING_EVENT_NODE);
   
   const ed = extractEvent(eventNode);
-  if (!ed.id || !ed.on) {
-    throw new GraphParserError("Rule ID and Event Name are required", GraphParserErrorCode.MISSING_RULE_ID_OR_EVENT_NAME, ed.id as string | undefined);
+  if (!ed.id) {
+    throw new GraphParserError("Rule ID is required", GraphParserErrorCode.MISSING_RULE_ID_OR_EVENT_NAME, eventNode.id, 'id');
+  }
+  if (!ed.on) {
+    throw new GraphParserError("Event Name is required", GraphParserErrorCode.MISSING_RULE_ID_OR_EVENT_NAME, eventNode.id, 'event');
   }
 
   builder.id(ed.id as string).on(ed.on as string);

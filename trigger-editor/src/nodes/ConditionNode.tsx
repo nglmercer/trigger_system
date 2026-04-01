@@ -1,4 +1,6 @@
+import * as React from 'react';
 import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
+import { useRFStore } from '../store/rfStore';
 import type { ConditionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle, BranchType } from '../constants';
 import { getOperatorOptions, getOperatorDescription, getFieldTooltip } from '../shared-constants';
@@ -13,6 +15,15 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
   const { t } = useTranslation();
   const { deleteElements, getNode } = useReactFlow();
   const edges = useEdges();
+  
+  const errors = useRFStore(s => s.errors);
+  const nodeErrors = React.useMemo(() => 
+    errors.filter((e): e is import('../../../src/sdk/graph-parser').GraphParserError => 
+      typeof e === 'object' && e !== null && 'eventId' in e && e.eventId === id
+    ), [errors, id]);
+
+  const hasError = (field: string) => nodeErrors.some(e => e.field === field);
+  const hasAnyError = nodeErrors.length > 0;
   
   // Check if output is connected to another condition (chaining)
   const hasConditionChain = edges.some(e => 
@@ -38,7 +49,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
   );
 
   return (
-    <div className="drawflow-node condition">
+    <div className={`drawflow-node condition ${hasAnyError ? 'node-error' : ''}`}>
       <Handle
         type="target"
         position={Position.Left}
@@ -71,6 +82,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
             value={data.field || ''}
             onChange={(val) => data.onChange(val as string, NodeField.FIELD)}
             placeholder={t('nodeDetails.fieldPlaceholder')}
+            error={hasError('field')}
           />
         </FormField>
         
@@ -95,6 +107,7 @@ export default function ConditionNode({ id, data }: { id: string, data: Conditio
             placeholder="100"
             autocompleteMode="value"
             primitiveOnly={true}
+            error={hasError('value')}
           />
         </FormField>
       </div>

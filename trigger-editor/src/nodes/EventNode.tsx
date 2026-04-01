@@ -16,11 +16,20 @@ export default function EventNode({ id }: { id: string }) {
   const data = useRFStore(s => s.nodes.find(n => n.id === id)?.data) as EventNodeData | undefined;
   const updateNodeData = useRFStore(s => s.updateNodeData);
   const duplicateNode = useRFStore(s => s.duplicateNode);
+  const errors = useRFStore(s => s.errors);
+
+  const nodeErrors = React.useMemo(() => 
+    errors.filter((e): e is import('../../../src/sdk/graph-parser').GraphParserError => 
+      typeof e === 'object' && e !== null && 'eventId' in e && e.eventId === id
+    ), [errors, id]);
+
+  const hasError = (field: string) => nodeErrors.some(e => e.field === field);
+  const hasAnyError = nodeErrors.length > 0;
 
   if (!data) return null;
 
   return (
-    <div className="drawflow-node event">
+    <div className={`drawflow-node event ${hasAnyError ? 'node-error' : ''}`}>
       <div className="node-title node-title--event">
         <StarIcon /> {t('nodeDetails.eventTriggerTitle')}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
@@ -47,6 +56,7 @@ export default function EventNode({ id }: { id: string }) {
             value={data.id || ''}
             onChange={(val) => updateNodeData(id, val, NodeField.ID)}
             placeholder={t('nodeDetails.ruleIdPlaceholder')}
+            error={hasError('id')}
           />
         </FormField>
         
@@ -69,6 +79,7 @@ export default function EventNode({ id }: { id: string }) {
             value={data.event || ''}
             onChange={(val) => updateNodeData(id, val, NodeField.EVENT)}
             placeholder={t('nodeDetails.eventNamePlaceholder')}
+            error={hasError('event')}
           />
         </FormField>
 
