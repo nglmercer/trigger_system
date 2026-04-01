@@ -72,7 +72,11 @@ class ImportManagerImpl {
       console.warn('[ImportManager] Failed to save imports:', e);
     }
     this._syncToLSP();
-    this._listeners.forEach(fn => fn(this._imports));
+    
+    // Always emit a fresh array copy to trigger React re-renders correctly
+    // especially for sub-item updates that don't change array length
+    const freshImports = [...this._imports];
+    this._listeners.forEach(fn => fn(freshImports));
   }
 
   /** Obtiene todos los imports */
@@ -84,9 +88,14 @@ class ImportManagerImpl {
   setImport(entry: StoredImport): void {
     const index = this._imports.findIndex(i => i.id === entry.id);
     if (index >= 0) {
-      this._imports[index] = { ...this._imports[index], ...entry };
+      const current = this._imports[index];
+      if (current) {
+        const newImports = [...this._imports];
+        newImports[index] = { ...current, ...entry };
+        this._imports = newImports;
+      }
     } else {
-      this._imports.push(entry);
+      this._imports = [...this._imports, entry];
     }
     this._saveAndNotify();
   }
@@ -131,8 +140,11 @@ class ImportManagerImpl {
   updateImport(id: string, updates: Partial<StoredImport>): boolean {
     const index = this._imports.findIndex(i => i.id === id);
     if (index >= 0) {
-      if (!this._imports[index]) return false;
-      this._imports[index] = { ...this._imports[index], ...updates };
+      const current = this._imports[index];
+      if (!current) return false;
+      const newImports = [...this._imports];
+      newImports[index] = { ...current, ...updates };
+      this._imports = newImports;
       this._saveAndNotify();
       return true;
     }
@@ -154,8 +166,8 @@ class ImportManagerImpl {
   /** Suscribe a cambios en los imports */
   onChange(listener: ImportChangeListener): () => void {
     this._listeners.add(listener);
-    // Emitir estado actual inmediatamente
-    listener(this._imports);
+    // Emitir estado actual inmediatamente con una copia para evitar problemas de referencia en React
+    listener([...this._imports]);
     return () => {
       this._listeners.delete(listener);
     };
@@ -165,7 +177,8 @@ class ImportManagerImpl {
   reload(): void {
     this._loadFromStorage();
     this._syncToLSP();
-    this._listeners.forEach(fn => fn(this._imports));
+    const freshImports = [...this._imports];
+    this._listeners.forEach(fn => fn(freshImports));
   }
 }
 
