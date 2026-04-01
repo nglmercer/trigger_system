@@ -332,7 +332,7 @@ body {
   background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
-  width: 240px;
+  width: 300px;
   box-shadow: var(--node-shadow);
   transition:
     border-color 0.2s,

@@ -88,9 +88,15 @@ export default function EventNode({ id }: { id: string }) {
               placeholder={t('nodeDetails.descriptionPlaceholder')}
             />
           </FormField>
+            <div style={{ paddingBottom: '12px' }}>
+              <CheckboxInput
+                checked={data.enabled !== false}
+                onChange={(val) => updateNodeData(id, val, 'enabled')}
+                label={t('nodeDetails.enabled')}
+              />
+            </div>
 
-          <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '10px', alignItems: 'flex-end' }}>
               <FormField 
                 label={t('nodeDetails.priority')}
                 hint={getFieldTooltip('priority')}
@@ -101,18 +107,6 @@ export default function EventNode({ id }: { id: string }) {
                   type="number"
                 />
               </FormField>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: '20px' }}>
-              <CheckboxInput
-                checked={data.enabled !== false}
-                onChange={(val) => updateNodeData(id, val, 'enabled')}
-                label={t('nodeDetails.enabled')}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
-            <div style={{ flex: 1 }}>
               <FormField 
                 label={t('nodeDetails.cooldown')}
                 hint={getFieldTooltip('cooldown')}
@@ -124,23 +118,23 @@ export default function EventNode({ id }: { id: string }) {
                   placeholder="0"
                 />
               </FormField>
-            </div>
-            <div style={{ flex: 1 }}>
-              <FormField 
-                label={t('nodeDetails.tags')}
-                hint={getFieldTooltip('tags')}
-              >
-                <TextInput
-                  value={data.tags?.join(', ') || ''}
-                  onChange={(val) => {
-                    const str = typeof val === 'string' ? val : '';
-                    updateNodeData(id, str.split(',').map(s => s.trim()).filter(Boolean), 'tags');
-                  }}
-                  placeholder={t('nodeDetails.tagsPlaceholder')}
-                />
-              </FormField>
-            </div>
+            
           </div>
+
+
+          <FormField 
+            label={t('nodeDetails.tags')}
+            hint={getFieldTooltip('tags')}
+          >
+            <TextInput
+              value={data.tags?.join(', ') || ''}
+              onChange={(val) => {
+                const str = typeof val === 'string' ? val : '';
+                updateNodeData(id, str.split(',').map(s => s.trim()).filter(Boolean), 'tags');
+              }}
+              placeholder={t('nodeDetails.tagsPlaceholder')}
+            />
+          </FormField>
         </Collapsible>
       </div>
       <Handle

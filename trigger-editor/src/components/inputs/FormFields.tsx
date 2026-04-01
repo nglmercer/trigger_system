@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { useState, useRef,useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { InfoIcon } from '../Icons.tsx';
 import { AutocompletePopup, HoverTooltip } from '../AutocompletePopup.tsx';
 import { findVariableAtOffset, findFirstVariable, getHoverInfo } from '../../lsp/engine.ts';
 
@@ -41,7 +43,21 @@ export function SelectInput({
           ...style, 
           appearance: 'none', 
           WebkitAppearance: 'none',
-          paddingRight: '30px' 
+          paddingRight: '30px',
+          background: 'rgba(13, 17, 23, 0.8)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent)';
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88, 166, 255, 0.15)';
+          e.currentTarget.style.background = 'rgba(13, 17, 23, 0.95)';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.background = 'rgba(13, 17, 23, 0.8)';
         }}
       >
         {placeholder && (
@@ -171,10 +187,24 @@ export function TextInput({
         onChange={(e) => handleChange(e.target.value)}
         disabled={disabled}
         autoFocus={autoFocus}
-        style={style}
-        onFocus={() => setIsFocused(true)}
+        style={{
+          ...style,
+          borderRadius: '8px',
+          background: 'rgba(13, 17, 23, 0.8)',
+          border: '1px solid var(--border)',
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+        onFocus={(e) => {
+          setIsFocused(true);
+          e.currentTarget.style.borderColor = 'var(--accent)';
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88, 166, 255, 0.15)';
+          e.currentTarget.style.background = 'rgba(13, 17, 23, 0.95)';
+        }}
         onBlur={(e) => {
           if (onBlur) onBlur(e);
+          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.background = 'rgba(13, 17, 23, 0.8)';
           setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150);
         }}
         onKeyUp={updateCursorVar}
@@ -261,9 +291,25 @@ export function TextAreaInput({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         rows={rows}
-        style={style}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150)}
+        style={{
+          ...style,
+          borderRadius: '8px',
+          background: 'rgba(13, 17, 23, 0.8)',
+          border: '1px solid var(--border)',
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+        onFocus={(e) => {
+          setIsFocused(true);
+          e.currentTarget.style.borderColor = 'var(--accent)';
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(88, 166, 255, 0.15)';
+          e.currentTarget.style.background = 'rgba(13, 17, 23, 0.95)';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.background = 'rgba(13, 17, 23, 0.8)';
+          setTimeout(() => { setIsFocused(false); setCursorVar(undefined); }, 150);
+        }}
         onKeyUp={updateCursorVar}
         onClick={updateCursorVar}
         onSelect={updateCursorVar}
@@ -278,6 +324,7 @@ interface CheckboxInputProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: string;
+  hint?: string;
   disabled?: boolean;
 }
 
@@ -285,19 +332,50 @@ export function CheckboxInput({
   checked, 
   onChange, 
   label,
+  hint,
   disabled = false 
 }: CheckboxInputProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
-      <input
-        type="checkbox"
-        style={{ width: 'auto' }}
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        disabled={disabled}
-      />
-      {label && <span className="node-label" style={{ margin: 0 }}>{label}</span>}
-    </label>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
+        <input
+          type="checkbox"
+          style={{ width: 'auto', cursor: 'inherit' }}
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          disabled={disabled}
+        />
+        {label && <span className="node-label" style={{ margin: 0, userSelect: 'none' }}>{label}</span>}
+      </label>
+      {hint && (
+        <div 
+          onMouseEnter={(e) => {
+            setShowTooltip(true);
+            setMousePos({ x: e.clientX, y: e.clientY });
+          }}
+          onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+          onMouseLeave={() => setShowTooltip(false)}
+          style={{ 
+            color: 'var(--text-muted)', 
+            cursor: 'help', 
+            display: 'flex',
+            padding: '2px',
+            borderRadius: '4px',
+            transition: 'color 0.2s'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.color = 'var(--accent)'}
+          onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+        >
+          <InfoIcon size={12} />
+        </div>
+      )}
+      {showTooltip && hint && (
+        <SimpleTooltip text={hint} mousePos={mousePos} />
+      )}
+    </div>
   );
 }
 
@@ -307,13 +385,96 @@ interface FormFieldProps {
   hint?: string;
 }
 
+// Simple floating tooltip for hints
+function SimpleTooltip({ text, mousePos }: { text: string; mousePos: { x: number; y: number } }) {
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useLayoutEffect(() => {
+    setPos({ 
+      top: mousePos.y + window.scrollY - 10, 
+      left: mousePos.x + window.scrollX + 14 
+    });
+  }, [mousePos]);
+
+  return createPortal(
+    <div style={{
+      position: 'absolute',
+      top: `${pos.top}px`,
+      left: `${pos.left}px`,
+      transform: 'translateY(-50%)',
+      background: 'rgba(22, 22, 28, 0.98)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid var(--border)',
+      borderRadius: '8px',
+      padding: '10px 14px',
+      boxShadow: '0 15px 35px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05) inset',
+      fontSize: '11.5px',
+      lineHeight: '1.5',
+      color: 'var(--text-primary)',
+      zIndex: 1000000,
+      pointerEvents: 'none',
+      maxWidth: '240px',
+      fontWeight: 500,
+      animation: 'tooltipFadeIn 0.2s ease-out forwards',
+      borderLeft: '4px solid var(--accent)'
+    }}>
+      <style>{`
+        @keyframes tooltipFadeIn {
+          from { opacity: 0; transform: translateY(-45%) scale(0.95); }
+          to { opacity: 1; transform: translateY(-50%) scale(1); }
+        }
+      `}</style>
+      {text}
+    </div>,
+    document.body
+  );
+}
+
 export function FormField({ label, children, hint }: FormFieldProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
   return (
-    <>
-      <label className="node-label">{label}</label>
+    <div style={{ marginBottom: '12px' }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '6px', 
+        marginBottom: '6px' 
+      }}>
+        <label className="node-label" style={{ 
+          margin: 0, 
+          flex: 1,
+          lineHeight: '1.4'
+        }}>{label}</label>
+        {hint && (
+          <div 
+            onMouseEnter={(e) => {
+              setShowTooltip(true);
+              setMousePos({ x: e.clientX, y: e.clientY });
+            }}
+            onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setShowTooltip(false)}
+            style={{ 
+              color: 'var(--text-muted)', 
+              cursor: 'help', 
+              display: 'flex',
+              padding: '2px',
+              borderRadius: '4px',
+              transition: 'color 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.color = 'var(--accent)'}
+            onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+          >
+            <InfoIcon size={12} />
+          </div>
+        )}
+      </div>
       {children}
-      {hint && <div className="node-hint" style={{ fontSize: '10px', marginTop: '4px', opacity: 0.7 }}>{hint}</div>}
-    </>
+      {showTooltip && hint && (
+        <SimpleTooltip text={hint} mousePos={mousePos} />
+      )}
+    </div>
   );
 }
 
@@ -329,7 +490,14 @@ export function Collapsible({ title, children, defaultOpen = false, icon }: Coll
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   return (
-    <div style={{ marginTop: '12px', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
+    <div style={{ 
+      marginTop: '12px', 
+      border: '1px solid var(--border)', 
+      borderRadius: '8px', 
+      overflow: 'hidden',
+      background: 'rgba(22, 27, 34, 0.4)',
+      transition: 'all 0.2s ease'
+    }}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -338,37 +506,60 @@ export function Collapsible({ title, children, defaultOpen = false, icon }: Coll
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '8px 12px',
-          background: 'var(--bg-secondary)',
+          padding: '10px 14px',
+          background: isOpen ? 'rgba(88, 166, 255, 0.05)' : 'transparent',
           border: 'none',
-          color: 'var(--text-primary)',
+          color: isOpen ? 'var(--accent)' : 'var(--text-primary)',
           cursor: 'pointer',
-          fontSize: '0.85rem',
-          fontWeight: 500,
+          fontSize: '0.8rem',
+          fontWeight: 600,
           textAlign: 'left',
+          transition: 'all 0.2s ease',
+          outline: 'none'
+        }}
+        onMouseEnter={(e) => {
+          if (!isOpen) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+        }}
+        onMouseLeave={(e) => {
+          if (!isOpen) e.currentTarget.style.background = 'transparent';
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {icon}
+          {icon && <span style={{ opacity: isOpen ? 1 : 0.7 }}>{icon}</span>}
           {title}
         </span>
         <svg 
-          width="16" 
-          height="16" 
+          width="14" 
+          height="14" 
           viewBox="0 0 24 24" 
           fill="none" 
           stroke="currentColor" 
-          strokeWidth="2" 
-          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+          strokeWidth="2.5" 
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ 
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', 
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            opacity: 0.6
+          }}
         >
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </button>
-      {isOpen && (
-        <div style={{ padding: '12px', borderTop: '1px solid var(--border)', background: 'var(--bg-primary)' }}>
+      <div style={{ 
+        maxHeight: isOpen ? '1000px' : '0',
+        overflow: 'hidden',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isOpen ? 1 : 0
+      }}>
+        <div style={{ 
+          padding: '14px', 
+          borderTop: '1px solid var(--border)', 
+          background: 'rgba(13, 17, 23, 0.3)' 
+        }}>
           {children}
         </div>
-      )}
+      </div>
     </div>
   );
 }

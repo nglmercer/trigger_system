@@ -3,7 +3,7 @@ import { Handle, Position, useReactFlow, useEdges } from '@xyflow/react';
 import type { ActionNodeData } from '../types';
 import { NodeField, NodeType, NodeHandle } from '../constants';
 import { ClearIcon, ActionIcon, CopyIcon, ChevronIcon } from '../components/Icons';
-import { TextInput, FormField, SelectInput } from '../components/inputs/FormFields';
+import { TextInput, FormField, SelectInput, Collapsible } from '../components/inputs/FormFields';
 import { ParamsBuilder } from '../components/ParamsBuilder';
 import { useTranslation } from 'react-i18next';
 
@@ -60,20 +60,12 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
           />
         </FormField>
         
-        <details className="advanced-settings" style={{ marginTop: '12px' }}>
-          <summary style={{ 
-            fontSize: '12px', 
-            color: 'var(--text-secondary)', 
-            cursor: 'pointer', 
-            userSelect: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '4px 0'
-          }}>
-            <ChevronIcon size={14} direction="right" /> {t('nodeDetails.advancedSettings', 'Advanced Settings')}
-          </summary>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+        <Collapsible 
+          title={t('nodeDetails.advancedSettings', 'Advanced Settings')} 
+          icon={<ChevronIcon size={14} direction="right" />}
+          defaultOpen={false}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <FormField label={t('nodeDetails.delay', 'Delay (ms)')}>
               <TextInput
                 type="number"
@@ -91,7 +83,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
               />
             </FormField>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: '1 1 0%', minWidth: 0 }}>
                 <FormField label={t('nodeDetails.break', 'Break')}>
                   <SelectInput
                     value={data.break ? 'true' : 'false'}
@@ -100,7 +92,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
                   />
                 </FormField>
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: '1 1 0%', minWidth: 0 }}>
                 <FormField label={t('nodeDetails.continue', 'Continue')}>
                   <SelectInput
                     value={data.continue ? 'true' : 'false'}
@@ -111,7 +103,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
               </div>
             </div>
           </div>
-        </details>
+        </Collapsible>
 
       </div>
       <Handle
