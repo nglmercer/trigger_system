@@ -136,17 +136,17 @@ const types = scope({
         "else?": "RuleAction | RuleAction[]",
         "comment?": "string"
     }
-}).export();
+});
 
 // Export individual schemas for external usage if needed
-export const ComparisonOperatorSchema = types.Operator;
-export const ConditionSchema = types.Condition;
-export const ConditionGroupSchema = types.ConditionGroup;
-export const RuleConditionSchema = types.RuleCondition;
-export const ActionSchema = types.Action;
-export const ActionGroupSchema = types.ActionGroup;
-export const InlineConditionalActionSchema = types.InlineConditionalAction;
-export const TriggerRuleSchema = types.TriggerRule;
+export const ComparisonOperatorSchema = types.type("Operator");
+export const ConditionSchema = types.type("Condition");
+export const ConditionGroupSchema = types.type("ConditionGroup");
+export const RuleConditionSchema = types.type("RuleCondition");
+export const ActionSchema = types.type("Action");
+export const ActionGroupSchema = types.type("ActionGroup");
+export const InlineConditionalActionSchema = types.type("InlineConditionalAction");
+export const TriggerRuleSchema = types.type("TriggerRule");
 
 // --- Validation Result Types ---
 
