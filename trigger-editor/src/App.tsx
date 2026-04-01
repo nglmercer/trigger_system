@@ -31,7 +31,6 @@ import { generateRandomId } from './utils.ts';
 import { useRFStore } from './store/rfStore.ts';
 import { DEFAULT_SHORTCUTS, isShortcut } from './utils/shortcuts.ts';
 import type { AppNode } from './types.ts';
-import { loadImports } from './lsp/engine.ts';
 import type { ImportConfig } from './lsp/types.ts';
 import { getSharedDataFromUrl, clearShareDataFromUrl } from './utils/exportImport.ts';
 import { TriggerEngine } from '../../src/core/trigger-engine.ts';
@@ -318,26 +317,8 @@ function NodeEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nodes, addNodes, onNodeDataChange, setNodes, success, t, undo, redo, handleHostExport, clearAll]);
 
-  // Initialize imports from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('trigger-editor-imports');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const configs: ImportConfig[] = parsed.map((p: any) => ({
-          id: p.id,
-          alias: p.alias,
-          data: p.data,
-          mode: p.mode
-        }));
-        if (configs.length > 0) {
-          loadImports(configs);
-        }
-      } catch (e) {
-        console.warn('Failed to load imports:', e);
-      }
-    }
-  }, []);
+  // ImportManager handles loading imports from localStorage automatically
+  // No need to manually load here anymore
 
   // Load shared data from URL - runs after initial render
   useEffect(() => {

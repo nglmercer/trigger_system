@@ -350,7 +350,13 @@ export function applyValueCompletion(text: string, item: CompletionItem, cursorO
   
   let formattedValue: string;
   if (typeof value === 'string') {
-    formattedValue = `"${value}"`;
+    // automatic quotes 
+    const insideQuotes = prefix.endsWith('"') || prefix.endsWith("'");
+    if (insideQuotes) {
+      formattedValue = value;
+    } else {
+      formattedValue = `${value}`;
+    }
   } else if (typeof value === 'number' || typeof value === 'boolean') {
     formattedValue = String(value);
   } else {

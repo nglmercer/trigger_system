@@ -4,6 +4,10 @@ import App from './App.tsx';
 import './i18n.ts';
 import './style.css';
 
+// Import ImportManager to initialize LSP data from localStorage immediately
+// This ensures autocomplete works even before any React components mount
+import './lsp/ImportManager.ts';
+
 // Suppress the benign "ResizeObserver loop" error.
 // This is a known browser warning (W3C spec) that fires when a ResizeObserver
 // callback triggers layout changes that can't all be delivered in one frame.

@@ -15,25 +15,17 @@ import {
   XCircleIcon
 } from './Icons.tsx';
 import { loadFromFile } from '../utils.ts';
-import { loadImports } from '../lsp/engine.ts';
-import type { ImportConfig, ImportMode, LSPContext } from '../lsp/types.ts';
+import type { ImportMode, LSPContext } from '../lsp/types.ts';
+import { ImportManager } from '../lsp/ImportManager.ts';
+import type { StoredImport } from '../lsp/ImportManager.ts';
 import { JsonPreview } from './JsonPreview.tsx';
 import { FetchModal } from './FetchModal.tsx';
 import { TestEventModal } from './TestEventModal.tsx';
 import { getDataSummary, fetchData } from '../utils/getData.ts';
 import { useTranslation } from 'react-i18next';
 
-/** A single import entry */
-export interface ImportEntry {
-  id: string;
-  alias: string;
-  mode: ImportMode;
-  data: LSPContext;
-  filename: string;
-  url?: string;
-  headers?: Record<string, string>;
-  lastUpdated?: number;
-}
+/** A single import entry (alias for StoredImport for backwards compatibility) */
+export type ImportEntry = StoredImport;
 
 interface ImportListProps {
   /** Callback when imports change */
@@ -43,83 +35,42 @@ interface ImportListProps {
 /**
  * ImportList - Enhanced component for managing unlimited imports
  * Features: drag-drop, data preview, URL fetch, validation, stats
+ * 
+ * This component is now a pure view layer - all state management is handled
+ * by the ImportManager singleton which persists to localStorage and syncs
+ * with the LSP engine independently of component lifecycle.
  */
 export function ImportList({ onImportsChange }: ImportListProps) {
   const { t } = useTranslation();
-  const [imports, setImports] = useState<ImportEntry[]>([]);
+  // State is now synced from ImportManager, not loaded from localStorage
+  const [imports, setImports] = useState<ImportEntry[]>(() => ImportManager.getImports());
   const [expandedPreviews, setExpandedPreviews] = useState<Set<string>>(new Set());
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
   const [testTarget, setTestTarget] = useState<ImportEntry | null>(null);
   const { success, error } = useAlert();
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement>>({});
-  
-  // Load saved imports on mount
+  const onImportsChangeRef = useRef(onImportsChange);
+  onImportsChangeRef.current = onImportsChange;
+
+  // Subscribe to ImportManager changes
   useEffect(() => {
-    const saved = localStorage.getItem('trigger-editor-imports');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as ImportEntry[];
-        setImports(parsed);
-        updateLSP(parsed);
-        onImportsChange?.(parsed);
-      } catch (e) {
-        console.warn('Failed to load imports:', e);
-      }
-    }
-  }, []);
-  
-  // Save to localStorage
-  const saveImports = useCallback((newImports: ImportEntry[]) => {
-    localStorage.setItem('trigger-editor-imports', JSON.stringify(newImports));
-    onImportsChange?.(newImports);
-  }, [onImportsChange]);
-
-  // Update LSP engine
-  const updateLSP = useCallback((impList: ImportEntry[]) => {
-    const configs: ImportConfig[] = impList.map(i => ({
-      id: i.id,
-      alias: i.alias,
-      data: i.data,
-      mode: i.mode
-    }));
-    loadImports(configs);
+    return ImportManager.onChange((newImports) => {
+      setImports(newImports);
+      onImportsChangeRef.current?.(newImports);
+    });
   }, []);
 
-  // Expose autocomplete methods to window
+  // Expose autocomplete methods to window (delegating to ImportManager)
   useEffect(() => {
     window.triggerEditor = window.triggerEditor || {};
 
     window.triggerEditor.addAutocompleteData = (alias: string, data: any, mode: ImportMode = 'path') => {
-      setImports(current => {
-        const index = current.findIndex(i => i.alias === alias);
-        const newEntry: ImportEntry = {
-          id: index >= 0 ? current[index]?.id || `ext-${Date.now()}` : `ext-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          alias,
-          mode,
-          data,
-          filename: 'External API',
-          lastUpdated: Date.now()
-        };
-        const next = index >= 0 
-          ? current.map((item, i) => i === index ? newEntry : item)
-          : [...current, newEntry];
-        
-        saveImports(next);
-        updateLSP(next);
-        return next;
-      });
+      ImportManager.setImportByAlias(alias, data, mode, 'External API');
     };
 
     window.triggerEditor.removeAutocompleteData = (alias: string) => {
-      setImports(current => {
-        const next = current.filter(i => i.alias !== alias);
-        if (next.length !== current.length) {
-          saveImports(next);
-          updateLSP(next);
-        }
-        return next;
-      });
+      ImportManager.removeImportByAlias(alias);
     };
 
     return () => {
@@ -128,40 +79,29 @@ export function ImportList({ onImportsChange }: ImportListProps) {
         delete window.triggerEditor.removeAutocompleteData;
       }
     };
-  }, [saveImports, updateLSP]);
+  }, []);
   
   // Add new import
   const addImport = () => {
-    const newImport: ImportEntry = {
+    const newImport: StoredImport = {
       id: `imp-${Date.now()}`,
       alias: `import${imports.length + 1}`,
       mode: 'path',
       data: {},
       filename: ''
     };
-    const newImports = [...imports, newImport];
-    setImports(newImports);
-    saveImports(newImports);
-    updateLSP(newImports);
+    ImportManager.setImport(newImport);
   };
   
   // Remove import
   const removeImport = (id: string) => {
-    const newImports = imports.filter(i => i.id !== id);
-    setImports(newImports);
-    saveImports(newImports);
-    updateLSP(newImports);
+    ImportManager.removeImport(id);
   };
   
   // Update import
   const updateImport = (id: string, updates: Partial<ImportEntry>) => {
-    const newImports = imports.map(i => i.id === id ? { ...i, ...updates } : i);
-    setImports(newImports);
-    saveImports(newImports);
-    updateLSP(newImports);
+    ImportManager.updateImport(id, updates);
   };
-  
-
   
   // Toggle preview expansion
   const togglePreview = (id: string) => {
@@ -184,7 +124,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
         error(t('importList.invalidJson'));
         return;
       }
-      updateImport(id, { 
+      ImportManager.updateImport(id, { 
         data: json, 
         filename: file.name, 
         url: undefined, 
@@ -198,31 +138,34 @@ export function ImportList({ onImportsChange }: ImportListProps) {
 
   // Handle URL fetch
   const handleFetchData = async (url: string, headers?: Record<string, string>) => {
-    const loadingId = `imp-${Date.now()}`;
     // Create temporary entry or use last one if empty
     const lastEmpty = imports.find(i => !i.filename && !i.url && Object.keys(i.data).length === 0);
-    const targetId = lastEmpty?.id || loadingId;
+    const targetId = lastEmpty?.id || `imp-${Date.now()}`;
 
     try {
-      const json = await fetchData(url, headers, {
+      await fetchData(url, headers, {
         onSuccess: (data, sourceName) => {
-          const entry: Partial<ImportEntry> = {
-            id: targetId,
-            alias: lastEmpty?.alias || `api_${imports.length + 1}`,
-            url,
-            headers,
-            data,
-            filename: sourceName,
-            lastUpdated: Date.now()
-          };
-
           if (lastEmpty) {
-            updateImport(targetId, entry);
+            ImportManager.updateImport(targetId, {
+              alias: lastEmpty.alias,
+              url,
+              headers,
+              data,
+              filename: sourceName,
+              lastUpdated: Date.now()
+            });
           } else {
-            const newImports = [...imports, entry as ImportEntry];
-            setImports(newImports);
-            saveImports(newImports);
-            updateLSP(newImports);
+            const newImport: StoredImport = {
+              id: targetId,
+              alias: `api_${imports.length + 1}`,
+              url,
+              headers,
+              data,
+              filename: sourceName,
+              mode: 'path',
+              lastUpdated: Date.now()
+            };
+            ImportManager.setImport(newImport);
           }
           success(`${t('importList.fetchSuccess')} ${new URL(url).hostname}`);
         },
@@ -231,8 +174,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
         }
       });
     } catch (e) {
-      // Errors are handled in the onError callback, but we catch it 
-      // here to prevent unhandled promise rejection if needed
+      // Errors are handled in the onError callback
     }
   };
 
@@ -278,7 +220,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
     success(`${t('importList.copied')} ${text}`);
   };
   
-  // Render data preview
+  // Render data preview area
   const renderDataPreviewArea = (imp: ImportEntry) => {
     const isExpanded = expandedPreviews.has(imp.id);
     const summary = getDataSummary(imp.data);
