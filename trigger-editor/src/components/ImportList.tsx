@@ -70,10 +70,21 @@ export function ImportList({ onImportsChange }: ImportListProps) {
   }, []);
   
   // Save to localStorage
-  const saveImports = (newImports: ImportEntry[]) => {
+  const saveImports = useCallback((newImports: ImportEntry[]) => {
     localStorage.setItem('trigger-editor-imports', JSON.stringify(newImports));
     onImportsChange?.(newImports);
-  };
+  }, [onImportsChange]);
+
+  // Update LSP engine
+  const updateLSP = useCallback((impList: ImportEntry[]) => {
+    const configs: ImportConfig[] = impList.map(i => ({
+      id: i.id,
+      alias: i.alias,
+      data: i.data,
+      mode: i.mode
+    }));
+    loadImports(configs);
+  }, []);
 
   // Expose autocomplete methods to window
   useEffect(() => {
@@ -94,10 +105,8 @@ export function ImportList({ onImportsChange }: ImportListProps) {
           ? current.map((item, i) => i === index ? newEntry : item)
           : [...current, newEntry];
         
-        setTimeout(() => {
-          saveImports(next);
-          updateLSP(next);
-        }, 0);
+        saveImports(next);
+        updateLSP(next);
         return next;
       });
     };
@@ -106,10 +115,8 @@ export function ImportList({ onImportsChange }: ImportListProps) {
       setImports(current => {
         const next = current.filter(i => i.alias !== alias);
         if (next.length !== current.length) {
-          setTimeout(() => {
-            saveImports(next);
-            updateLSP(next);
-          }, 0);
+          saveImports(next);
+          updateLSP(next);
         }
         return next;
       });
@@ -121,7 +128,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
         delete window.triggerEditor.removeAutocompleteData;
       }
     };
-  }, []);
+  }, [saveImports, updateLSP]);
   
   // Add new import
   const addImport = () => {
@@ -154,16 +161,7 @@ export function ImportList({ onImportsChange }: ImportListProps) {
     updateLSP(newImports);
   };
   
-  // Update LSP engine
-  const updateLSP = (impList: ImportEntry[]) => {
-    const configs: ImportConfig[] = impList.map(i => ({
-      id: i.id,
-      alias: i.alias,
-      data: i.data,
-      mode: i.mode
-    }));
-    loadImports(configs);
-  };
+
   
   // Toggle preview expansion
   const togglePreview = (id: string) => {

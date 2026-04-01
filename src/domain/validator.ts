@@ -175,7 +175,14 @@ export class TriggerValidator {
   
   static validate(data: unknown): ValidationResult {
     // ArkType validation
-    const out = TriggerRuleSchema(data);
+    //const schema = (TriggerRuleSchema as unknown as (data: unknown) => any)(data);
+    let out
+    if (typeof TriggerRuleSchema === 'function') {
+        //@ts-ignore
+        out = TriggerRuleSchema(data);
+    } /* else {
+      out = TriggerRuleSchema.validate(data);
+    } */
 
     if (out instanceof type.errors) {
       const issues: ValidationIssue[] = [];
