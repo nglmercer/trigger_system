@@ -12,7 +12,7 @@ import {
   type NodeChange, 
   type EdgeChange 
 } from '@xyflow/react';
-import type { AppNode } from '../types';
+import type { AppNode, ActionConfig } from '../types';
 import { NodeType } from '../constants';
 
 export interface RFState {
@@ -36,6 +36,8 @@ export interface RFState {
   takeSnapshot: () => void;
   errors: (string | import('../../../src/sdk/graph-parser').GraphParserError)[];
   setErrors: (errors: (string | import('../../../src/sdk/graph-parser').GraphParserError)[]) => void;
+  actionConfigs: ActionConfig[];
+  registerActionConfig: (config: ActionConfig) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -46,6 +48,7 @@ export const useRFStore = create<RFState>((set, get) => ({
   past: [],
   future: [],
   errors: [],
+  actionConfigs: [],
 
   takeSnapshot: () => {
     const { nodes, edges, past } = get();
@@ -257,4 +260,7 @@ export const useRFStore = create<RFState>((set, get) => ({
   },
 
   setErrors: (errors) => set({ errors }),
+  registerActionConfig: (config: ActionConfig) => set((state) => ({ 
+    actionConfigs: [...state.actionConfigs.filter(c => c.type !== config.type), config] 
+  })),
 }));

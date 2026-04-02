@@ -68,6 +68,7 @@ export default function ActionNode({ id, data }: { id: string, data: ActionNodeD
             value={data.params || '{}' }
             onChange={(val) => data.onChange(val, NodeField.PARAMS)}
             placeholder='{"key": "value"}'
+            actionType={data.type}
           />
         </FormField>
         

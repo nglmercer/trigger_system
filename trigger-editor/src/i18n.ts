@@ -207,7 +207,16 @@ const resources = {
         clear: "Clear All",
         clearKeys: "Ctrl + Shift + L",
         addParam: "Add Parameter",
-        addParamKeys: "Alt + N",
+      },
+      customActions: {
+        log: {
+          label: "Log Message",
+          placeholder: "Something happened: {{data.name}}"
+        },
+        forward: {
+          label: "Forward URL",
+          placeholder: "https://api.example.com/webhook"
+        }
       },
       errors: {
         MISSING_EVENT_NODE: "Missing Event Trigger node",
@@ -486,7 +495,16 @@ const resources = {
         clear: "Limpiar Todo",
         clearKeys: "Ctrl + Shift + L",
         addParam: "Añadir Parámetro",
-        addParamKeys: "Alt + N",
+      },
+      customActions: {
+        log: {
+          label: "Mensaje de Log",
+          placeholder: "Algo sucedió: {{data.name}}"
+        },
+        forward: {
+          label: "URL de Reenvío",
+          placeholder: "https://api.example.com/webhook"
+        }
       },
       errors: {
         MISSING_EVENT_NODE: "Falta el nodo de Evento (Trigger)",

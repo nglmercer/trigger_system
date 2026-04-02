@@ -62,6 +62,7 @@ function NodeEditor() {
 
   const { success } = useAlert();
   const setErrors = useRFStore(s => s.setErrors);
+  const registerActionConfig = useRFStore(s => s.registerActionConfig);
 
   // Import/Export hook
   const {
@@ -127,12 +128,14 @@ function NodeEditor() {
         };
         try {
           return await engine.processEvent(context);
-        } catch (err) {
-          console.error('[TriggerEngine Simulation] Error:', err);
-          return { error: String(err) };
-        }
-      }
-    };
+          } catch (err) {
+            console.error('[TriggerEngine Simulation] Error:', err);
+            return { error: String(err) };
+          }
+        },
+        registerActionConfig,
+        getActionConfigs: () => useRFStore.getState().actionConfigs,
+      };
 
     const events = {
       TRIGGER_EDITOR_IMPORT : 'TRIGGER_EDITOR_IMPORT',
@@ -168,9 +171,42 @@ function NodeEditor() {
         delete window.triggerEditor.requestExport;
         delete window.triggerEditor.clear;
         delete window.triggerEditor.testEvent;
+        delete window.triggerEditor.registerActionConfig;
+        delete window.triggerEditor.getActionConfigs;
       }
     };
   }, [importYamlData, importJsonData, handleHostExport, clearAll]);
+
+  // Register default action configurations with i18n support
+  useEffect(() => {
+    if (registerActionConfig) {
+      registerActionConfig({
+        type: 'log',
+        fields: [
+          { 
+            key: 'message', 
+            label: 'Log Message', 
+            labelKey: 'customActions.log.label', 
+            type: 'textarea', 
+            placeholder: t('customActions.log.placeholder', 'Enter log message...') 
+          }
+        ]
+      });
+
+      registerActionConfig({
+        type: 'FORWARD',
+        fields: [
+          { 
+            key: 'url', 
+            label: 'Forward URL', 
+            labelKey: 'customActions.forward.label', 
+            type: 'string', 
+            placeholder: t('customActions.forward.placeholder', 'https://api.example.com/webhook') 
+          }
+        ]
+      });
+    }
+  }, [registerActionConfig, t]);
 
   // Connection validation hook
   const { isValidConnection } = useConnectionValidation(nodes, edges);

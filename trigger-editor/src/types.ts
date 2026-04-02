@@ -61,9 +61,24 @@ export interface ActionGroupNodeData extends AppNodeData {
 }
 
 export interface DoNodeData extends AppNodeData {
-  // DO node - explicit path for condition branches (DO or ELSE)
-  // Can connect to Actions or ActionGroups
   branchType: 'do' | 'else';
+}
+
+export interface ActionField {
+  key: string;
+  label: string;
+  type: 'string' | 'number' | 'boolean' | 'select' | 'textarea';
+  placeholder?: string;
+  description?: string;
+  labelKey?: string;
+  descriptionKey?: string;
+  options?: { value: string; label: string; labelKey?: string }[];
+  default?: any;
+}
+
+export interface ActionConfig {
+  type: string;
+  fields: ActionField[];
 }
 
 declare global {
@@ -77,6 +92,8 @@ declare global {
       addAutocompleteData?: (alias: string, data: any, mode?: 'path' | 'value') => void;
       removeAutocompleteData?: (alias: string) => void;
       testEvent?: (eventName: string, data?: Record<string, any>, vars?: Record<string, any>, state?: Record<string, any>) => Promise<any>;
+      registerActionConfig?: (config: ActionConfig) => void;
+      getActionConfigs?: () => ActionConfig[];
     };
   }
 }

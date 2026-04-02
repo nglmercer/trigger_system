@@ -8,9 +8,10 @@ interface ParamsBuilderProps {
   value: string; // JSON string
   onChange: (value: string) => void;
   placeholder?: string;
+  actionType?: string;
 }
 
-export function ParamsBuilder({ value, onChange }: ParamsBuilderProps) {
+export function ParamsBuilder({ value, onChange, actionType }: ParamsBuilderProps) {
   // Display only top-level key count for accuracy
   const externalParamsCount = React.useMemo(() => {
     try {
@@ -46,7 +47,7 @@ export function ParamsBuilder({ value, onChange }: ParamsBuilderProps) {
     <button 
       type="button" 
       className="node-input" 
-      onClick={() => openParamsModal(value, onChange)}
+      onClick={() => openParamsModal(value, onChange, actionType)}
       style={{ 
         width: '100%', 
         fontSize: '12px', 

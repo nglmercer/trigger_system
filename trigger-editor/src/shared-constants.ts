@@ -107,6 +107,12 @@ export function getActionTypeOptions(): ActionTypeOption[] {
       params: ['message: string (supports interpolation)']
     },
     { 
+      value: 'FORWARD', 
+      label: 'Forward', 
+      description: 'Forwards the event payload to an external URL (similar to Webhook)',
+      params: ['url: string']
+    },
+    { 
       value: 'math', 
       label: 'Math', 
       description: 'Expression to evaluate',
