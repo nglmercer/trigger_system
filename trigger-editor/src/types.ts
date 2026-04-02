@@ -65,20 +65,24 @@ export interface DoNodeData extends AppNodeData {
 }
 
 export interface ActionField {
-  key: string;
-  label: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'textarea';
-  placeholder?: string;
-  description?: string;
-  labelKey?: string;
-  descriptionKey?: string;
-  options?: { value: string; label: string; labelKey?: string }[];
-  default?: any;
+  readonly key: string;
+  readonly label: string;
+  readonly type: 'string' | 'number' | 'boolean' | 'select' | 'textarea';
+  readonly placeholder?: string;
+  readonly description?: string;
+  readonly labelKey?: string;
+  readonly descriptionKey?: string;
+  readonly options?: readonly { 
+    readonly value: string; 
+    readonly label: string; 
+    readonly labelKey?: string 
+  }[];
+  readonly default?: any;
 }
 
 export interface ActionConfig {
-  type: string;
-  fields: ActionField[];
+  readonly type: string;
+  readonly fields: readonly ActionField[];
 }
 
 declare global {
@@ -94,6 +98,8 @@ declare global {
       testEvent?: (eventName: string, data?: Record<string, any>, vars?: Record<string, any>, state?: Record<string, any>) => Promise<any>;
       registerActionConfig?: (config: ActionConfig) => void;
       getActionConfigs?: () => ActionConfig[];
+      //[key: string | string[], options?: (Omit<TOptions, "context"> & { context?: string | undefined; }) | undefined] | [key: string | string[], options: TOptionsBase & $Dictionary & { ...; }]
+      t?: (key: string, options?: Record<string, any> | any) => string;
     };
   }
 }

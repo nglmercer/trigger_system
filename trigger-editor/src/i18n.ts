@@ -74,6 +74,7 @@ const resources = {
         addParam: "+ Add New Parameter",
         cancel: "Cancel",
         save: "Save Changes",
+        customConfigActive: "Using custom configuration for action: ",
         types: {
           string: "Text",
           number: "Number",
@@ -215,7 +216,11 @@ const resources = {
         },
         forward: {
           label: "Forward URL",
-          placeholder: "https://api.example.com/webhook"
+          placeholder: "https://api.example.com/webhook",
+          method: "HTTP Method",
+          headers: "Headers (JSON)",
+          body: "Request Body (JSON)",
+          query: "Query Params (JSON)"
         }
       },
       errors: {
@@ -301,6 +306,7 @@ const resources = {
         addParam: "+ Añadir Nuevo Parámetro",
         cancel: "Cancelar",
         save: "Guardar Cambios",
+        customConfigActive: "Configuración personalizada activa para la acción: ",
         types: {
           string: "Texto",
           number: "Número",
@@ -503,7 +509,11 @@ const resources = {
         },
         forward: {
           label: "URL de Reenvío",
-          placeholder: "https://api.example.com/webhook"
+          placeholder: "https://api.example.com/webhook",
+          method: "Método HTTP",
+          headers: "Cabeceras (JSON)",
+          body: "Cuerpo de la Petición (JSON)",
+          query: "Parámetros Query (JSON)"
         }
       },
       errors: {

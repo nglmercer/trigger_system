@@ -134,6 +134,7 @@ function NodeEditor() {
           }
         },
         registerActionConfig,
+        t,
         getActionConfigs: () => useRFStore.getState().actionConfigs,
       };
 
@@ -173,12 +174,57 @@ function NodeEditor() {
         delete window.triggerEditor.testEvent;
         delete window.triggerEditor.registerActionConfig;
         delete window.triggerEditor.getActionConfigs;
+        delete window.triggerEditor.t;
       }
     };
   }, [importYamlData, importJsonData, handleHostExport, clearAll]);
 
   // Register default action configurations with i18n support
   useEffect(() => {
+    const fetchFields = [
+          { 
+            key: 'url', 
+            label: 'Forward URL', 
+            labelKey: 'customActions.forward.label', 
+            type: 'string', 
+            placeholder: t('customActions.forward.placeholder', 'https://api.example.com/webhook') 
+          },
+          {
+            key: 'method',
+            label: 'Method',
+            labelKey: 'customActions.forward.method',
+            type: 'select',
+            options: [
+              { value: 'GET', label: 'GET' },
+              { value: 'POST', label: 'POST' },
+              { value: 'PUT', label: 'PUT' },
+              { value: 'PATCH', label: 'PATCH' },
+              { value: 'DELETE', label: 'DELETE' }
+            ],
+            default: 'POST'
+          },
+          {
+            key: 'headers',
+            label: 'Headers',
+            labelKey: 'customActions.forward.headers',
+            type: 'textarea',
+            placeholder: '{"Authorization": "Bearer ..."}'
+          },
+          {
+            key: 'query',
+            label: 'Query Params',
+            labelKey: 'customActions.forward.query',
+            type: 'textarea',
+            placeholder: '{"userId": "123"}'
+          },
+          {
+            key: 'body',
+            label: 'Body',
+            labelKey: 'customActions.forward.body',
+            type: 'textarea',
+            placeholder: '{"foo": "bar"} or raw text'
+          }
+    ] as const;
     if (registerActionConfig) {
       registerActionConfig({
         type: 'log',
@@ -187,7 +233,7 @@ function NodeEditor() {
             key: 'message', 
             label: 'Log Message', 
             labelKey: 'customActions.log.label', 
-            type: 'textarea', 
+            type: 'string', 
             placeholder: t('customActions.log.placeholder', 'Enter log message...') 
           }
         ]
@@ -195,16 +241,12 @@ function NodeEditor() {
 
       registerActionConfig({
         type: 'FORWARD',
-        fields: [
-          { 
-            key: 'url', 
-            label: 'Forward URL', 
-            labelKey: 'customActions.forward.label', 
-            type: 'string', 
-            placeholder: t('customActions.forward.placeholder', 'https://api.example.com/webhook') 
-          }
-        ]
+        fields: fetchFields
       });
+      registerActionConfig({
+        type:"FETCH",
+        fields: fetchFields
+      })
     }
   }, [registerActionConfig, t]);
 
