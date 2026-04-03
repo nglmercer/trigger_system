@@ -11,6 +11,8 @@ export { HoverTooltip, AutocompletePopup };
 export interface SelectOption {
   value: string;
   label: string;
+  mediaUrl?: string;
+  mimeType?: string;
 }
 
 interface SelectInputProps {
@@ -484,6 +486,39 @@ export function MediaSelectInput({
 
   const selectedOpt = options.find(o => o.value === value);
 
+  const getMediaType = (opt: SelectOption) => {
+    if (opt.mimeType && String(opt.mimeType).length > 0) {
+      const isImage = opt.mimeType.startsWith('image');
+      const isVideo = opt.mimeType.startsWith('video');
+      const isAudio = opt.mimeType.startsWith('audio');
+      return { isImage, isVideo, isAudio };
+    }
+    const textToMatch = (opt.mediaUrl || opt.label || opt.value || '').toLowerCase();
+    const isImage = !!textToMatch.match(/\.(webp|png|jpg|jpeg|gif|svg)$/i);
+    const isVideo = !!textToMatch.match(/\.(mp4|webm|avi|mov)$/i);
+    const isAudio = !!textToMatch.match(/\.(mp3|wav|ogg|flac)$/i);
+    return { isImage, isVideo, isAudio };
+  };
+
+  const renderThumbnail = (opt: SelectOption, size: number) => {
+    const { isImage, isVideo, isAudio } = getMediaType(opt);
+    const src = opt.mediaUrl || (opt.value.startsWith('http') ? opt.value : `/media/${opt.value}`);
+    if (isImage) {
+      return (
+        <div style={{ width: `${size}px`, height: `${size}px`, borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
+          <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.style.display = 'none'; }} />
+        </div>
+      );
+    }
+    if (isVideo) {
+      return <div style={{ width: `${size}px`, height: `${size}px`, background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', flexShrink: 0, fontWeight: 700 }}>VID</div>;
+    }
+    if (isAudio) {
+      return <div style={{ width: `${size}px`, height: `${size}px`, background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', flexShrink: 0, fontWeight: 700 }}>AUD</div>;
+    }
+    return null;
+  };
+
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
       <div
@@ -503,11 +538,7 @@ export function MediaSelectInput({
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-           {selectedOpt?.value && selectedOpt.value.match(/\.(webp|png|jpg|jpeg|gif)$/i) && (
-             <div style={{ width: '24px', height: '24px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: 'rgba(0,0,0,0.5)' }}>
-               <img src={selectedOpt.value.startsWith('http') ? selectedOpt.value : `/media/${selectedOpt.value}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.style.display = 'none'; }} />
-             </div>
-           )}
+           {selectedOpt && renderThumbnail(selectedOpt, 24)}
            {selectedOpt ? selectedOpt.label : placeholder}
         </span>
         <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
@@ -532,10 +563,6 @@ export function MediaSelectInput({
           boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
         }}>
           {options.map(opt => {
-            const isImage = opt.value.match(/\.(webp|png|jpg|jpeg|gif)$/i);
-            const isVideo = opt.value.match(/\.(mp4|webm)$/i);
-            const isAudio = opt.value.match(/\.(mp3|wav|ogg)$/i);
-            
             return (
               <div
                 key={opt.value}
@@ -556,10 +583,7 @@ export function MediaSelectInput({
                 onMouseEnter={(e) => e.currentTarget.style.background = opt.value === value ? 'rgba(88, 166, 255, 0.15)' : 'rgba(255,255,255,0.05)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = opt.value === value ? 'rgba(88, 166, 255, 0.1)' : 'transparent'}
               >
-                {isImage && <div style={{ width: '32px', height: '32px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: '#000' }}><img src={opt.value.startsWith('http') ? opt.value : `/media/${opt.value}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.style.display = 'none'; }} /></div>}
-                {isVideo && <div style={{ width: '32px', height: '32px', background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', flexShrink: 0 }}>VID</div>}
-                {isAudio && <div style={{ width: '32px', height: '32px', background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', flexShrink: 0 }}>AUD</div>}
-                
+                {renderThumbnail(opt, 32)}
                 <span style={{ color: opt.value === value ? 'var(--accent)' : 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {opt.label}
                 </span>

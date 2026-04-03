@@ -162,6 +162,13 @@ export class ExpressionEngine {
       return val;
     }
 
+    // Check for dynamic event name property access (e.g., myEvent.message)
+    if (context.event && expression.startsWith(`${context.event}.`)) {
+      if (/^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)+$/.test(expression)) {
+        return this.getNestedValue(expression, context);
+      }
+    }
+
     // Handle simple single-level vars access (e.g., "vars.myVar" or "env.myVar")
     if (RegexPatterns.SINGLE_LEVEL_ACCESS.test(expression)) {
       const val = this.getNestedValue(expression, context);
@@ -170,10 +177,15 @@ export class ExpressionEngine {
 
     // Try to evaluate as JavaScript expression
     try {
+      const scope: Record<string, unknown> = { ...context };
+      if (context.event && context.data !== undefined) {
+        scope[context.event] = context.data;
+      }
+
       return new Function(
         "context",
         "with(context) { return " + expression + " }",
-      )(context);
+      )(scope);
     } catch (error) {
       console.error(`ERROR evaluating expression '${expression}':`, error);
       // If it fails, return the original expression
@@ -187,6 +199,12 @@ export class ExpressionEngine {
    */
   static getNestedValue(path: string, context: TriggerContext): unknown {
     const parts = path.split(".");
+
+    // Map Event Name to 'data'
+    if (context.event && parts[0] === context.event) {
+      parts[0] = "data";
+    }
+
     let current: unknown = context;
 
     for (const part of parts) {
@@ -230,10 +248,18 @@ export class ExpressionEngine {
     // Extract variables from expression
     let processedExpression = expression;
 
-    // First, handle dot notation patterns (data.x, data.user.name, etc.)
+    const eventName = context.event || "";
+    const rootKeys = ['data', 'vars', 'env', 'state', 'request', 'computed'];
+    if (eventName && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(eventName)) {
+        rootKeys.push(eventName);
+    }
+    const rootsRegex = rootKeys.join('|');
+    const regex = new RegExp(`\\b(${rootsRegex})(\\.[a-zA-Z_][a-zA-Z0-9_]*)+`, 'g');
+
+    // First, handle dot notation patterns (data.x, data.user.name, EventName.x etc.)
     // This must be done first to avoid partial replacements
     processedExpression = processedExpression.replace(
-      /\b(data|vars|env|state|request|computed)(\.[a-zA-Z_][a-zA-Z0-9_]*)+/g,
+      regex,
       (match) => {
         const value = this.getNestedValue(match, context);
         if (value !== undefined) {

@@ -97,13 +97,33 @@ describe("Expression Engine Unit Tests", () => {
         expect(result).toBeNaN();
     });
     
-    // --- 4. Advanced Cases ---
+    // --- 4. Advanced Cases & Event Alias ---
 
     test("Should handle arrays in evaluation", () => {
          const context = { data: { tags: ["a", "b"] } } as any;
          // e.g. checking length
          const result = ExpressionEngine.evaluate("data.tags.length", context);
          expect(result).toBe(2);
+    });
+
+    test("Should support accessing data via event name dynamically", () => {
+         const context = {
+            event: "myEvent",
+            data: { message: "dynamic payload" },
+            timestamp: 123456789
+         } as const;
+         
+         // Using getNestedValue
+         const nestedVal = ExpressionEngine.getNestedValue("myEvent.message", context);
+         expect(nestedVal).toBe("dynamic payload");
+
+         // Using JS evaluation fallback
+         const jsVal = ExpressionEngine.evaluate("myEvent.message.toUpperCase()", context);
+         expect(jsVal).toBe("DYNAMIC PAYLOAD");
+
+         // Using interpolation
+         const interpolatedVal = ExpressionEngine.interpolate("Payload: ${myEvent.message}", context);
+         expect(interpolatedVal).toBe("Payload: dynamic payload");
     });
 
     // --- 5. Coverage Boost Tests ---
@@ -280,6 +300,15 @@ describe("Expression Engine Unit Tests", () => {
         const context = {} as any;
         const result = ExpressionEngine.evaluateMath("invalid ++ syntax", context);
         expect(result).toBeNaN();
+    });
+
+    test("Should evaluate math with event name mapped to data", () => {
+        const context = {
+            event: "new_sale",
+            data: { price: 100, tax: 0.15 }
+        } as any;
+        const result = ExpressionEngine.evaluateMath("new_sale.price * (1 + new_sale.tax)", context);
+        expect(result).toBeCloseTo(115);
     });
 
     // --- 7. Nested property access coverage (lines 114-115) ---
