@@ -78,6 +78,8 @@ export interface ActionField {
     readonly labelKey?: string 
   }[];
   readonly default?: any;
+  readonly hint?: string;
+  readonly required?: boolean;
 }
 
 export interface ActionConfig {

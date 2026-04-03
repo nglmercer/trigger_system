@@ -385,6 +385,193 @@ export function CheckboxInput({
   );
 }
 
+interface SwitchInputProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label?: string;
+  hint?: string;
+  disabled?: boolean;
+}
+
+export function SwitchInput({
+  checked,
+  onChange,
+  label,
+  hint,
+  disabled = false
+}: SwitchInputProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
+        <div style={{
+          position: 'relative',
+          width: '36px',
+          height: '20px',
+          background: checked ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
+          borderRadius: '20px',
+          transition: 'all 0.2s ease',
+          opacity: disabled ? 0.5 : 1,
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '2px',
+            left: checked ? '18px' : '2px',
+            width: '16px',
+            height: '16px',
+            background: '#fff',
+            borderRadius: '50%',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+          }} />
+        </div>
+        <input
+          type="checkbox"
+          style={{ display: 'none' }}
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          disabled={disabled}
+        />
+        {label && <span className="node-label" style={{ margin: 0, userSelect: 'none' }}>{label}</span>}
+      </label>
+      {hint && (
+        <div 
+          onMouseEnter={(e) => {
+             setShowTooltip(true);
+             setMousePos({ x: e.clientX, y: e.clientY });
+          }}
+          onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+          onMouseLeave={() => setShowTooltip(false)}
+          style={{ 
+             color: 'var(--text-muted)', 
+             cursor: 'help', 
+             display: 'flex',
+             padding: '2px',
+             borderRadius: '4px',
+             transition: 'color 0.2s'
+          }}
+        >
+          <InfoIcon size={12} />
+        </div>
+      )}
+      {showTooltip && hint && <SimpleTooltip text={hint} mousePos={mousePos} />}
+    </div>
+  );
+}
+
+export function MediaSelectInput({ 
+  value, 
+  options, 
+  onChange, 
+  placeholder = 'Select...', 
+  disabled = false,
+  error
+}: SelectInputProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOpt = options.find(o => o.value === value);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        style={{
+          padding: '10px 14px',
+          background: 'rgba(13, 17, 23, 0.8)',
+          border: `1px solid ${error ? 'var(--error, #f85149)' : (isOpen ? 'var(--accent)' : 'var(--border)')}`,
+          borderRadius: '8px',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          color: selectedOpt ? 'var(--text-primary)' : 'var(--text-muted)',
+          boxShadow: isOpen ? '0 0 0 3px rgba(88, 166, 255, 0.15)' : 'none',
+          minHeight: '40px'
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+           {selectedOpt?.value && selectedOpt.value.match(/\.(webp|png|jpg|jpeg|gif)$/i) && (
+             <div style={{ width: '24px', height: '24px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: 'rgba(0,0,0,0.5)' }}>
+               <img src={selectedOpt.value.startsWith('http') ? selectedOpt.value : `/media/${selectedOpt.value}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.style.display = 'none'; }} />
+             </div>
+           )}
+           {selectedOpt ? selectedOpt.label : placeholder}
+        </span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          marginTop: '4px',
+          background: 'rgba(22, 27, 34, 0.95)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          maxHeight: '300px',
+          overflowY: 'auto',
+          zIndex: 1000,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+        }}>
+          {options.map(opt => {
+            const isImage = opt.value.match(/\.(webp|png|jpg|jpeg|gif)$/i);
+            const isVideo = opt.value.match(/\.(mp4|webm)$/i);
+            const isAudio = opt.value.match(/\.(mp3|wav|ogg)$/i);
+            
+            return (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: '8px 14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  background: opt.value === value ? 'rgba(88, 166, 255, 0.1)' : 'transparent',
+                  borderLeft: `3px solid ${opt.value === value ? 'var(--accent)' : 'transparent'}`,
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = opt.value === value ? 'rgba(88, 166, 255, 0.15)' : 'rgba(255,255,255,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = opt.value === value ? 'rgba(88, 166, 255, 0.1)' : 'transparent'}
+              >
+                {isImage && <div style={{ width: '32px', height: '32px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: '#000' }}><img src={opt.value.startsWith('http') ? opt.value : `/media/${opt.value}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.style.display = 'none'; }} /></div>}
+                {isVideo && <div style={{ width: '32px', height: '32px', background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', flexShrink: 0 }}>VID</div>}
+                {isAudio && <div style={{ width: '32px', height: '32px', background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px', flexShrink: 0 }}>AUD</div>}
+                
+                <span style={{ color: opt.value === value ? 'var(--accent)' : 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {opt.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface FormFieldProps {
   label: string;
   children: React.ReactNode;

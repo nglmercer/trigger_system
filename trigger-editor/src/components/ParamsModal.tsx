@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { TextInput, TextAreaInput, SelectInput } from './inputs/FormFields.tsx';
+import { TextInput, TextAreaInput, SelectInput, SwitchInput, MediaSelectInput } from './inputs/FormFields.tsx';
 import { JsonPreview } from './JsonPreview.tsx';
 import type { ParamEntry, JsonValue } from '../utils/getData.ts';
 import { getValueType, stringToValue, valueToString, generateId, parseParams } from '../utils/getData.ts';
-import { TrashIcon, ClearIcon, PlusIcon, UploadIcon } from './Icons.tsx';
+import { TrashIcon, ClearIcon, PlusIcon, UploadIcon, InfoIcon } from './Icons.tsx';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SHORTCUTS, isShortcut } from '../utils/shortcuts.ts';
 import { useRFStore } from '../store/rfStore.ts';
@@ -406,22 +406,32 @@ export function ParamsModal() {
                   </div>
                   {config.fields.map(field => (
                     <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {field.labelKey ? t(field.labelKey) : field.label}
-                        {(field.descriptionKey || field.description) && (
-                          <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                            {field.descriptionKey ? t(field.descriptionKey) : field.description}
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {field.labelKey ? t(field.labelKey) : field.label}
+                          {field.required && <span style={{ color: 'var(--error, #f85149)' }}>*</span>}
+                          {(field.descriptionKey || field.description) && (
+                            <span style={{ marginLeft: '4px', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                              - {field.descriptionKey ? t(field.descriptionKey) : field.description}
+                            </span>
+                          )}
+                        </label>
+                        {field.hint && (
+                          <div 
+                            title={field.hint}
+                            style={{ color: 'var(--text-muted)', cursor: 'help', display: 'flex', alignItems: 'center' }}
+                          >
+                            <InfoIcon size={12} />
+                          </div>
                         )}
-                      </label>
+                      </div>
                       {field.type === 'boolean' ? (
-                        <SelectInput 
-                          value={String(currentData[field.key] ?? field.default ?? false)} 
-                          options={[{ value: 'true', label: 'true' }, { value: 'false', label: 'false' }]}
-                          onChange={(val) => updateField(field.key, val === 'true')}
+                        <SwitchInput 
+                          checked={Boolean(currentData[field.key] ?? field.default ?? false)} 
+                          onChange={(val) => updateField(field.key, val)}
                         />
                       ) : field.type === 'select' ? (
-                        <SelectInput 
+                        <MediaSelectInput 
                           value={String(currentData[field.key] ?? field.default ?? '')} 
                           options={(field.options || []).map(opt => ({
                             ...opt,
